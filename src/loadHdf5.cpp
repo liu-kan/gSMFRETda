@@ -1,11 +1,3 @@
-/*
- *  Copyright (c), 2017, Adrien Devresse
- *
- *  Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- *
- */
 #include <iostream>
 #include <string>
 #include <vector>
@@ -13,35 +5,63 @@
 #include <highfive/H5File.hpp>
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataSpace.hpp>
+#include "loadHdf5.hpp"
 
-const std::string FILE_NAME("read_write_scalar.h5");
-const std::string DATASET_NAME("single_scalar");
-
-// Create a dataset name "single_scalar"
-// which contains only the perfect integer number "42"
-//
-int main(void) {
-    using namespace HighFive;
+bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<int64_t>& stop,
+    std::vector<uint32_t>& istart,std::vector<uint32_t>& istop,
+    std::vector<int64_t>& times_ms,
+    std::vector<bool>& mask_ad,std::vector<bool>& mask_dd,
+    std::vector<float>& T_burst_duration,std::vector<float>& SgDivSr,
+    float& clk_p,float& bg_ad_rate,float& bg_dd_rate)
+{
+    using namespace HighFive;    
+    std::vector<int8_t> mask_ad_i;std::vector<int8_t> mask_dd_i;
     try {
-        // Create a new file using the default property lists.
-        File file(FILE_NAME, File::ReadOnly);
-
-        int perfect_number = 42;
-
-        // Create the dataset
+        File file(H5FILE_NAME, File::ReadOnly);
+        std::string DATASET_NAME("/sub_bursts_l/start");
         DataSet dataset = file.getDataSet(DATASET_NAME);        
-        // let's read it back
-        int potentially_perfect_number;
-
-        dataset.read(potentially_perfect_number);
-
-        std::cout << "perfect number: " << potentially_perfect_number
-                  << std::endl;
-
+        dataset.read(start);
+        DATASET_NAME="/sub_bursts_l/stop";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(stop);        
+        DATASET_NAME="/sub_bursts_l/istart";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(istart);
+        DATASET_NAME="/sub_bursts_l/istop";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(istop);        
+        DATASET_NAME="times";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(times_ms);
+        DATASET_NAME="mask_ad";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(mask_ad_i);        
+        DATASET_NAME="mask_dd";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(mask_dd_i);                
+        DATASET_NAME="T_burst_duration";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(T_burst_duration);          
+        DATASET_NAME="SgDivSr";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(SgDivSr);                                
+        DATASET_NAME="clk_p";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(clk_p);                                        
+        DATASET_NAME="bg_ad_rate";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(bg_ad_rate);
+        DATASET_NAME="bg_dd_rate";
+        dataset = file.getDataSet(DATASET_NAME);        
+        dataset.read(bg_dd_rate);
     } catch (Exception& err) {
-        // catch and print any HDF5 error
         std::cerr << err.what() << std::endl;
+        return false;
+    }    
+    int64_t size=mask_ad_i.size();
+    for (int i=0;i<size;i++){
+        mask_dd.push_back(static_cast<bool>(mask_dd_i[i]));
+        mask_ad.push_back(static_cast<bool>(mask_ad_i[i]));
     }
-
-    return 0; // successfully terminated
+    return true; // successfully terminated
 }
