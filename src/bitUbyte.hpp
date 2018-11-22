@@ -90,7 +90,7 @@ bool getbits(std::vector<T>& boolarr,std::vector<uint8_t>& bytearr,std::size_t i
         }
         if(id_byte1>id_byte0+1){
             //get bits[id_byte0+1,id_byte1-1]
-            for(int j=id_byte0;j<id_byte1;j++){
+            for(int j=id_byte0+1;j<id_byte1;j++){
                 bool b[8];
                 FromByte(bytearr[j],b);
                 for (int i=0;i<8;i++){
@@ -100,7 +100,7 @@ bool getbits(std::vector<T>& boolarr,std::vector<uint8_t>& bytearr,std::size_t i
         }
         //get bits[(id_byte1,[0,id_byte11])]
         FromByte(bytearr[id_byte1],b);
-        for (int i=0;i<=id_byte01;i++){
+        for (int i=0;i<=id_byte11;i++){
             boolarr.push_back(static_cast<T>(b[i]));
         }        
         return true;
