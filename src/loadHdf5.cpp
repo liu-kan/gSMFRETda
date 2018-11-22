@@ -6,6 +6,7 @@
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataSpace.hpp>
 #include "loadHdf5.hpp"
+#include "bitUbyte.hpp"
 
 bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<int64_t>& stop,
     std::vector<uint32_t>& istart,std::vector<uint32_t>& istop,
@@ -15,7 +16,7 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
     float& clk_p,float& bg_ad_rate,float& bg_dd_rate)
 {
     using namespace HighFive;    
-    std::vector<int8_t> mask_ad_i;std::vector<int8_t> mask_dd_i;
+    std::vector<uint8_t> mask_ad_i;std::vector<uint8_t> mask_dd_i;
     try {
         File file(H5FILE_NAME, File::ReadOnly);
         std::string DATASET_NAME("/sub_bursts_l/start");
@@ -62,6 +63,18 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
     for (int i=0;i<size;i++){
         mask_dd.push_back(static_cast<bool>(mask_dd_i[i]));
         mask_ad.push_back(static_cast<bool>(mask_ad_i[i]));
+    }
+    std::vector<uint8_t> bytebits;
+    std::vector<bool> bits;
+    int x=7273,y=7305;
+    fillbits<uint8_t>(bytebits,mask_ad_i);
+    getbits<bool>(bits,bytebits,x,y);
+    std::cout<<"fillbits "<<size<<" bytesize "<<bytebits.size()<<std::endl;
+    std::cout<<"mask_ad_i[304344] "<<static_cast<bool>(mask_ad_i[304340])<<std::endl;
+    bool b1;int ii=0;
+    for (auto i:bits){
+        std::cout<<"bytebits["<<x+ii<<"] "<<static_cast<bool>(i)<<std::endl;        
+        ii++;
     }
     return true; // successfully terminated
 }

@@ -18,5 +18,5 @@ readhdf: src/loadHdf5.cpp directories
 main: src/main.cpp directories loadHdf5.o
 	$(CXX) $(CXXFLAGS) $(HEADER) $(LIBS) -o bin/gSMFRETda src/main.cpp loadHdf5.o
 
-loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp
+loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp
