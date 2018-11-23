@@ -11,12 +11,12 @@
 bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<int64_t>& stop,
     std::vector<uint32_t>& istart,std::vector<uint32_t>& istop,
     std::vector<int64_t>& times_ms,
-    std::vector<bool>& mask_ad,std::vector<bool>& mask_dd,
+    std::vector<unsigned char>& mask_ad,std::vector<unsigned char>& mask_dd,
     std::vector<float>& T_burst_duration,std::vector<float>& SgDivSr,
     float& clk_p,float& bg_ad_rate,float& bg_dd_rate)
 {
     using namespace HighFive;    
-    std::vector<uint8_t> mask_ad_i;std::vector<uint8_t> mask_dd_i;
+    std::vector<unsigned char> mask_ad_i;std::vector<unsigned char> mask_dd_i;
     try {
         File file(H5FILE_NAME, File::ReadOnly);
         std::string DATASET_NAME("/sub_bursts_l/start");
@@ -59,22 +59,23 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
         std::cerr << err.what() << std::endl;
         return false;
     }    
-    int64_t size=mask_ad_i.size();
-    for (int i=0;i<size;i++){
-        mask_dd.push_back(static_cast<bool>(mask_dd_i[i]));
-        mask_ad.push_back(static_cast<bool>(mask_ad_i[i]));
-    }
-    std::vector<uint8_t> bytebits;
-    std::vector<bool> bits;
-    int x=7273,y=7305;
-    fillbits<uint8_t>(bytebits,mask_ad_i);
-    getbits<bool>(bits,bytebits,x,y);
-    std::cout<<"fillbits "<<size<<" bytesize "<<bytebits.size()<<std::endl;
-    std::cout<<"mask_ad_i[304344] "<<static_cast<bool>(mask_ad_i[304340])<<std::endl;
-    bool b1;int ii=0;
-    for (auto i:bits){
-        std::cout<<"bytebits["<<x+ii<<"] "<<static_cast<bool>(i)<<std::endl;        
-        ii++;
-    }
+    // int64_t size=mask_ad_i.size();
+    // for (int i=0;i<size;i++){
+    //     mask_dd.push_back(static_cast<bool>(mask_dd_i[i]));
+    //     mask_ad.push_back(static_cast<bool>(mask_ad_i[i]));
+    // }
+    // std::vector<unsigned char> bytebits;
+    // std::vector<bool> bits;
+    // int x=34367295,y=34367397;
+    fillbits<unsigned char>(mask_ad,mask_ad_i);
+    fillbits<unsigned char>(mask_dd,mask_dd_i);
+    // std::cout<<"getbits "<<getbits<bool>(bits,bytebits,x,y)<<std::endl;
+    // std::cout<<"fillbits "<<size<<" bytesize "<<bytebits.size()<<std::endl;
+    // // std::cout<<"mask_ad_i[304344] "<<static_cast<bool>(mask_ad_i[304340])<<std::endl;
+    // bool b1;int ii=0;
+    // for (auto i:bits){
+    //     std::cout<<"bytebits["<<x+ii<<"] "<<static_cast<bool>(i)<<std::endl;        
+    //     ii++;
+    // }
     return true; // successfully terminated
 }
