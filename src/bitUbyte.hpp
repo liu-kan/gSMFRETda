@@ -50,7 +50,7 @@ void fillbits(std::vector<unsigned char>& bytearr,std::vector<T>& boolarr){
 }
 
 inline 
-bool getbit(bool& r, std::vector<uint8_t>& bytearr,std::size_t id){
+bool getbit(bool& r, std::vector<unsigned char>& bytearr,std::size_t id){
     int id_byte0=int(id/8.0);
     if (id_byte0>=bytearr.size())
         return false;
@@ -61,11 +61,19 @@ bool getbit(bool& r, std::vector<uint8_t>& bytearr,std::size_t id){
     return true;
 }
 
+// typename T 表示输出的bool数列boolarr类型 可以是bool/int/char等
+// 将8bits pack的bytearr输出成unpack的bool数列，取值区间[idx,idy]
+// 成功返回1，如果idy>bytearr.size截断并返回-1，返回0则错误结果不可靠
 template <typename T>
 inline 
-bool getbits(std::vector<T>& boolarr,std::vector<uint8_t>& bytearr,std::size_t idx,std::size_t idy){
+int getbits(std::vector<T>& boolarr,std::vector<unsigned char>& bytearr,std::size_t idx,std::size_t idy){
     int id_byte0=int(idx/8.0);
+    int r=1;
     int id_byte01=idx%8;
+    if (idy>=bytearr.size()*8){
+        idy=bytearr.size()*8-1;
+        r=-1;
+    }
     int id_byte1=int(idy/8.0);
     int id_byte11=idy%8;    
     if (id_byte0==id_byte1){
@@ -76,10 +84,12 @@ bool getbits(std::vector<T>& boolarr,std::vector<uint8_t>& bytearr,std::size_t i
             for (int i=id_byte01;i<=id_byte11;i++){
                 boolarr.push_back(static_cast<T>(b[i]));
             }
-            return true;
+            return r;
         }
-        else
-            return false;
+        else{
+            // std::cout<<"kao"<<std::endl;
+            return 0;
+        }
     }
     else if (id_byte1>id_byte0){
         //get bits[(id_byte0,[id_byte01,8])]
@@ -103,10 +113,14 @@ bool getbits(std::vector<T>& boolarr,std::vector<uint8_t>& bytearr,std::size_t i
         for (int i=0;i<=id_byte11;i++){
             boolarr.push_back(static_cast<T>(b[i]));
         }        
-        return true;
+        return r;
     }
-    else
-        return false;
+    else{
+        // std::cout<<std::endl<<id_byte0<<" kao2 "<<id_byte1<<std::endl;
+        // std::cout<<idx<<" kao2 "<<idy<<std::endl;
+        return 0;
+    }
+        
 }
 
 

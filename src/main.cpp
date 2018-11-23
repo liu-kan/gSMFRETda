@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     std::vector<uint32_t> istart;std::vector<uint32_t> istop;    
     std::vector<int64_t> stop;std::vector<int64_t> start;
     std::vector<int64_t> times_ms;
-    std::vector<bool> mask_ad;std::vector<bool> mask_dd;
+    std::vector<unsigned char> mask_ad;std::vector<unsigned char> mask_dd;
     std::vector<float> T_burst_duration;std::vector<float> SgDivSr;
     float clk_p,bg_ad_rate,bg_dd_rate;
     loadhdf5(H5FILE_NAME,start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
