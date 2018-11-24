@@ -119,8 +119,7 @@ int getbits(std::vector<T>& boolarr,std::vector<unsigned char>& bytearr,std::siz
         // std::cout<<std::endl<<id_byte0<<" kao2 "<<id_byte1<<std::endl;
         // std::cout<<idx<<" kao2 "<<idy<<std::endl;
         return 0;
-    }
-        
+    }        
 }
 
 
