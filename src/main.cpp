@@ -2,6 +2,8 @@
 #include <cstdint>
 #include "cxxopts.hpp"
 #include "loadHdf5.hpp"
+#include "cuda_tools.hpp"
+
 
 cxxopts::ParseResult
 parse(int argc, char* argv[])
@@ -45,5 +47,7 @@ int main(int argc, char* argv[])
     float clk_p,bg_ad_rate,bg_dd_rate;
     loadhdf5(H5FILE_NAME,start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     // std::cout << "mask_ad len " << mask_ad.size() << " mask_ad last " << mask_ad[34367292]<< std::endl;
+    float *g_T_burst_duration;
+    HandleError(cudaMalloc((void **)&g_T_burst_duration, sizeof(float)*T_burst_duration.size()));
     return 0;   
 }

@@ -4,8 +4,8 @@ else
 	CFLAGS = -std=c++11 -O2
 endif
 CXXFLAGS =	$(CFLAGS)
-HEADER = -I 3rdparty/HighFive/include -I 3rdparty/cxxopts/include
-LIBS = -lhdf5
+HEADER = -I 3rdparty/HighFive/include -I 3rdparty/cxxopts/include -I /opt/cuda/include
+LIBS = -lhdf5 -L /opt/cuda/lib64 -lcudart
 OUT_DIR=bin
 MKDIR_P = mkdir -p
 .PHONY: directories
