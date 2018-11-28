@@ -37,6 +37,8 @@ Eigen::MatrixXi z(1,7);
 z << 0, 0, 0,0,0,0,0;
 m = (mmm.array() == 1).select(m, z);
 cout << m << endl;
-
+char fmt[6];
+snprintf(fmt, 6, "%%-%2ds", 345345);
+cout << "snprintf"<<fmt << endl;
 return 1;
 }
