@@ -29,16 +29,11 @@ std::cout << std::endl;
 
 
 Eigen::MatrixXi m(1,7);
-m << 1, 2, 3,4,5,6,7;
-Eigen::MatrixXi mm(1,10);
-mm << 0, 1, 0,1,1,0,1,0,0,0;
-Eigen::MatrixXi mmm=mm.block(0,0,1,7);
-Eigen::MatrixXi z(1,7);
-z << 0, 0, 0,0,0,0,0;
-m = (mmm.array() == 1).select(m, z);
-cout << m << endl;
-char fmt[6];
-snprintf(fmt, 6, "%%-%2ds", 345345);
-cout << "snprintf"<<fmt << endl;
+m <<  1, 2, 3,4,5,6,7;
+Eigen::MatrixXi mm(1,7);
+mm << 0, 1, 0,1,1,0,1;
+mm=(mm.array() <1).select(0, m) ;
+cout <<mm << endl;
+
 return 1;
 }
