@@ -27,16 +27,19 @@ int main(){
 // std::cout << std::endl;
 
 
-
+int s=7;
 Eigen::Array<int,1,7,Eigen::RowMajor> m;
 m <<  1, 2, 3,4,5,6,7;
-Eigen::Array<int,1,7,Eigen::RowMajor> mm;
+Eigen::Array<int,1,Eigen::Dynamic,Eigen::RowMajor> mm,*mp;
+mm.resize(1,s);
 mm << 0, 1, 0,1,1,0,1;
+mp=&mm;
 mm=(mm<1).select(0, m) ;
 cout <<mm << endl;
+cout <<(*mp)(0,1) << endl;
 
 std::vector<int> v1={1,2,3,4,5,6,7};
-Eigen::Array<int,1,7,Eigen::RowMajor> m3(v1.data()); 
+Eigen::Array<int,1,7,Eigen::RowMajor> m3(mp->data()); 
 cout <<m3 << endl;
 return 1;
 }
