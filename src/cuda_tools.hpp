@@ -1,6 +1,10 @@
+#ifndef cuda_tools_HPP_INCLUDED
+#define cuda_tools_HPP_INCLUDED
+
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <memory>
+#include <iostream>
 static void HandleError( cudaError_t err )
 {
 	// CUDA error handeling from the "CUDA by example" book
@@ -11,3 +15,15 @@ static void HandleError( cudaError_t err )
 	}
 }
 #define HANDLE_ERROR( err ) (HandleError( err))
+
+
+static void CheckCudaErrorAux (const char *, unsigned, const char *, cudaError_t);
+#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
+static void CheckCudaErrorAux (const char *file, unsigned line, const char *statement, cudaError_t err)
+{
+	if (err == cudaSuccess)
+		return;
+	std::cerr << statement<<" returned " << cudaGetErrorString(err) << "("<<err<< ") at "<<file<<":"<<line << std::endl;
+	exit (1);
+}
+#endif
