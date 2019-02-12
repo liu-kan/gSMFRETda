@@ -30,16 +30,17 @@ int main(){
 int s=7;
 Eigen::Array<int,1,7,Eigen::RowMajor> m;
 m <<  1, 2, 3,4,5,6,7;
-Eigen::Array<int,1,Eigen::Dynamic,Eigen::RowMajor> mm,*mp;
+Eigen::Array<bool,1,Eigen::Dynamic,Eigen::RowMajor> mm,*mp;
 mm.resize(1,s);
 mm << 0, 1, 0,1,1,0,1;
 mp=&mm;
-mm=(mm<1).select(0, m) ;
-cout <<mm << endl;
-cout <<(*mp)(0,1) << endl;
-
+m=(mm).select(m,0) ;
+cout << m << endl;
+cout <<(int)(*mp)(0,0) << endl;
+typedef Eigen::Map<Eigen::Array<int,1,Eigen::Dynamic,Eigen::RowMajor>> Mapper;
 std::vector<int> v1={1,2,3,4,5,6,7};
-Eigen::Array<int,1,7,Eigen::RowMajor> m3(mp->data()); 
+Mapper m3(v1.data(),s);
+
 cout <<m3 << endl;
 return 1;
 }

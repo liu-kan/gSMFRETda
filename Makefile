@@ -4,7 +4,7 @@ else
 	CFLAGS = -std=c++11 -O2
 endif
 CXXFLAGS =	$(CFLAGS)
-HEADER = -I 3rdparty/HighFive/include -I 3rdparty/cxxopts/include -I /opt/cuda/include
+HEADER = -I 3rdparty/HighFive/include -I 3rdparty/cxxopts/include -I /opt/cuda/include -I /usr/include/eigen3
 LIBS = -lhdf5 -L /opt/cuda/lib64 -lcudart
 OUT_DIR=bin
 MKDIR_P = mkdir -p
@@ -15,8 +15,9 @@ ${OUT_DIR}:
 	${MKDIR_P} ${OUT_DIR}
 readhdf: src/loadHdf5.cpp directories
 	$(CXX) $(CXXFLAGS) $(HEADER) $(LIBS) -o bin/readhdf src/loadHdf5.cpp
-main: src/main.cpp directories loadHdf5.o
-	$(CXX) $(CXXFLAGS) $(HEADER) $(LIBS) -o bin/gSMFRETda src/main.cpp loadHdf5.o
-
+main: src/main.cpp directories loadHdf5.o mc.o
+	$(CXX) $(CXXFLAGS) $(HEADER) $(LIBS) -o bin/gSMFRETda src/main.cpp loadHdf5.o mc.o
+mc.o: src/mc.cu src/mc.hpp
+	nvcc -arch=sm_61 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
 loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp
