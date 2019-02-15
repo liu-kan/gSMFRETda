@@ -16,6 +16,7 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
 mc::mc(int id){
     devid=id;
     matK=NULL;matP=NULL;
+    CUDA_CHECK_RETURN(cudaSetDevice(devid));
 }
 
 void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
@@ -24,8 +25,7 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
         vector<unsigned char>& mask_ad,vector<unsigned char>& mask_dd,
         vector<float>& T_burst_duration,vector<float>& SgDivSr,
         float& iclk_p,float& ibg_ad_rate,float& ibg_dd_rate){    
-    clk_p=iclk_p;bg_ad_rate=ibg_ad_rate;bg_dd_rate=ibg_dd_rate;
-    CUDA_CHECK_RETURN(cudaSetDevice(devid));
+    clk_p=iclk_p;bg_ad_rate=ibg_ad_rate;bg_dd_rate=ibg_dd_rate;    
     sz_tag=mask_ad.size();                
     CUDA_CHECK_RETURN(cudaMallocHost((void **)&hchi2, sizeof(float)));
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_mask_ad, sizeof(unsigned char)*sz_tag));
@@ -51,8 +51,7 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
 }
 
-void mc::run_kernel(){
-    CUDA_CHECK_RETURN(cudaSetDevice(devid));
+void mc::run_kernel(){    
     mc_kernel<<<1,1>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
@@ -69,8 +68,7 @@ mc::~mc(){
 
 
 
-void mc::free_data_gpu(){    
-    CUDA_CHECK_RETURN(cudaSetDevice(devid));
+void mc::free_data_gpu(){        
     CUDA_CHECK_RETURN(cudaFree(g_mask_ad));
     CUDA_CHECK_RETURN(cudaFree(g_mask_dd));
     CUDA_CHECK_RETURN(cudaFree(g_start));
@@ -85,7 +83,8 @@ void mc::free_data_gpu(){
     cout<<"rsize:"<<*hchi2<<endl;
     CUDA_CHECK_RETURN(cudaFreeHost(hchi2));
 }
-bool mc::set_params(int n,vector<float>& args){
+bool mc::set_params(vector<float>& args){
+    int n=s_n;
     vecFloatMapper evargs(args.data(),n*n+n);    
     cout<<evargs<<endl;
     eargs=evargs(seqN(0,n));
@@ -93,7 +92,8 @@ bool mc::set_params(int n,vector<float>& args){
     vargs=evargs(seqN(n*n,n));    
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
-    r=r&&genMatP(&matP,matK);
-    // delete(matK);
+    r=r&&genMatP(&matP,matK);    
+    CUDA_CHECK_RETURN(cudaMemcpy(g_istart, istart.data(), sizeof(uint32_t)*sz_burst,cudaMemcpyHostToDevice));
+    
     return r;
 }
