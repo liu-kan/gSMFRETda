@@ -16,6 +16,7 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
 mc::mc(int id){
     devid=id;
     matK=NULL;matP=NULL;
+    hpe=NULL;
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
 }
 
@@ -87,6 +88,22 @@ void mc::free_data_gpu(){
 bool mc::set_nstates(int n){
     s_n=n;
     bool r;
+    CUDA_CHECK_RETURN(cudaFreeHost(hpe));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpv));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpp));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpk));
+    CUDA_CHECK_RETURN(cudaFree(gpe));
+    CUDA_CHECK_RETURN(cudaFree(gpv));
+    CUDA_CHECK_RETURN(cudaFree(gpp));
+    CUDA_CHECK_RETURN(cudaFree(gpk));    
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpe, n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpv, n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpp, n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpk, n*n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpe, n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpv, n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpp, n*sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpk, n*n*sizeof(float)));    
     return r;
 }
 
@@ -96,14 +113,19 @@ bool mc::set_params(vector<float>& args){
     cout<<evargs<<endl;
     eargs=evargs(seqN(0,n));
     float *peargs=eargs.data();
-    kargs=evargs(seqN(n,n*n-n));
-    float *pkargs=kargs.data();
+    kargs=evargs(seqN(n,n*n-n));    
     vargs=evargs(seqN(n*n,n));    
     float *pvargs=vargs.data();
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
-    //CUDA_CHECK_RETURN(cudaMemcpy(g_istart, istart.data(), sizeof(uint32_t)*sz_burst,cudaMemcpyHostToDevice));
-    
+    memcpy(hpe, peargs, sizeof(float)*n);
+    memcpy(hpv, pvargs, sizeof(float)*n);
+    memcpy(hpk, matK->data(), sizeof(float)*n*n);
+    memcpy(hpp, matP->data(), sizeof(float)*n);
+    CUDA_CHECK_RETURN(cudaMemcpy(gpe,hpe,sizeof(float)*n,cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(gpv,hpv, sizeof(float)*n,cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(gpk,hpk, sizeof(float)*n*n,cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(gpp,hpp, sizeof(float)*n,cudaMemcpyHostToDevice));    
     return r;
 }

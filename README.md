@@ -10,6 +10,9 @@ git clone https://git.liukan.org/liuk/gSMFRETda.git
 git submodule init
 git submodule update
 ```
+## Building prerequest
+* CUDA version 10 
+* libhdf5-dev 1.10 and newer 
 
 ## Build the code
 ```bash

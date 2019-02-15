@@ -13,13 +13,11 @@ parse(int argc, char* argv[])
   try
   {
     cxxopts::Options options(argv[0], " - Compute smFRET PDA by GPU");
-
     options
       .allow_unrecognised_options()
       .add_options()
       ("i,input", "Input HDF5", cxxopts::value<string>())
     ;
-
     auto result = options.parse(argc, argv);    
     if (result.count("input")<1)
     {
@@ -27,7 +25,6 @@ parse(int argc, char* argv[])
         exit(1);
     }
     return result;
-
   } catch (const cxxopts::OptionException& e)
   {
     cout << "error parsing options: " << e.what() << endl;
@@ -59,7 +56,8 @@ int main(int argc, char* argv[])
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     vector<float> args={0.2,0.3,0.4,1,2,3,4,5,6,0.9,0.9,0.9};
     for (int i=0;i<args.size();i++)cout<< args[i];cout<<endl;
-    pdamc.set_params(3,args);
+    pdamc.set_nstates(3);
+    pdamc.set_params(args);
     cout<<pdamc.eargs<<endl;
     cout<<pdamc.vargs<<endl;
     return 0;   
