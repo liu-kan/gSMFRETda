@@ -10,3 +10,10 @@ git clone https://git.liukan.org/liuk/gSMFRETda.git
 git submodule init
 git submodule update
 ```
+
+## Build the code
+```bash
+sudo apt install libhdf5-dev pkg-config
+cd gSMFRETda
+make main -j8
+```

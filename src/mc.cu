@@ -83,17 +83,27 @@ void mc::free_data_gpu(){
     cout<<"rsize:"<<*hchi2<<endl;
     CUDA_CHECK_RETURN(cudaFreeHost(hchi2));
 }
+
+bool mc::set_nstates(int n){
+    s_n=n;
+    bool r;
+    return r;
+}
+
 bool mc::set_params(vector<float>& args){
     int n=s_n;
     vecFloatMapper evargs(args.data(),n*n+n);    
     cout<<evargs<<endl;
     eargs=evargs(seqN(0,n));
+    float *peargs=eargs.data();
     kargs=evargs(seqN(n,n*n-n));
+    float *pkargs=kargs.data();
     vargs=evargs(seqN(n*n,n));    
+    float *pvargs=vargs.data();
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
-    CUDA_CHECK_RETURN(cudaMemcpy(g_istart, istart.data(), sizeof(uint32_t)*sz_burst,cudaMemcpyHostToDevice));
+    //CUDA_CHECK_RETURN(cudaMemcpy(g_istart, istart.data(), sizeof(uint32_t)*sz_burst,cudaMemcpyHostToDevice));
     
     return r;
 }

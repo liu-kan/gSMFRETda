@@ -19,6 +19,7 @@ class mc
         int s_n;
     public:
         RowVectorXf eargs,vargs,kargs;
+        bool set_nstates(int n);
         void free_data_gpu();
         void run_kernel();
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,

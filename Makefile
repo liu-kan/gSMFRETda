@@ -1,7 +1,7 @@
 ifdef debug
-	CFLAGS = -std=c++11 -g
+	CFLAGS = -std=c++11 -g `pkg-config --cflags hdf5`
 else
-	CFLAGS = -std=c++11 -O2
+	CFLAGS = -std=c++11 -O2 `pkg-config --cflags hdf5`
 endif
 CXXFLAGS =	$(CFLAGS)
 HEADER = -I 3rdparty/HighFive/include -I 3rdparty/cxxopts/include -I /opt/cuda/include \
@@ -24,3 +24,6 @@ loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp
 eigenhelper.o: src/eigenhelper.cpp src/eigenhelper.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/eigenhelper.cpp
+
+clean:
+	rm *.o
