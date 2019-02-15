@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
     assert (mask_ad.size() == times_ms.size());
     assert (T_burst_duration.size() == SgDivSr.size());
     assert (T_burst_duration.size() == istart.size());
-    cout<<times_ms.size()<<endl;    
+    cout<<T_burst_duration.size()<<endl;    
     mc pdamc(0);
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);

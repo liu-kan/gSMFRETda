@@ -16,6 +16,7 @@ class mc
         uint32_t *g_istart,*g_istop;   
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         MatrixXf *matK,*matP;
+        int s_n;
     public:
         RowVectorXf eargs,vargs,kargs;
         void free_data_gpu();
@@ -28,7 +29,7 @@ class mc
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
         mc(int devid);
-        bool set_params(int n,vector<float>& args);
+        bool set_params(vector<float>& args);
 };
 
 #endif
