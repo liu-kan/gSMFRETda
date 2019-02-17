@@ -2,7 +2,9 @@
 
 #include "cuda_tools.hpp"
 
+__forceinline __device__ int drawDisIdx(int n,float* p){
 
+}
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
