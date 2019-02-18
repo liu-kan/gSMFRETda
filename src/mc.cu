@@ -1,9 +1,8 @@
 #include "mc.hpp"
-
 #include "cuda_tools.hpp"
 
-__forceinline __device__ int drawDisIdx(int n,float* p){
-
+__forceinline__ __device__ int drawDisIdx(int n,float* p){
+    ;
 }
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
@@ -19,6 +18,8 @@ mc::mc(int id){
     devid=id;
     matK=NULL;matP=NULL;
     hpe=NULL;
+    devStates=NULL;
+    devQStates=NULL;        
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
 }
 
@@ -54,7 +55,20 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
 }
 
-void mc::run_kernel(){    
+__global__ void setup_kernel ( curandState * state, curandStateSobol32_t* qstate, unsigned long seed , int N)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    curand_init ( seed, idx, 0, &state[idx] );
+} 
+
+void mc::run_kernel(int cstart,int cstop){  
+    int N=cstop-cstart;
+    int dimension=128;  
+    dim3 threads = dim3(dimension, 1);
+    int blocksCount = floor(N / threads.x) + 1;
+    dim3 blocks  = dim3(blocksCount, 1);
+
+    setup_kernel <<<blocks, threads>>> ( devStates, devQStates, time(NULL), N );
     mc_kernel<<<1,1>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
