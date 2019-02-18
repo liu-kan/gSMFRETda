@@ -4,6 +4,8 @@
 #include <cstdint>
 using namespace std;
 #include "eigenhelper.hpp"
+#include <curand_kernel.h>
+
 class mc
 {
     protected:
@@ -19,11 +21,13 @@ class mc
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         MatrixXf *matK,*matP;        
         int s_n;
+        curandState* devStates;
+        curandStateSobol32_t* devQStates;        
     public:        
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n);
         void free_data_gpu();
-        void run_kernel();
+        void run_kernel(int cstart,int cstop);
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
             vector<uint32_t>& istart,vector<uint32_t>& istop,
             vector<int64_t>& times_ms,
