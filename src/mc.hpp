@@ -21,8 +21,13 @@ class mc
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         MatrixXf *matK,*matP;        
         int s_n;
-        curandState* devStates;
-        curandStateSobol32_t* devQStates;        
+        curandState_t* devStates;
+        curandStateScrambledSobol64* devQStates;        
+        curandDirectionVectors64_t *hostVectors64;
+        unsigned long long int * hostScrambleConstants64;
+        unsigned long long int * devDirectionVectors64;
+        unsigned long long int * devScrambleConstants64;
+            
     public:        
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n);

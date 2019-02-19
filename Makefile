@@ -6,7 +6,7 @@ endif
 CXXFLAGS =	$(CFLAGS)
 HEADER = -I 3rdparty/HighFive/include -I 3rdparty/cxxopts/include -I /opt/cuda/include \
 	-I 3rdparty/eigen
-LIBS = -lhdf5 -L /opt/cuda/lib64 -lcudart
+LIBS = -lhdf5 -L /opt/cuda/lib64 -lcudart -lcurand
 OUT_DIR=bin
 MKDIR_P = mkdir -p
 .PHONY: directories

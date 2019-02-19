@@ -1,6 +1,6 @@
 #include "mc.hpp"
 #include "cuda_tools.hpp"
-
+#define VECTOR_SIZE 64
 __forceinline__ __device__ int drawDisIdx(int n,float* p){
     ;
 }
@@ -14,6 +14,21 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     // *rsize=mask_adA.cols();
 }
 
+__global__ void setup_kernel  (curandState_t * state, unsigned long seed , int N,
+    unsigned long long * sobolDirectionVectors, 
+    unsigned long long *sobolScrambleConstants, 
+    curandStateScrambledSobol64* stateQ)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx<N){
+        curand_init ( seed, idx, 0, &state[idx] );
+        curand_init(sobolDirectionVectors + VECTOR_SIZE*idx, 
+        sobolScrambleConstants[idx], 
+        1234, 
+        &stateQ[idx]);
+    }
+} 
+
 mc::mc(int id){
     devid=id;
     matK=NULL;matP=NULL;
@@ -21,6 +36,11 @@ mc::mc(int id){
     devStates=NULL;
     devQStates=NULL;        
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
+    hostVectors64=NULL;
+    hostScrambleConstants64=NULL;
+    devDirectionVectors64=NULL;
+    devScrambleConstants64=NULL;
+    
 }
 
 void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
@@ -55,20 +75,37 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
 }
 
-__global__ void setup_kernel ( curandState * state, curandStateSobol32_t* qstate, unsigned long seed , int N)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    curand_init ( seed, idx, 0, &state[idx] );
-} 
-
 void mc::run_kernel(int cstart,int cstop){  
     int N=cstop-cstart;
     int dimension=128;  
     dim3 threads = dim3(dimension, 1);
-    int blocksCount = floor(N / threads.x) + 1;
+    int blocksCount = ceil(N / threads.x);
     dim3 blocks  = dim3(blocksCount, 1);
+    CUDA_CHECK_RETURN(cudaFree ( devStates));
+    CUDA_CHECK_RETURN(cudaFree ( devQStates));    
+    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (curandState_t ) ));
+    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devQStates, N*sizeof( curandStateScrambledSobol64) ));
+    
+    CUDA_CHECK_RETURN(cudaFree (devDirectionVectors64));
+    CUDA_CHECK_RETURN(cudaFree (devScrambleConstants64));
+    // CUDA_CHECK_RETURN
+    (curandGetDirectionVectors64( &hostVectors64, 
+        CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6));
+    // CUDA_CHECK_RETURN
+    (curandGetScrambleConstants64( &hostScrambleConstants64));              
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&(devDirectionVectors64), 
+    N * VECTOR_SIZE * sizeof(long long int)));        
+    CUDA_CHECK_RETURN(cudaMemcpy(devDirectionVectors64, hostVectors64,
+    N * VECTOR_SIZE * sizeof(long long int), 
+    cudaMemcpyHostToDevice)); 
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&(devScrambleConstants64), 
+    N * sizeof(long long int)));
+    CUDA_CHECK_RETURN(cudaMemcpy(devScrambleConstants64, hostScrambleConstants64,
+    N * sizeof(long long int), 
+    cudaMemcpyHostToDevice));
 
-    setup_kernel <<<blocks, threads>>> ( devStates, devQStates, time(NULL), N );
+    setup_kernel <<<blocks, threads>>>(devStates, time(NULL), N ,
+        devDirectionVectors64, devScrambleConstants64, devQStates);
     mc_kernel<<<1,1>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
@@ -95,6 +132,7 @@ void mc::free_data_gpu(){
     CUDA_CHECK_RETURN(cudaFree(g_times_ms));
     CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
     CUDA_CHECK_RETURN(cudaFree(g_burst_duration));
+
     // CUDA_CHECK_RETURN(cudaFree(r_size));
     cudaDeviceSynchronize();
     cout<<"rsize:"<<*hchi2<<endl;
