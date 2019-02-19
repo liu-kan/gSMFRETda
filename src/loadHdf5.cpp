@@ -5,6 +5,7 @@
 #include <highfive/H5File.hpp>
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataSpace.hpp>
+
 #include "loadHdf5.hpp"
 // #include "bitUbyte.hpp"
 
@@ -80,4 +81,25 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
     // //     ii++;
     // // }
     return true; // successfully terminated
+}
+
+
+
+bool savehdf5(string FILE_NAME, string DATASET_NAME, vector<int>& r){   
+    using namespace HighFive;
+    try {
+        // Create a new file using the default property lists.
+        HighFive::File file(FILE_NAME, File::OpenOrCreate);
+        // Create the dataset
+        DataSet dataset =
+            file.createDataSet<int>(DATASET_NAME, DataSpace::From(r));
+        // write it
+        dataset.write(r);
+    } catch (Exception& err) {
+        // catch and print any HDF5 error
+        std::cerr << err.what() << std::endl;
+        return false;
+    }
+    return true;
+
 }

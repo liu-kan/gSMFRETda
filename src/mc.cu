@@ -1,17 +1,33 @@
 #include "mc.hpp"
 #include "cuda_tools.hpp"
+#include "loadHdf5.hpp"
 #define VECTOR_SIZE 64
-__forceinline__ __device__ int drawDisIdx(int n,float* p){
-    ;
+__forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
+    float pv=curand_uniform(state);
+    float a=0;
+    int i=0;
+    for (;i<n;i++){
+        a+=p[i];
+        if (a>=pv)
+            return i;
+    }
+    return n-1;
 }
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
     unsigned char* mask_ad,unsigned char* mask_dd,
     float* T_burst_duration,float* SgDivSr,
-    float clk_p,float bg_ad_rate,float bg_dd_rate,long sz_tag,int sz_burst ){
-    arrUcharMapper mask_adA(mask_ad,sz_tag);
-    // *rsize=mask_adA.cols();
+    float clk_p,float bg_ad_rate,float bg_dd_rate,long sz_tag,int sz_burst ,
+    float* gpe,float* gpv,float* gpk,float* gpp,
+    int N,curandStateScrambledSobol64 *devQStates,int *intr){
+    
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx<N){
+        arrUcharMapper mask_adA(mask_ad,sz_tag);
+        intr[idx]=drawDisIdx(N,gpp,devQStates+idx);
+    }
+    
 }
 
 __global__ void setup_kernel  (curandState_t * state, unsigned long seed , int N,
@@ -23,9 +39,9 @@ __global__ void setup_kernel  (curandState_t * state, unsigned long seed , int N
     if (idx<N){
         curand_init ( seed, idx, 0, &state[idx] );
         curand_init(sobolDirectionVectors + VECTOR_SIZE*idx, 
-        sobolScrambleConstants[idx], 
-        1234, 
-        &stateQ[idx]);
+            sobolScrambleConstants[idx], 
+            1234, 
+            &stateQ[idx]);
     }
 } 
 
@@ -84,8 +100,7 @@ void mc::run_kernel(int cstart,int cstop){
     CUDA_CHECK_RETURN(cudaFree ( devStates));
     CUDA_CHECK_RETURN(cudaFree ( devQStates));    
     CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (curandState_t ) ));
-    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devQStates, N*sizeof( curandStateScrambledSobol64) ));
-    
+    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devQStates, N*sizeof( curandStateScrambledSobol64) ));    
     CUDA_CHECK_RETURN(cudaFree (devDirectionVectors64));
     CUDA_CHECK_RETURN(cudaFree (devScrambleConstants64));
     // CUDA_CHECK_RETURN
@@ -103,16 +118,22 @@ void mc::run_kernel(int cstart,int cstop){
     CUDA_CHECK_RETURN(cudaMemcpy(devScrambleConstants64, hostScrambleConstants64,
     N * sizeof(long long int), 
     cudaMemcpyHostToDevice));
-
     setup_kernel <<<blocks, threads>>>(devStates, time(NULL), N ,
         devDirectionVectors64, devScrambleConstants64, devQStates);
+
+    int *intr,*hintr;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&intr, N * sizeof(int)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hintr, N * sizeof(int)));
     mc_kernel<<<1,1>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
         g_mask_ad,g_mask_dd,
         g_burst_duration,g_SgDivSr,
-        clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst );
-    CUDA_CHECK_RETURN(cudaMemcpy(hchi2, gchi2, sizeof(float), cudaMemcpyDeviceToHost));        
+        clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
+        gpe,gpv,gpk,gpp,N,devQStates, intr);
+    CUDA_CHECK_RETURN(cudaMemcpy(hintr, intr,N * sizeof(int), cudaMemcpyDeviceToHost));        
+    std::vector<int> my_vector {hintr, hintr + N};
+    savehdf5("r.hdf5", "r",my_vector);
 }
 
 mc::~mc(){
@@ -137,6 +158,14 @@ void mc::free_data_gpu(){
     cudaDeviceSynchronize();
     cout<<"rsize:"<<*hchi2<<endl;
     CUDA_CHECK_RETURN(cudaFreeHost(hchi2));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpe));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpv));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpp));
+    CUDA_CHECK_RETURN(cudaFreeHost(hpk));
+    CUDA_CHECK_RETURN(cudaFree(gpe));
+    CUDA_CHECK_RETURN(cudaFree(gpv));
+    CUDA_CHECK_RETURN(cudaFree(gpp));
+    CUDA_CHECK_RETURN(cudaFree(gpk));        
 }
 
 bool mc::set_nstates(int n){
