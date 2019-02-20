@@ -18,7 +18,7 @@ readhdf: src/loadHdf5.cpp directories
 	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/readhdf src/loadHdf5.cpp $(LIBS) 
 main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o
 	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o $(LIBS) 
-mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp
+mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp src/binom.cuh src/gen_rand.cuh
 	nvcc $(CXXFLAGS) -arch=sm_61 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
 loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp

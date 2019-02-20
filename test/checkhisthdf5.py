@@ -9,22 +9,23 @@ data=dset[:]
 print(len(data))
 print(np.sum(data))
 
+fig=plt.figure()
 # the histogram of the data
 n, bins, patches = plt.hist(data, 100,  facecolor='g', alpha=0.75)
-plt.xlabel('Smarts')
-plt.ylabel('Probability')
-plt.title('Histogram of IQ')
+plt.xlabel('X')
+plt.ylabel('C')
+plt.title('Histogram of CUDA data')
 plt.grid(True)
 
+fig2=plt.figure()
+from scipy import stats
+b=stats.binom.rvs(5,0.7,size=2048)
+n, bins, patches = plt.hist(b, 100,  facecolor='g', alpha=0.75)
+plt.xlabel('X')
+plt.ylabel('C')
+plt.title('Histogram of python cpu data')
+plt.grid(True)
 
-# from scipy import stats
-# b=stats.poisson.rvs(0.6,size=2048)
-# n, bins, patches = plt.hist(b, 100,  facecolor='g', alpha=0.75)
-# plt.xlabel('Smarts')
-# plt.ylabel('Probability')
-# plt.title('Histogram of IQ')
-# plt.grid(True)
-
-
+print(b)
 
 plt.show()

@@ -1,38 +1,13 @@
 #include "mc.hpp"
 #include "cuda_tools.hpp"
 #include "loadHdf5.hpp"
+#include <time.h>
 #define VECTOR_SIZE 64
-__forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
-    float pv=curand_uniform(state);
-    float a=0;
-    int i=0;    
-    for (;i<n;i++){
-        a+=p[i];
-        if (a>=pv)
-            return i;
-    }
-    return n-1;
-}
-__forceinline__ __device__ float drawTau(float k,curandStateScrambledSobol64* state){
-    float pv=curand_uniform(state);
-    return logf(1-pv)/(-k);
-}
 
-//malloc/free *bc
-__forceinline__ __device__ bool draw_P_B_Tr(int *bc,float totPhoton,int timebin,float* timesp,
-        float bg_rate, curandStateScrambledSobol64* state){
-    bool r=true;
-    for(int i=0;i<timebin;i++){
-        int sv=curand_poisson (state, *(timesp+i)*bg_rate);
-        if (sv<=totPhoton)
-            bc[i]=sv;
-        else{
-            bc[i]=floorf(curand_uniform(state) * totPhoton);
-            r=false;
-        }
-    }
-    return r;
-}
+#include "binom.cuh"
+#include "gen_rand.cuh"
+
+
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
@@ -40,31 +15,35 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     float* T_burst_duration,float* SgDivSr,
     float clk_p,float bg_ad_rate,float bg_dd_rate,long sz_tag,int sz_burst ,
     float* gpe,float* gpv,float* gpk,float* gpp,
-    int N,int n,curandStateScrambledSobol64 *devQStates,retype *intr){
+    int N,int n,curandStateScrambledSobol64 *devQStates,rk_state *devStates, retype *intr){
     
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx<N){
         arrUcharMapper mask_adA(mask_ad,sz_tag);
         // intr[idx]=drawDisIdx(n,gpp,devQStates+idx);
         // intr[idx]=drawTau(25,devQStates+idx);
-        float t=1;
-        draw_P_B_Tr(intr+idx,35,1,&t,6 ,devQStates+idx);
+        // float t=1;
+        // draw_P_B_Tr(intr+idx,35,1,&t,6 ,devQStates+idx);
+        // intr[idx]=drawE(3.0,6,devQStates+idx);        
+        intr[idx]=drawA_fi_e(devStates+idx, 5, 0.7) ;
     }
     
 }
 
-__global__ void setup_kernel  (curandState_t * state, unsigned long seed , int N,
+__global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
     unsigned long long * sobolDirectionVectors, 
     unsigned long long *sobolScrambleConstants, 
     curandStateScrambledSobol64* stateQ)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx<N){
-        curand_init ( seed, idx, 0, &state[idx] );
+        // curand_init ( seed, idx, 0, &state[idx] );        
         curand_init(sobolDirectionVectors + VECTOR_SIZE*idx, 
             sobolScrambleConstants[idx], 
             1234, 
             &stateQ[idx]);
+        unsigned long long llseed=curand(stateQ+idx);    
+        rk_seed(llseed,state+idx);
     }
 } 
 
@@ -122,7 +101,7 @@ void mc::run_kernel(int cstart,int cstop){
     dim3 blocks  = dim3(blocksCount, 1);    
     CUDA_CHECK_RETURN(cudaFree ( devStates));
     CUDA_CHECK_RETURN(cudaFree ( devQStates));    
-    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (curandState_t ) ));
+    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (rk_state ) ));
     CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devQStates, N*sizeof( curandStateScrambledSobol64) ));    
     CUDA_CHECK_RETURN(cudaFree (devDirectionVectors64));
     CUDA_CHECK_RETURN(cudaFree (devScrambleConstants64));
@@ -141,7 +120,7 @@ void mc::run_kernel(int cstart,int cstop){
     CUDA_CHECK_RETURN(cudaMemcpy(devScrambleConstants64, hostScrambleConstants64,
     N * sizeof(long long int), 
     cudaMemcpyHostToDevice));
-    setup_kernel <<<blocks, threads>>>(devStates, time(NULL), N ,
+    setup_kernel <<<blocks, threads>>>(devStates, 0,/*time(NULL)*/ N ,
         devDirectionVectors64, devScrambleConstants64, devQStates);
 
     retype *intr,*hintr;
@@ -153,7 +132,7 @@ void mc::run_kernel(int cstart,int cstop){
         g_mask_ad,g_mask_dd,
         g_burst_duration,g_SgDivSr,
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
-        gpe,gpv,gpk,gpp,N,s_n,devQStates, intr);
+        gpe,gpv,gpk,gpp,N,s_n,devQStates,devStates, intr);
     CUDA_CHECK_RETURN(cudaMemcpy(hintr, intr,N * sizeof(retype), cudaMemcpyDeviceToHost));        
     std::vector<retype> my_vector(hintr, hintr + N);
     for (int ip=0;ip<N;ip++)
