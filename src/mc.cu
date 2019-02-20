@@ -5,13 +5,33 @@
 __forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     float pv=curand_uniform(state);
     float a=0;
-    int i=0;
+    int i=0;    
     for (;i<n;i++){
         a+=p[i];
         if (a>=pv)
             return i;
     }
     return n-1;
+}
+__forceinline__ __device__ float drawTau(float k,curandStateScrambledSobol64* state){
+    float pv=curand_uniform(state);
+    return logf(1-pv)/(-k);
+}
+
+//malloc/free *bc
+__forceinline__ __device__ bool draw_P_B_Tr(int *bc,float totPhoton,int timebin,float* timesp,
+        float bg_rate, curandStateScrambledSobol64* state){
+    bool r=true;
+    for(int i=0;i<timebin;i++){
+        int sv=curand_poisson (state, *(timesp+i)*bg_rate);
+        if (sv<=totPhoton)
+            bc[i]=sv;
+        else{
+            bc[i]=floorf(curand_uniform(state) * totPhoton);
+            r=false;
+        }
+    }
+    return r;
 }
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
@@ -20,12 +40,15 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     float* T_burst_duration,float* SgDivSr,
     float clk_p,float bg_ad_rate,float bg_dd_rate,long sz_tag,int sz_burst ,
     float* gpe,float* gpv,float* gpk,float* gpp,
-    int N,curandStateScrambledSobol64 *devQStates,int *intr){
+    int N,int n,curandStateScrambledSobol64 *devQStates,retype *intr){
     
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx<N){
         arrUcharMapper mask_adA(mask_ad,sz_tag);
-        intr[idx]=drawDisIdx(N,gpp,devQStates+idx);
+        // intr[idx]=drawDisIdx(n,gpp,devQStates+idx);
+        // intr[idx]=drawTau(25,devQStates+idx);
+        float t=1;
+        draw_P_B_Tr(intr+idx,35,1,&t,6 ,devQStates+idx);
     }
     
 }
@@ -48,7 +71,7 @@ __global__ void setup_kernel  (curandState_t * state, unsigned long seed , int N
 mc::mc(int id){
     devid=id;
     matK=NULL;matP=NULL;
-    hpe=NULL;
+    hpe=hpv=hpk=hpp=gpe=gpv=gpp=gpk=NULL;    
     devStates=NULL;
     devQStates=NULL;        
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
@@ -66,7 +89,7 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
         vector<float>& T_burst_duration,vector<float>& SgDivSr,
         float& iclk_p,float& ibg_ad_rate,float& ibg_dd_rate){    
     clk_p=iclk_p;bg_ad_rate=ibg_ad_rate;bg_dd_rate=ibg_dd_rate;    
-    sz_tag=mask_ad.size();                
+    sz_tag=mask_ad.size();                    
     CUDA_CHECK_RETURN(cudaMallocHost((void **)&hchi2, sizeof(float)));
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_mask_ad, sizeof(unsigned char)*sz_tag));
     CUDA_CHECK_RETURN(cudaMemcpy(g_mask_ad, mask_ad.data(), sizeof(unsigned char)*sz_tag, 
@@ -95,8 +118,8 @@ void mc::run_kernel(int cstart,int cstop){
     int N=cstop-cstart;
     int dimension=128;  
     dim3 threads = dim3(dimension, 1);
-    int blocksCount = ceil(N / threads.x);
-    dim3 blocks  = dim3(blocksCount, 1);
+    int blocksCount = ceil(N / dimension);
+    dim3 blocks  = dim3(blocksCount, 1);    
     CUDA_CHECK_RETURN(cudaFree ( devStates));
     CUDA_CHECK_RETURN(cudaFree ( devQStates));    
     CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (curandState_t ) ));
@@ -121,19 +144,24 @@ void mc::run_kernel(int cstart,int cstop){
     setup_kernel <<<blocks, threads>>>(devStates, time(NULL), N ,
         devDirectionVectors64, devScrambleConstants64, devQStates);
 
-    int *intr,*hintr;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&intr, N * sizeof(int)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hintr, N * sizeof(int)));
-    mc_kernel<<<1,1>>>(gchi2, g_start,g_stop,
+    retype *intr,*hintr;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&intr, N * sizeof(retype)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hintr, N * sizeof(retype)));
+    mc_kernel<<<blocks, threads>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
         g_mask_ad,g_mask_dd,
         g_burst_duration,g_SgDivSr,
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
-        gpe,gpv,gpk,gpp,N,devQStates, intr);
-    CUDA_CHECK_RETURN(cudaMemcpy(hintr, intr,N * sizeof(int), cudaMemcpyDeviceToHost));        
-    std::vector<int> my_vector {hintr, hintr + N};
-    savehdf5("r.hdf5", "r",my_vector);
+        gpe,gpv,gpk,gpp,N,s_n,devQStates, intr);
+    CUDA_CHECK_RETURN(cudaMemcpy(hintr, intr,N * sizeof(retype), cudaMemcpyDeviceToHost));        
+    std::vector<retype> my_vector(hintr, hintr + N);
+    for (int ip=0;ip<N;ip++)
+        cout<<my_vector.at(ip)<<" ";
+    cout<<endl;
+    savehdf5("r.hdf5", "/r",my_vector);
+    CUDA_CHECK_RETURN(cudaFree(intr));
+    CUDA_CHECK_RETURN(cudaFreeHost(hintr));
 }
 
 mc::~mc(){
@@ -141,9 +169,7 @@ mc::~mc(){
     delete(matK);delete(matP);
 }
 
-
-
-void mc::free_data_gpu(){        
+void mc::free_data_gpu(){            
     CUDA_CHECK_RETURN(cudaFree(g_mask_ad));
     CUDA_CHECK_RETURN(cudaFree(g_mask_dd));
     CUDA_CHECK_RETURN(cudaFree(g_start));
@@ -202,6 +228,7 @@ bool mc::set_params(vector<float>& args){
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
+    cout<<"p:"<<*matP<<endl;
     memcpy(hpe, peargs, sizeof(float)*n);
     memcpy(hpv, pvargs, sizeof(float)*n);
     memcpy(hpk, matK->data(), sizeof(float)*n*n);

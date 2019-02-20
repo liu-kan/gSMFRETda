@@ -85,14 +85,14 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
 
 
 
-bool savehdf5(string FILE_NAME, string DATASET_NAME, vector<int>& r){   
+bool savehdf5(string FILE_NAME, string DATASET_NAME, vector<retype>& r){   
     using namespace HighFive;
     try {
         // Create a new file using the default property lists.
-        HighFive::File file(FILE_NAME, File::OpenOrCreate);
+        HighFive::File file(FILE_NAME, File::ReadWrite|File::Overwrite);
         // Create the dataset
         DataSet dataset =
-            file.createDataSet<int>(DATASET_NAME, DataSpace::From(r));
+            file.createDataSet<retype>(DATASET_NAME, DataSpace::From(r));
         // write it
         dataset.write(r);
     } catch (Exception& err) {
