@@ -19,7 +19,8 @@ plt.grid(True)
 
 fig2=plt.figure()
 from scipy import stats
-b=stats.binom.rvs(5,0.7,size=2048)
+# b=stats.binom.rvs(5,0.7,size=2048)
+b=stats.expon.rvs(scale=1.0/25,size=2048)
 n, bins, patches = plt.hist(b, 100,  facecolor='g', alpha=0.75)
 plt.xlabel('X')
 plt.ylabel('C')
