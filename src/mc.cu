@@ -21,13 +21,14 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     if (idx<N /*&& idx==tidx*/){
         arrUcharMapper mask_adA(mask_ad,sz_tag);
         // intr[idx]=drawDisIdx(n,gpp,devQStates+idx);
-        intr[idx]=drawTau(25,devQStates+idx);
+        // intr[idx]=drawTau(25,devQStates+idx);
         // intr[idx]=drawTau(25,devQStates);
         // float t=1;
         // draw_P_B_Tr(intr+idx,35,1,&t,6 ,devQStates+idx);
         // intr[idx]=drawE(3.0,6,devQStates+idx);        
         // intr[idx]=drawA_fi_e(devStates+idx, 5, 0.7) ;
         // intr[tidx]=drawA_fi_e(devStates, 5, 0.7) ;
+        intr[idx]=drawJ_Si2Sj(gpp,n,2,devQStates+idx);
     }
     
 }
