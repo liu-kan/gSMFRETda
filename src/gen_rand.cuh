@@ -1,6 +1,6 @@
 #ifndef genrand_INCLUDED
 #define genrand_INCLUDED
-
+#include <Eigen/Eigen>
 __forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
@@ -8,7 +8,7 @@ __forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSob
     int i=0;    
     for (;i<n;i++){
         a+=p[i];
-        if (a>=pv){
+        if (a>pv){
             *state=s;
             return i;
         }
@@ -28,7 +28,7 @@ __forceinline__ __device__ float drawE(float e,float v,curandStateScrambledSobol
     *state=s;
     return pv;
 }
-
+// typedef Eigen::Map<Eigen::MatrixXf> matFlMapper;
 __forceinline__ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSobol64* state){
     /*    
     P_i2j=copy.deepcopy(matP)
@@ -37,7 +37,22 @@ __forceinline__ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandS
     j=drawDisIdx(np.arange(n_states),P_i2j)
     return j
     */
-
+    float *P_i2j=(float *)malloc(sizeof(float)*n_sates);
+    memcpy(P_i2j,matP,sizeof(float)*n_sates);   
+    // matFlMapper P_i2jM(P_i2j,n_sates,1);
+    // P_i2jM(i,0)=0.0;
+    // P_i2jM=P_i2jM/P_i2jM.sum();
+    P_i2j[i]=0.0;
+    float sum=0.0;
+    for( int ii=0;ii<n_sates;ii++){
+        sum+=P_i2j[ii];
+    }
+    for( int ii=0;ii<n_sates;ii++){
+        P_i2j[ii]=P_i2j[ii]/sum;
+    }
+    int j = drawDisIdx(n_sates,P_i2j,state);
+    free(P_i2j);
+    return j;
 }
 
 //malloc/free *bc
