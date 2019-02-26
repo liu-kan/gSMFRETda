@@ -41,10 +41,11 @@ class mc
         unsigned long long int * hostScrambleConstants64;
         unsigned long long int * devDirectionVectors64;
         unsigned long long int * devScrambleConstants64;
-            
+        int reSampleTimes;    
     public:        
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n);
+        void set_reSampleTimes(int n);
         void free_data_gpu();
         void run_kernel(int cstart,int cstop);
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
