@@ -12,43 +12,32 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
     unsigned char* mask_ad,unsigned char* mask_dd,
-    float* T_burst_duration,float* SgDivSr,
+    float* T,float* SgDivSr,
     float clk_p,float bg_ad_rate,float bg_dd_rate,long sz_tag,int sz_burst ,
     float* gpe,float* gpv,float* gpk,float* gpp,
-    int N,int n,curandStateScrambledSobol64 *devQStates,rk_state *devStates, retype *intr/*,int tidx*/){
+    int N,int s_n,curandStateScrambledSobol64 *devQStates,rk_state *devStates, retype *mcE,int reSampleTimes/*,int tidx*/){
     
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx<N /*&& idx==tidx*/){
-        arrUcharMapper mask_adA(mask_ad,sz_tag);
-        // intr[idx]=drawDisIdx(n,gpp,devQStates+idx);
-        // intr[idx]=drawTau(25,devQStates+idx);
-        // intr[idx]=drawTau(25,devQStates);
+        // arrUcharMapper mask_adA(mask_ad,sz_tag);
+        // mcE[idx]=drawDisIdx(s_n,gpp,devQStates+idx);
+        // mcE[idx]=drawTau(25,devQStates+idx);
+        // mcE[idx]=drawTau(25,devQStates);
         // float t=1;
-        // draw_P_B_Tr(intr+idx,35,1,&t,6 ,devQStates+idx);
-        // intr[idx]=drawE(3.0,6,devQStates+idx);        
-        // intr[idx]=drawA_fi_e(devStates+idx, 5, 0.7) ;
-        // intr[tidx]=drawA_fi_e(devStates, 5, 0.7) ;
-        intr[idx]=drawJ_Si2Sj(gpp,n,2,devQStates+idx);
+        // draw_P_B_Tr(mcE+idx,35,1,&t,6 ,devQStates+idx);
+        // mcE[idx]=drawE(3.0,6,devQStates+idx);        
+        // mcE[idx]=drawA_fi_e(devStates+idx, 5, 0.7) ;
+        // mcE[tidx]=drawA_fi_e(devStates, 5, 0.7) ;
+        // mcE[idx]=drawJ_Si2Sj(gpp,s_n,2,devQStates+idx);
+        for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
+            int si=drawDisIdx(s_n,gpp,devQStates+idx);
+            int64_t *bins;
+            *bins=start[idx];
+
+        }
     }
     
 }
-
-__global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
-    unsigned long long * sobolDirectionVectors, 
-    unsigned long long *sobolScrambleConstants, 
-    curandStateScrambledSobol64* stateQ)
-{
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx<N){
-        // curand_init ( seed, idx, 0, &state[idx] );        
-        curand_init(sobolDirectionVectors + VECTOR_SIZE*idx, 
-            sobolScrambleConstants[idx], 
-            1234, 
-            &stateQ[idx]);
-        unsigned long long llseed=curand(stateQ+idx);    
-        rk_seed(llseed,state+idx);
-    }
-} 
 
 mc::mc(int id){
     devid=id;
@@ -62,6 +51,9 @@ mc::mc(int id){
     devDirectionVectors64=NULL;
     devScrambleConstants64=NULL;
     
+}
+void mc::set_reSampleTimes(int t){
+    reSampleTimes=t;
 }
 
 void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
@@ -126,9 +118,9 @@ void mc::run_kernel(int cstart,int cstop){
     setup_kernel <<<blocks, threads>>>(devStates, 0,/*time(NULL)*/ N ,
         devDirectionVectors64, devScrambleConstants64, devQStates);
 
-    retype *intr,*hintr;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&intr, N * sizeof(retype)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hintr, N * sizeof(retype)));
+    retype *mcE,*hmcE;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&mcE, N * sizeof(retype)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE, N * sizeof(retype)));
     // int ti=0;
     // for( ;ti<N;ti++)
     mc_kernel<<<blocks, threads>>>(gchi2, g_start,g_stop,
@@ -137,15 +129,15 @@ void mc::run_kernel(int cstart,int cstop){
         g_mask_ad,g_mask_dd,
         g_burst_duration,g_SgDivSr,
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
-        gpe,gpv,gpk,gpp,N,s_n,devQStates,devStates, intr/*,ti*/);
-    CUDA_CHECK_RETURN(cudaMemcpy(hintr, intr,N * sizeof(retype), cudaMemcpyDeviceToHost));        
-    std::vector<retype> my_vector(hintr, hintr + N);
+        gpe,gpv,gpk,gpp,N,s_n,devQStates,devStates, mcE, reSampleTimes/*,ti*/);
+    CUDA_CHECK_RETURN(cudaMemcpy(hmcE, mcE,N * sizeof(retype), cudaMemcpyDeviceToHost));        
+    std::vector<retype> my_vector(hmcE, hmcE + N);
     for (int ip=0;ip<N;ip++)
         cout<<my_vector.at(ip)<<" ";
     cout<<endl;
     savehdf5("r.hdf5", "/r",my_vector);
-    CUDA_CHECK_RETURN(cudaFree(intr));
-    CUDA_CHECK_RETURN(cudaFreeHost(hintr));
+    CUDA_CHECK_RETURN(cudaFree(mcE));
+    CUDA_CHECK_RETURN(cudaFreeHost(hmcE));
 }
 
 mc::~mc(){

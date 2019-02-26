@@ -1,6 +1,25 @@
 #ifndef genrand_INCLUDED
 #define genrand_INCLUDED
 #include <Eigen/Eigen>
+
+
+__global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
+    unsigned long long * sobolDirectionVectors, 
+    unsigned long long *sobolScrambleConstants, 
+    curandStateScrambledSobol64* stateQ)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx<N){
+        // curand_init ( seed, idx, 0, &state[idx] );        
+        curand_init(sobolDirectionVectors + VECTOR_SIZE*idx, 
+            sobolScrambleConstants[idx], 
+            1234, 
+            &stateQ[idx]);
+        unsigned long long llseed=curand(stateQ+idx);    
+        rk_seed(llseed,state+idx);
+    }
+} 
+
 __forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
