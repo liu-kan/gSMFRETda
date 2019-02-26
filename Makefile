@@ -16,10 +16,12 @@ ${OUT_DIR}:
 	${MKDIR_P} ${OUT_DIR}
 readhdf: src/loadHdf5.cpp directories
 	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/readhdf src/loadHdf5.cpp $(LIBS) 
-main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o
-	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o $(LIBS) 
+main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o cuList.o
+	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o cuList.o $(LIBS) 
 mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp src/binom.cuh src/gen_rand.cuh
 	nvcc $(CXXFLAGS) -arch=sm_61 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
+cuList.o: src/cuList.cu src/cuList.hpp 
+	nvcc $(CXXFLAGS) -arch=sm_61 --expt-relaxed-constexpr $(HEADER) -c src/cuList.cu
 loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp
 eigenhelper.o: src/eigenhelper.cpp src/eigenhelper.hpp
