@@ -1,5 +1,6 @@
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/Eigen>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -28,12 +29,15 @@ int main(){
 
 
 int s=7;
-Eigen::Array<int,1,7,Eigen::RowMajor> m;
+Eigen::Array<int64_t,1,Eigen::Dynamic,Eigen::RowMajor> m;
+m.resize(1,s);
 m <<  1, 2, 3,4,5,6,7;
-Eigen::Array<bool,1,Eigen::Dynamic,Eigen::RowMajor> mm,*mp;
+Eigen::Array<int,1,Eigen::Dynamic,Eigen::RowMajor> mm,*mp;
 mm.resize(1,s);
 mm << 0, 1, 0,1,1,0,1;
 mp=&mm;
+// m=m.cwiseProduct(mm.cast <int64_t>());
+cout<< m*2+mm.cast <int64_t>()<<endl;
 m=(mm).select(m,0) ;
 cout << m << endl;
 cout <<(int)(*mp)(0,0) << endl;

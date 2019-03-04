@@ -6,8 +6,13 @@
 
 #include "binom.cuh"
 #include "gen_rand.cuh"
+#include "cuList.cuh"
 
+template <typename T>
+__forceinline__ __device__ void npHistogram(arrI* hist,
+    arrI64& x, cuList<T> bins ){
 
+}
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
@@ -29,11 +34,46 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
         // mcE[idx]=drawA_fi_e(devStates+idx, 5, 0.7) ;
         // mcE[tidx]=drawA_fi_e(devStates, 5, 0.7) ;
         // mcE[idx]=drawJ_Si2Sj(gpp,s_n,2,devQStates+idx);
+        // cuList<int> l1;
+        // l1.append(1);
+        // l1.append(2);
+        // l1.append(3);
+        // l1.append(4);
+        // l1.append(5);
+        // l1.append(6);
+        // mcE[idx]=*(l1.at(5));
+        // l1.freeList();
+
+        arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
+        arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
+        arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);
+        mask_adA.cast <int64_t>()*times_msA ;
         for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
             int si=drawDisIdx(s_n,gpp,devQStates+idx);
-            int64_t *bins;
-            *bins=start[idx];
-
+            cuList<int> sidx;
+            cuList<int64_t> bins;
+            bins.set(0,start[idx]);
+            sidx.set(0,si);
+            int sz_bins=0,sz_sidx=0;
+            float mcSpendTime=0;
+            matXfMapper matK(gpk,s_n,s_n);
+            while (T[idx]>mcSpendTime){
+                int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+idx);
+                sz_sidx+=1;
+                sidx.set(sz_sidx,sj);
+                mcSpendTime+=drawTau(matK(si,sj),devQStates+idx);
+                si=sj;
+                sz_bins+=1;
+                if(mcSpendTime>=T[idx]){
+                    bins.set(sz_bins,stop[idx]);
+                }
+                else{
+                    bins.set(sz_bins,*(bins.at(0))+mcSpendTime/clk_p);
+                }
+            }            
+            
+            sidx.freeList();
+            bins.freeList();
         }
     }
     
@@ -172,7 +212,7 @@ void mc::free_data_gpu(){
 
 bool mc::set_nstates(int n){
     s_n=n;
-    bool r;
+    bool r=true;
     CUDA_CHECK_RETURN(cudaFreeHost(hpe));
     CUDA_CHECK_RETURN(cudaFreeHost(hpv));
     CUDA_CHECK_RETURN(cudaFreeHost(hpp));
@@ -195,7 +235,7 @@ bool mc::set_nstates(int n){
 bool mc::set_params(vector<float>& args){
     int n=s_n;
     vecFloatMapper evargs(args.data(),n*n+n);    
-    cout<<evargs<<endl;
+    // cout<<evargs<<endl;
     eargs=evargs(seqN(0,n));
     float *peargs=eargs.data();
     kargs=evargs(seqN(n,n*n-n));    
@@ -204,7 +244,7 @@ bool mc::set_params(vector<float>& args){
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
-    cout<<"p:"<<*matP<<endl;
+    // cout<<"p:"<<*matP<<endl;
     memcpy(hpe, peargs, sizeof(float)*n);
     memcpy(hpv, pvargs, sizeof(float)*n);
     memcpy(hpk, matK->data(), sizeof(float)*n*n);
