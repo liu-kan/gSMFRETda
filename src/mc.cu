@@ -9,9 +9,23 @@
 #include "cuList.cuh"
 
 template <typename T>
-__forceinline__ __device__ void npHistogram(arrI* hist,
-    arrI64& x, cuList<T> bins ){
-
+__forceinline__ __device__ void binTimeHist(arrI* hist, arrI64& x,
+         cuList<T> bins ){
+    int binlen=bins.len;
+    hist->resize(1,binlen-1);
+    hist->setZero();
+    int datalen=x.cols();
+    for (int i=0;i<datalen;i++){
+        int idxbin=1;
+        do{
+            T v=*(bins.at(idxbin));
+            if (x(i)<v){
+                ((*hist)(idxbin-1))+=1;
+                break;
+            }
+            idxbin++;
+        }while(idxbin<binlen);
+    }
 }
 __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
@@ -35,14 +49,15 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
         // mcE[tidx]=drawA_fi_e(devStates, 5, 0.7) ;
         // mcE[idx]=drawJ_Si2Sj(gpp,s_n,2,devQStates+idx);
         // cuList<int> l1;
-        // l1.append(1);
-        // l1.append(2);
-        // l1.append(3);
-        // l1.append(4);
-        // l1.append(5);
-        // l1.append(6);
-        // mcE[idx]=*(l1.at(5));
-        // l1.freeList();
+        // for (int ti=0;ti<10;ti++){
+        //     l1.append(ti);
+        // }
+        // arrI64 a(10);
+        // a<<0,0,7,7,0,2,5,6,7,3;
+        // arrI hist(9);
+        // npHistogram(&hist, a,l1);
+        // mcE[idx]=hist(9);
+        // l1.freeList();      
 
         arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
         arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
