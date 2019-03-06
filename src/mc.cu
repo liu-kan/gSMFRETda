@@ -8,14 +8,21 @@
 #include "gen_rand.cuh"
 #include "cuList.cuh"
 
+#define gamma 0.34
+#define beta 1.42
+#define DexDirAem 0.08
+#define Dch2Ach 0.07
+
 template <typename T>
-__forceinline__ __device__ void binTimeHist(arrI* hist, arrI64& x,
+__forceinline__ __device__ void binTimeHist(arrF* hist, arrI64& x,
          cuList<T> bins ){
     int binlen=bins.len;
     hist->resize(1,binlen-1);
     hist->setZero();
     int datalen=x.cols();
     for (int i=0;i<datalen;i++){
+        if(x(i)==0)
+            continue;
         int idxbin=1;
         do{
             T v=*(bins.at(idxbin));
@@ -55,38 +62,48 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
         // arrI64 a(10);
         // a<<0,0,7,7,0,2,5,6,7,3;
         // arrI hist(9);
-        // npHistogram(&hist, a,l1);
+        // binTimeHist(&hist, a,l1);
         // mcE[idx]=hist(9);
         // l1.freeList();      
 
         arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
         arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
-        arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);
-        mask_adA.cast <int64_t>()*times_msA ;
+        arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
+        arrI64 burst_dd=mask_ddA.cast<int64_t>()*times_msA;
+        arrI64 burst_ad=mask_adA.cast<int64_t>()*times_msA;
         for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
             int si=drawDisIdx(s_n,gpp,devQStates+idx);
             cuList<int> sidx;
             cuList<int64_t> bins;
-            bins.set(0,start[idx]);
-            sidx.set(0,si);
-            int sz_bins=0,sz_sidx=0;
+            bins.append(start[idx]);
+            sidx.append(si);            
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
             while (T[idx]>mcSpendTime){
                 int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+idx);
-                sz_sidx+=1;
-                sidx.set(sz_sidx,sj);
+                sidx.append(sj);
                 mcSpendTime+=drawTau(matK(si,sj),devQStates+idx);
-                si=sj;
-                sz_bins+=1;
+                si=sj;                
                 if(mcSpendTime>=T[idx]){
-                    bins.set(sz_bins,stop[idx]);
+                    bins.append(stop[idx]);
                 }
                 else{
-                    bins.set(sz_bins,*(bins.at(0))+mcSpendTime/clk_p);
+                    bins.append(*(bins.at(0))+mcSpendTime/clk_p);
                 }
             }            
-            
+            arrF f_ia(bins.len-1);
+            binTimeHist(&f_ia,burst_ad,bins);
+            arrF f_id(bins.len-1);
+            binTimeHist(&f_id,burst_dd,bins);            
+            arrI f_i(bins.len-1);
+            arrF f_if(bins.len-1);
+            f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
+            arrF t_diff(bins.len-1);
+            bins.diff(&t_diff);
+            t_diff=t_diff*clk_p;
+            for (int s_trans=0;s_trans<bins.len-1;s_trans++){
+
+            }
             sidx.freeList();
             bins.freeList();
         }
