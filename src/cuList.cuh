@@ -7,6 +7,7 @@
 #endif 
 #define _culist_ele_sz 2
 #define _sz _culist_ele_sz
+#include "eigenhelper.hpp"
 template <typename T>
 struct clist{
     T *x;
@@ -18,7 +19,7 @@ class cuList
 public:
     clist<T> *l;
     int sz;
-    int len;
+    int len;    
     CU_CALL_MEMBER cuList(){
         l=new clist<T>();
         l->x=new T[_sz];
@@ -28,13 +29,14 @@ public:
     CU_CALL_MEMBER void freeList(){
         int len1=sz/_sz;
         clist<T> *r=l;
-        if (len1>0)
+        if (len1>0){
             for (int i=0;i<len1;i++){
                 delete r->x;
                 clist<T> *t=r;
                 r=r->nx;
                 delete(t); 
             }
+        }        
     };
     CU_CALL_MEMBER T* at(int i){
         if (i>=sz){
@@ -49,13 +51,20 @@ public:
             return (tl->x)+y;
         }
     };
+    CU_CALL_MEMBER void diff(arrF* vDiff){
+        if(len>1){         
+            for(int i=len-1;i>0;i--){
+                (*vDiff)(i-1)=*(at(i))-*(at(i-1));
+            }            
+        }
+    };
     CU_CALL_MEMBER void set(int i, const T &v){
         T* item=at(i);
         *item=v;
     };
     CU_CALL_MEMBER void append(const T& v){
         set(len,v);
-        len+=1;
+        ++len;
     };
     CU_CALL_MEMBER void new_node(int i){
         clist<T> *r=goth(-1);
