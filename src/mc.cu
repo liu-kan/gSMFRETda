@@ -8,11 +8,6 @@
 #include "gen_rand.cuh"
 #include "cuList.cuh"
 
-#define gamma 0.34
-#define beta 1.42
-#define DexDirAem 0.08
-#define Dch2Ach 0.07
-
 template <typename T>
 __forceinline__ __device__ void binTimeHist(arrF* hist, arrI64& x,
          cuList<T> bins ){
@@ -38,10 +33,12 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
     unsigned char* mask_ad,unsigned char* mask_dd,
-    float* T,float* SgDivSr,
+    float* T,/*float* SgDivSr,*/
     float clk_p,float bg_ad_rate,float bg_dd_rate,long sz_tag,int sz_burst ,
     float* gpe,float* gpv,float* gpk,float* gpp,
-    int N,int s_n,curandStateScrambledSobol64 *devQStates,rk_state *devStates, retype *mcE,int reSampleTimes/*,int tidx*/){
+    int N,int s_n,curandStateScrambledSobol64 *devQStates,rk_state *devStates, retype *mcE,int reSampleTimes,/*,int tidx*/
+    float gamma=0.34,float beta=1.42,float DexDirAem=0.08, 
+    float Dch2Ach=0.07,float r0=52){
     
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx<N /*&& idx==tidx*/){
@@ -64,8 +61,7 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
         // arrI hist(9);
         // binTimeHist(&hist, a,l1);
         // mcE[idx]=hist(9);
-        // l1.freeList();      
-
+        // l1.freeList(); 
         arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
         arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
         arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
@@ -95,15 +91,34 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
             binTimeHist(&f_ia,burst_ad,bins);
             arrF f_id(bins.len-1);
             binTimeHist(&f_id,burst_dd,bins);            
-            arrI f_i(bins.len-1);
+            arrF f_i(bins.len-1);
             arrF f_if(bins.len-1);
             f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
-            arrF t_diff(bins.len-1);
-            bins.diff(&t_diff);
-            t_diff=t_diff*clk_p;
-            for (int s_trans=0;s_trans<bins.len-1;s_trans++){
-
+            if (bg_dd_rate<1e-4){
+                f_i=(f_if+0.5).floor();
             }
+            else{
+                arrF t_diff(bins.len-1);
+                bins.diff(&t_diff);
+                t_diff=t_diff*clk_p;
+                arrF rf_ia(bins.len-1);
+                rf_ia=(1-DexDirAem)*f_ia;
+                arrF bg_a(bins.len-1);
+                draw_P_B_Tr(bg_a.data(),rf_ia.data(),bins.len-1,t_diff.data(),bg_ad_rate ,devQStates+idx);
+                arrF rf_id(bins.len-1);
+                rf_id=(gamma-Dch2Ach)*f_id;
+                arrF bg_d(bins.len-1);
+                draw_P_B_Tr(bg_d.data(),rf_id.data(),bins.len-1,t_diff.data(),bg_dd_rate ,devQStates+idx);   
+                f_i=(f_if - bg_d - bg_a+0.5).floor();             
+            }
+            float F=f_if.sum();
+            for (int s_trans=0;s_trans<bins.len-1;s_trans++){
+                float de=drawE(gpe[*(sidx.at(s_trans))],r0,
+                    gpv[*(sidx.at(s_trans))],devQStates+idx);
+                long ai=drawA_fi_e(devStates+idx, f_i(s_trans), de) ;
+                mcE[idx*reSampleTimes+sampleTime]+=ai;
+            }
+            mcE[idx*reSampleTimes+sampleTime]/=F;
             sidx.freeList();
             bins.freeList();
         }
@@ -122,7 +137,7 @@ mc::mc(int id){
     hostScrambleConstants64=NULL;
     devDirectionVectors64=NULL;
     devScrambleConstants64=NULL;
-    
+    reSampleTimes=5;
 }
 void mc::set_reSampleTimes(int t){
     reSampleTimes=t;
@@ -155,13 +170,20 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMemcpy(g_times_ms, times_ms.data(), sizeof(int64_t)*sz_tag,cudaMemcpyHostToDevice));        
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_burst_duration, sizeof(float)*sz_burst));
     CUDA_CHECK_RETURN(cudaMemcpy(g_burst_duration, T_burst_duration.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&g_SgDivSr, sizeof(float)*sz_burst));
-    CUDA_CHECK_RETURN(cudaMemcpy(g_SgDivSr, SgDivSr.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
+    // CUDA_CHECK_RETURN(cudaMalloc((void **)&g_SgDivSr, sizeof(float)*sz_burst));
+    // CUDA_CHECK_RETURN(cudaMemcpy(g_SgDivSr, SgDivSr.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
 }
 
-void mc::run_kernel(int cstart,int cstop){  
-    int N=cstop-cstart;
+void mc::run_kernel(int cstart,int cstop){
+    int rcstart=cstart;
+    int rcstop=cstop;
+    if (cstop>=sz_burst)  
+        rcstop=sz_burst-1;
+    if(cstart>=rcstop){
+        rcstart=0;
+    }
+    int N=rcstop-rcstart;
     int dimension=128;  
     dim3 threads = dim3(dimension, 1);
     int blocksCount = ceil(N / dimension);
@@ -191,23 +213,24 @@ void mc::run_kernel(int cstart,int cstop){
         devDirectionVectors64, devScrambleConstants64, devQStates);
 
     retype *mcE,*hmcE;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&mcE, N * sizeof(retype)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE, N * sizeof(retype)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&mcE, N *reSampleTimes* sizeof(retype)));
+    CUDA_CHECK_RETURN(cudaMemset(mcE, 0, N *reSampleTimes* sizeof(retype)));
+    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE, N *reSampleTimes* sizeof(retype)));
     // int ti=0;
     // for( ;ti<N;ti++)
     mc_kernel<<<blocks, threads>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
         g_mask_ad,g_mask_dd,
-        g_burst_duration,g_SgDivSr,
+        g_burst_duration,/*g_SgDivSr,*/
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
         gpe,gpv,gpk,gpp,N,s_n,devQStates,devStates, mcE, reSampleTimes/*,ti*/);
-    CUDA_CHECK_RETURN(cudaMemcpy(hmcE, mcE,N * sizeof(retype), cudaMemcpyDeviceToHost));        
-    std::vector<retype> my_vector(hmcE, hmcE + N);
+    CUDA_CHECK_RETURN(cudaMemcpy(hmcE, mcE,N *reSampleTimes* sizeof(retype), cudaMemcpyDeviceToHost));        
+    std::vector<retype> my_vector(hmcE, hmcE + N*reSampleTimes);
     for (int ip=0;ip<N;ip++)
         cout<<my_vector.at(ip)<<" ";
     cout<<endl;
-    savehdf5("r.hdf5", "/r",my_vector);
+    // savehdf5("r.hdf5", "/r",my_vector);
     CUDA_CHECK_RETURN(cudaFree(mcE));
     CUDA_CHECK_RETURN(cudaFreeHost(hmcE));
 }
@@ -225,7 +248,7 @@ void mc::free_data_gpu(){
     CUDA_CHECK_RETURN(cudaFree(g_istart));
     CUDA_CHECK_RETURN(cudaFree(g_istop)); 
     CUDA_CHECK_RETURN(cudaFree(g_times_ms));
-    CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
+    // CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
     CUDA_CHECK_RETURN(cudaFree(g_burst_duration));
 
     // CUDA_CHECK_RETURN(cudaFree(r_size));

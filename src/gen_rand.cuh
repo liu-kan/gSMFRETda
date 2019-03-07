@@ -41,11 +41,11 @@ __forceinline__ __device__ float drawTau(float k,curandStateScrambledSobol64* st
     *state=s;
     return logf(1-pv)/(-k);
 }
-__forceinline__ __device__ float drawE(float e,float v,curandStateScrambledSobol64* state){
+__forceinline__ __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
-    float pv=curand_normal(&s)*v+e;
+    float rd=curand_normal(&s)*v+r0*powf(1/e-1,1.0/6);
     *state=s;
-    return pv;
+    return 1/(1+powf(rd/r0,6));
 }
 // typedef Eigen::Map<Eigen::MatrixXf> matFlMapper;
 __forceinline__ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSobol64* state){
@@ -75,16 +75,16 @@ __forceinline__ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandS
 }
 
 //malloc/free *bc
-__forceinline__ __device__ bool draw_P_B_Tr(int *bc,float totPhoton,int timebin,float* timesp,
+__forceinline__ __device__ bool draw_P_B_Tr(float *bc,float *totPhoton,int timebin,float* timesp,
         float bg_rate, curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     bool r=true;
     for(int i=0;i<timebin;i++){
         int sv=curand_poisson (&s, *(timesp+i)*bg_rate);
-        if (sv<=totPhoton)
-            bc[i]=sv;
+        if (sv<=*(totPhoton+i))
+            bc[i]=float(sv);
         else{
-            bc[i]=floorf(curand_uniform(&s) * totPhoton);
+            bc[i]=floorf(*(totPhoton+i)*curand_uniform(&s) );
             r=false;
         }
     }
