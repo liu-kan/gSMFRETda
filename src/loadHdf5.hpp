@@ -6,7 +6,7 @@
 
 using namespace std;
 
-typedef int retype;
+typedef float retype;
 bool loadhdf5(string H5FILE_NAME, vector<int64_t>& start,vector<int64_t>& stop,
     vector<uint32_t>& istart,vector<uint32_t>& istop,
     vector<int64_t>& times_ms,

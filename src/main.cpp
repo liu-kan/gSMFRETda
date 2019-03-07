@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
     for (int i=0;i<args.size();i++)cout<< args[i];cout<<endl;
     pdamc.set_nstates(3);
     pdamc.set_params(args);
-    pdamc.run_kernel(0,2048);
+    pdamc.run_kernel(0,1570);
     cout<<pdamc.eargs<<endl;
     cout<<pdamc.vargs<<endl;
     return 0;   
