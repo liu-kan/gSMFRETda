@@ -1,0 +1,20 @@
+syntax = "proto3";
+package gSMFRETda.pb;
+
+message p_ga {   
+    int32 start = 1;
+    int32 stop = 2;
+    repeated float params = 3 [packed=true];
+}
+
+message p_n {    
+    int32 s_n = 1;
+}
+
+message p_cap {    
+    int32 cap = 1;
+}
+
+message res {    
+    repeated float elist = 1 [packed=true];
+}
