@@ -1,10 +1,12 @@
 from __future__ import print_function
 from protobuf import args_pb2
 from nanomsg import Socket, REP
-import time
+import time,base64
 def paramsServ(port):
     pb_n=args_pb2.p_n()
-    pb_n.s_n=3
+    s_n=3
+    ps_n=s_n*(s_n+1)
+    pb_n.s_n=s_n
     s1 = Socket(REP)
     print('tcp://*:'+port)
     s1.bind('tcp://*:'+port)
@@ -12,18 +14,22 @@ def paramsServ(port):
     while(True):
         # s1.send("connected")
         recvstr=s1.recv()
-        pb_cap=args_pb2.p_cap()
-        pb_cap.ParseFromString(recvstr)
-        print(pb_cap.cap)
-        s1.send(pb_n.SerializeToString())
-        okstr=s1.recv()
-        print(okstr)
-        pb_ga=args_pb2.p_ga()
-        pb_ga.start=0
-        pb_ga.stop=pb_cap.cap
-        for i in range(pb_n.s_n*pb_n.s_n):
-            pb_ga.params.append(i)    
-        s1.send(pb_ga.SerializeToString())
+        # print(recvstr[0],ord('c'),ord('p'))
+        if recvstr[0]==ord('c'):
+            pb_cap=args_pb2.p_cap()
+            pb_cap.ParseFromString(recvstr[1:])
+            print(pb_cap.idx)
+            s1.send(pb_n.SerializeToString())
+        elif recvstr[0]==ord('p'):
+            pb_ga=args_pb2.p_ga()
+            pb_ga.start=0
+            pb_ga.stop=pb_cap.cap
+            # print(base64.b64decode(recvstr[1:]))
+            pb_ga.idx=base64.b64decode(recvstr[1:])
+            for i in range(ps_n):
+                pb_ga.params.append(i)    
+            s1.send(pb_ga.SerializeToString())
+            
     
     s1.close()
 

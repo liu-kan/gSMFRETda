@@ -20,7 +20,7 @@ __global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
     }
 } 
 
-__forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
+__device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
     float a=0;
@@ -35,20 +35,20 @@ __forceinline__ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSob
     *state=s;
     return n-1;
 }
-__forceinline__ __device__ float drawTau(float k,curandStateScrambledSobol64* state){
+__device__ float drawTau(float k,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
     *state=s;
     return logf(1-pv)/(-k);
 }
-__forceinline__ __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* state){
+__device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float rd=curand_normal(&s)*v+r0*powf(1/e-1,1.0/6);
     *state=s;
     return 1/(1+powf(rd/r0,6));
 }
 // typedef Eigen::Map<Eigen::MatrixXf> matFlMapper;
-__forceinline__ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSobol64* state){
+__device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSobol64* state){
     /*    
     P_i2j=copy.deepcopy(matP)
     P_i2j[i]=0
@@ -75,7 +75,7 @@ __forceinline__ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandS
 }
 
 //malloc/free *bc
-__forceinline__ __device__ bool draw_P_B_Tr(float *bc,float *totPhoton,int timebin,float* timesp,
+__device__ bool draw_P_B_Tr(float *bc,float *totPhoton,int timebin,float* timesp,
         float bg_rate, curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     bool r=true;

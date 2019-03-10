@@ -7,3 +7,6 @@
 [submodule "3rdparty/eigen"]
 	path = 3rdparty/eigen
 	url = https://github.com/eigenteam/eigen-git-mirror.git
+[submodule "3rdparty/cpp-base64"]
+	path = 3rdparty/cpp-base64
+	url = https://github.com/ReneNyffenegger/cpp-base64.git

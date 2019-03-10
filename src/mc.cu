@@ -8,8 +8,9 @@
 #include "gen_rand.cuh"
 #include "cuList.cuh"
 
+//__forceinline__ 
 template <typename T>
-__forceinline__ __device__ void binTimeHist(arrF* hist, arrI64& x,
+__device__ void binTimeHist(arrF* hist, arrI64& x,
          cuList<T> bins ){
     int binlen=bins.len;
     hist->resize(1,binlen-1);
@@ -131,7 +132,8 @@ mc::mc(int id){
     matK=NULL;matP=NULL;
     hpe=hpv=hpk=hpp=gpe=gpv=gpp=gpk=NULL;    
     devStates=NULL;
-    devQStates=NULL;        
+    devQStates=NULL;
+    s_n=0;
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
     hostVectors64=NULL;
     hostScrambleConstants64=NULL;
@@ -178,16 +180,22 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
 void mc::run_kernel(int cstart,int cstop){
     int rcstart=cstart;
     int rcstop=cstop;
-    if (cstop>=sz_burst)  
-        rcstop=sz_burst-1;
+    if (cstop>=sz_burst||cstop<0)  
+        rcstop=sz_burst;
     if(cstart>=rcstop){
         rcstart=0;
     }
     int N=rcstop-rcstart;
-    int dimension=128;  
+    int dimension=256;  
     dim3 threads = dim3(dimension, 1);
-    int blocksCount = ceil(N / dimension);
+    int blocksCount = ceil(float(N)/dimension);
     dim3 blocks  = dim3(blocksCount, 1);    
+    int blockSize;   // The launch configurator returned block size 
+    int minGridSize; // The minimum grid size needed to achieve the 
+                     // maximum occupancy for a full device launch 
+    int gridSize;    // The actual grid size needed, based on input size   
+    // cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSize, mc_kernel, 0, 0); 
+    // gridSize = (N + blockSize - 1) / blockSize; 
     CUDA_CHECK_RETURN(cudaFree ( devStates));
     CUDA_CHECK_RETURN(cudaFree ( devQStates));    
     CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (rk_state ) ));
@@ -209,7 +217,8 @@ void mc::run_kernel(int cstart,int cstop){
     CUDA_CHECK_RETURN(cudaMemcpy(devScrambleConstants64, hostScrambleConstants64,
     N * sizeof(long long int), 
     cudaMemcpyHostToDevice));
-    setup_kernel <<<blocks, threads>>>(devStates, 0,/*time(NULL)*/ N ,
+    // setup_kernel <<<gridSize, blockSize >>>(devStates, 0,/*time(NULL)*/ N ,
+    setup_kernel <<<blocks, threads>>>(devStates, 0,/*time(NULL)*/ N ,    
         devDirectionVectors64, devScrambleConstants64, devQStates);
 
     retype *mcE,*hmcE;
@@ -218,7 +227,8 @@ void mc::run_kernel(int cstart,int cstop){
     CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE, N *reSampleTimes* sizeof(retype)));
     // int ti=0;
     // for( ;ti<N;ti++)
-    mc_kernel<<<blocks, threads>>>(gchi2, g_start,g_stop,
+    // mc_kernel<<<gridSize, blockSize >>>(gchi2, g_start,g_stop,        
+    mc_kernel<<<blocks, threads>>>(gchi2, g_start,g_stop,    
         g_istart,g_istop,
         g_times_ms,
         g_mask_ad,g_mask_dd,
@@ -266,24 +276,27 @@ void mc::free_data_gpu(){
 }
 
 bool mc::set_nstates(int n){
-    s_n=n;
-    bool r=true;
-    CUDA_CHECK_RETURN(cudaFreeHost(hpe));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpv));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpp));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpk));
-    CUDA_CHECK_RETURN(cudaFree(gpe));
-    CUDA_CHECK_RETURN(cudaFree(gpv));
-    CUDA_CHECK_RETURN(cudaFree(gpp));
-    CUDA_CHECK_RETURN(cudaFree(gpk));    
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpe, n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpv, n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpp, n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpk, n*n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpe, n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpv, n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpp, n*sizeof(float)));
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&gpk, n*n*sizeof(float)));    
+    bool r=false;
+    if (s_n!=n){
+        s_n=n;
+        r=true;
+        CUDA_CHECK_RETURN(cudaFreeHost(hpe));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpv));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpp));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpk));
+        CUDA_CHECK_RETURN(cudaFree(gpe));
+        CUDA_CHECK_RETURN(cudaFree(gpv));
+        CUDA_CHECK_RETURN(cudaFree(gpp));
+        CUDA_CHECK_RETURN(cudaFree(gpk));    
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpe, n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpv, n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpp, n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpk, n*n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpe, n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpv, n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpp, n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpk, n*n*sizeof(float)));    
+    }
     return r;
 }
 
