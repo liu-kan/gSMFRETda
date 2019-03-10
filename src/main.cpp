@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
     assert (nn_connect(sock, url.c_str()) >= 0);
     while (1){
       // s1.send("connected")
-      char *rbuf = NULL;
+      // char *rbuf = NULL;
       // nn_recv (sock, &rbuf, NN_MSG, 0);  
       // printf("%s\n",rbuf);
       // nn_freemsg (rbuf);
@@ -81,10 +81,12 @@ int main(int argc, char* argv[])
       gSMFRETda::pb::p_cap cap;
       cap.set_cap(1024);
       int size = cap.ByteSize(); 
-      void *sbuf = malloc(size);
-      cap.SerializeToArray(sbuf,size);
-      int bytes = nn_send (sock, sbuf, size, 0);
-      free(sbuf);
+      // void *sbuf = malloc(size);
+      string scap;
+      cap.SerializeToString(&scap);
+      scap="c"+scap;
+      int bytes = nn_send (sock, sbuf.c_str(), size, 0);
+      // free(sbuf);
 
       rbuf = NULL;
       bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
