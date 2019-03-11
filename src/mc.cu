@@ -3,7 +3,7 @@
 #include "loadHdf5.hpp"
 #include <time.h>
 #define VECTOR_SIZE 64
-
+#include <algorithm> 
 #include "binom.cuh"
 #include "gen_rand.cuh"
 #include "cuList.cuh"
@@ -127,19 +127,42 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     
 }
 
-mc::mc(int id){
+mc::mc(int id,int _streamNum){
+    streamNum=_streamNum;
+    streams=new cudaStream_t[streamNum];
     devid=id;
-    matK=NULL;matP=NULL;
-    hpe=hpv=hpk=hpp=gpe=gpv=gpp=gpk=NULL;    
-    devStates=NULL;
-    devQStates=NULL;
-    s_n=0;
+    matK=NULL;matP=NULL;    
+    hpv=(float **)malloc(sizeof(float*)*streamNum);
+    hpk=(float **)malloc(sizeof(float*)*streamNum);
+    hpp=(float **)malloc(sizeof(float*)*streamNum);
+    hpe=(float **)malloc(sizeof(float*)*streamNum);
+    gpv=(float **)malloc(sizeof(float*)*streamNum);
+    gpk=(float **)malloc(sizeof(float*)*streamNum);
+    gpp=(float **)malloc(sizeof(float*)*streamNum);
+    gpe=(float **)malloc(sizeof(float*)*streamNum);
+    std::memset(hpv, 0, sizeof(float*)*streamNum);
+    std::memset(hpk, 0, sizeof(float*)*streamNum);
+    std::memset(hpp, 0, sizeof(float*)*streamNum);
+    std::memset(hpe, 0, sizeof(float*)*streamNum);    
+    std::memset(gpv, 0, sizeof(float*)*streamNum);
+    std::memset(gpk, 0, sizeof(float*)*streamNum);
+    std::memset(gpp, 0, sizeof(float*)*streamNum);
+    std::memset(gpe, 0, sizeof(float*)*streamNum);        
+    s_n=new int[streamNum];    
+    std::fill_n(s_n, streamNum, 0); 
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
+    
+    devStates=NULL;
+    devQStates=NULL;    
     hostVectors64=NULL;
     hostScrambleConstants64=NULL;
     devDirectionVectors64=NULL;
     devScrambleConstants64=NULL;
+    
     reSampleTimes=5;
+
+    streamBits=new vector<bool>(streamNum,0);
+    
 }
 void mc::set_reSampleTimes(int t){
     reSampleTimes=t;
@@ -228,13 +251,13 @@ void mc::run_kernel(int cstart,int cstop){
     // int ti=0;
     // for( ;ti<N;ti++)
     // mc_kernel<<<gridSize, blockSize >>>(gchi2, g_start,g_stop,        
-    mc_kernel<<<blocks, threads>>>(gchi2, g_start,g_stop,    
+    mc_kernel<<<blocks, threads,0,streams[sid]>>>(gchi2, g_start,g_stop,
         g_istart,g_istop,
         g_times_ms,
         g_mask_ad,g_mask_dd,
         g_burst_duration,/*g_SgDivSr,*/
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
-        gpe,gpv,gpk,gpp,N,s_n,devQStates,devStates, mcE, reSampleTimes/*,ti*/);
+        gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],devQStates,devStates, mcE, reSampleTimes/*,ti*/);
     CUDA_CHECK_RETURN(cudaMemcpy(hmcE, mcE,N *reSampleTimes* sizeof(retype), cudaMemcpyDeviceToHost));        
     std::vector<retype> my_vector(hmcE, hmcE + N*reSampleTimes);
     for (int ip=0;ip<N;ip++)
@@ -246,8 +269,10 @@ void mc::run_kernel(int cstart,int cstop){
 }
 
 mc::~mc(){
-    free_data_gpu();
+    free_data_gpu();    
     delete(matK);delete(matP);
+    delete(streams);
+    delete(streamBits);
 }
 
 void mc::free_data_gpu(){            
@@ -265,43 +290,47 @@ void mc::free_data_gpu(){
     cudaDeviceSynchronize();
     cout<<"rsize:"<<*hchi2<<endl;
     CUDA_CHECK_RETURN(cudaFreeHost(hchi2));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpe));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpv));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpp));
-    CUDA_CHECK_RETURN(cudaFreeHost(hpk));
-    CUDA_CHECK_RETURN(cudaFree(gpe));
-    CUDA_CHECK_RETURN(cudaFree(gpv));
-    CUDA_CHECK_RETURN(cudaFree(gpp));
-    CUDA_CHECK_RETURN(cudaFree(gpk));        
+    CUDA_CHECK_RETURN(cudaFreeHost(mcE));
+    for (int sid=0;sid<streamNum;sid++){
+        CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpv[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpp[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpk[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpe[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpv[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpp[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpk[sid]));    
+    }
+
 }
 
-bool mc::set_nstates(int n){
+bool mc::set_nstates(int n,int sid){
     bool r=false;
-    if (s_n!=n){
-        s_n=n;
+    if (s_n[sid]!=n){
+        s_n[sid]=n;
         r=true;
-        CUDA_CHECK_RETURN(cudaFreeHost(hpe));
-        CUDA_CHECK_RETURN(cudaFreeHost(hpv));
-        CUDA_CHECK_RETURN(cudaFreeHost(hpp));
-        CUDA_CHECK_RETURN(cudaFreeHost(hpk));
-        CUDA_CHECK_RETURN(cudaFree(gpe));
-        CUDA_CHECK_RETURN(cudaFree(gpv));
-        CUDA_CHECK_RETURN(cudaFree(gpp));
-        CUDA_CHECK_RETURN(cudaFree(gpk));    
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpe, n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpv, n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpp, n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hpk, n*n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpe, n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpv, n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpp, n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&gpk, n*n*sizeof(float)));    
+        CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpv[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpp[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hpk[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpe[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpv[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpp[sid]));
+        CUDA_CHECK_RETURN(cudaFree(gpk[sid]));    
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpe[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpv[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpp[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpk[sid]), n*n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpe[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpv[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpp[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpk[sid]), n*n*sizeof(float)));    
     }
     return r;
 }
 
-bool mc::set_params(vector<float>& args){
-    int n=s_n;
+bool mc::set_params(int n,int sid,vector<float>& args){
+    set_nstates(n,sid);    
     vecFloatMapper evargs(args.data(),n*n+n);    
     // cout<<evargs<<endl;
     eargs=evargs(seqN(0,n));
@@ -313,13 +342,13 @@ bool mc::set_params(vector<float>& args){
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
     // cout<<"p:"<<*matP<<endl;
-    memcpy(hpe, peargs, sizeof(float)*n);
-    memcpy(hpv, pvargs, sizeof(float)*n);
-    memcpy(hpk, matK->data(), sizeof(float)*n*n);
-    memcpy(hpp, matP->data(), sizeof(float)*n);
-    CUDA_CHECK_RETURN(cudaMemcpy(gpe,hpe,sizeof(float)*n,cudaMemcpyHostToDevice));
-    CUDA_CHECK_RETURN(cudaMemcpy(gpv,hpv, sizeof(float)*n,cudaMemcpyHostToDevice));
-    CUDA_CHECK_RETURN(cudaMemcpy(gpk,hpk, sizeof(float)*n*n,cudaMemcpyHostToDevice));
-    CUDA_CHECK_RETURN(cudaMemcpy(gpp,hpp, sizeof(float)*n,cudaMemcpyHostToDevice));    
+    memcpy(hpe[sid], peargs, sizeof(float)*n);
+    memcpy(hpv[sid], pvargs, sizeof(float)*n);
+    memcpy(hpk[sid], matK->data(), sizeof(float)*n*n);
+    memcpy(hpp[sid], matP->data(), sizeof(float)*n);
+    CUDA_CHECK_RETURN(cudaMemcpy(gpe[sid],hpe[sid],sizeof(float)*n,cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(gpv[sid],hpv[sid], sizeof(float)*n,cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(gpk[sid],hpk[sid], sizeof(float)*n*n,cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaMemcpy(gpp[sid],hpp[sid], sizeof(float)*n,cudaMemcpyHostToDevice));    
     return r;
 }
