@@ -27,14 +27,14 @@ class mc
         long sz_tag;
         unsigned char *g_mask_ad,*g_mask_dd;
         float *gchi2,*hchi2;
-        float *hpe,*hpk,*hpp,*hpv;
-        float *gpe,*gpk,*gpp,*gpv;
+        float **hpe,**hpk,**hpp,**hpv;
+        float **gpe,**gpk,**gpp,**gpv;
         int sz_burst;
         int64_t *g_start,*g_stop,*g_times_ms;
         uint32_t *g_istart,*g_istop;   
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         MatrixXf *matK,*matP;        
-        int s_n;
+        int *s_n;
         rk_state* devStates;
         curandStateScrambledSobol64* devQStates;        
         curandDirectionVectors64_t *hostVectors64;
@@ -42,6 +42,9 @@ class mc
         unsigned long long int * devDirectionVectors64;
         unsigned long long int * devScrambleConstants64;
         int reSampleTimes;    
+        cudaStream_t* streams;
+        vector<bool>* streamBits;
+        int streamNum;
     public:        
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n);
@@ -55,7 +58,8 @@ class mc
             vector<float>& T_burst_duration,vector<float>& SgDivSr,
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
-        mc(int devid);
+        mc(int devid,int _streamNum=16);
+        cudaStream_t* getAstream();
         bool set_params(vector<float>& args);
 };
 
