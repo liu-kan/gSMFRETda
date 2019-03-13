@@ -1,6 +1,6 @@
 #include "mc.hpp"
 #include "cuda_tools.hpp"
-#include "loadHdf5.hpp"
+
 #include <time.h>
 #define VECTOR_SIZE 64
 #include <algorithm> 
@@ -127,10 +127,14 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
     
 }
 
-mc::mc(int id,int _streamNum){
+mc::mc(int id,int _streamNum, bool de){    
+    debug=de;
     streamNum=_streamNum;
     streams=new cudaStream_t[streamNum];
     devid=id;
+    CUDA_CHECK_RETURN(cudaSetDevice(devid));
+    for(int sid=0;sid<_streamNum;sid++)
+        cudaStreamCreate ( &(streams[sid])) ;    
     matK=NULL;matP=NULL;    
     hpv=(float **)malloc(sizeof(float*)*streamNum);
     hpk=(float **)malloc(sizeof(float*)*streamNum);
@@ -148,24 +152,66 @@ mc::mc(int id,int _streamNum){
     std::memset(gpk, 0, sizeof(float*)*streamNum);
     std::memset(gpp, 0, sizeof(float*)*streamNum);
     std::memset(gpe, 0, sizeof(float*)*streamNum);        
-    s_n=new int[streamNum];    
+    s_n=new int[streamNum];
+    begin_burst=new int[streamNum];
+    end_burst=new int[streamNum];
     std::fill_n(s_n, streamNum, 0); 
-    CUDA_CHECK_RETURN(cudaSetDevice(devid));
-    
-    devStates=NULL;
-    devQStates=NULL;    
-    hostVectors64=NULL;
-    hostScrambleConstants64=NULL;
-    devDirectionVectors64=NULL;
-    devScrambleConstants64=NULL;
-    
+    mcE=(retype **)malloc(sizeof(retype*)*streamNum);
+    hmcE=(retype **)malloc(sizeof(retype*)*streamNum);
+    std::memset(mcE, 0, sizeof(retype*)*streamNum);
+    std::memset(hmcE, 0, sizeof(retype*)*streamNum);
+    devStates=(rk_state**)malloc(sizeof(rk_state*)*streamNum);
+    devQStates=(curandStateScrambledSobol64**)malloc(sizeof(curandStateScrambledSobol64*)*streamNum);
+    hostVectors64=(curandDirectionVectors64_t**)malloc(sizeof(curandDirectionVectors64_t*)*streamNum);
+    hostScrambleConstants64=(unsigned long long int**)malloc(sizeof(unsigned long long int*)*streamNum);
+    devDirectionVectors64=(unsigned long long int**)malloc(sizeof(unsigned long long int*)*streamNum);
+    devScrambleConstants64=(unsigned long long int**)malloc(sizeof(unsigned long long int*)*streamNum);
+    std::memset(devStates, 0, sizeof(rk_state*)*streamNum);
+    std::memset(devQStates, 0, sizeof(curandStateScrambledSobol64*)*streamNum);
+    std::memset(hostVectors64, 0, sizeof(curandDirectionVectors64_t*)*streamNum);
+    std::memset(devDirectionVectors64, 0, sizeof(unsigned long long int*)*streamNum);
+    std::memset(hostScrambleConstants64, 0, sizeof(unsigned long long int*)*streamNum);
+    std::memset(devScrambleConstants64, 0, sizeof(unsigned long long int*)*streamNum);    
     reSampleTimes=5;
-
-    streamBits=new vector<bool>(streamNum,0);
+    cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSize, mc_kernel, 0, 0);     
     
 }
 void mc::set_reSampleTimes(int t){
     reSampleTimes=t;
+}
+void mc::int_randstate(int N){
+    int NN=N;
+    if (N==-1){
+        NN=sz_burst;
+    }
+    gridSize = (NN + blockSize - 1) / blockSize;
+    for (int i=0;i<streamNum;i++){
+        CUDA_CHECK_RETURN(cudaFree ( devStates[i]));
+        CUDA_CHECK_RETURN(cudaFree ( devQStates[i]));    
+        CUDA_CHECK_RETURN(cudaMalloc ( (void **)&(devStates[i]), N*sizeof (rk_state ) ));
+        CUDA_CHECK_RETURN(cudaMalloc ( (void **)&(devQStates[i]), N*sizeof( curandStateScrambledSobol64) ));    
+        CUDA_CHECK_RETURN(cudaFree (devDirectionVectors64[i]));
+        CUDA_CHECK_RETURN(cudaFree (devScrambleConstants64[i]));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(devDirectionVectors64[i]), 
+        N * VECTOR_SIZE * sizeof(long long int)));       
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(devScrambleConstants64[i]), 
+        N * sizeof(long long int)));
+        // CUDA_CHECK_RETURN
+        (curandGetDirectionVectors64( &(hostVectors64[i]), 
+            CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6));
+        // CUDA_CHECK_RETURN
+        (curandGetScrambleConstants64( &(hostScrambleConstants64[i])));              
+
+        CUDA_CHECK_RETURN(cudaMemcpyAsync(devDirectionVectors64[i], hostVectors64[i],
+        N * VECTOR_SIZE * sizeof(long long int), 
+        cudaMemcpyHostToDevice,streams[i])); 
+        CUDA_CHECK_RETURN(cudaMemcpyAsync(devScrambleConstants64[i], hostScrambleConstants64[i],
+        N * sizeof(long long int), 
+        cudaMemcpyHostToDevice,streams[i]));
+        // setup_kernel <<<blocks,     threads,0,streams[i]>>>(devStates[i], 0,/*time(NULL)*/ NN ,          
+        setup_kernel <<<gridSize, blockSize,0,streams[i]>>>(devStates[i], 0,/*time(NULL)*/ NN,        
+            devDirectionVectors64[i], devScrambleConstants64[i], devQStates[i]);    
+    }
 }
 
 void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
@@ -195,12 +241,11 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMemcpy(g_times_ms, times_ms.data(), sizeof(int64_t)*sz_tag,cudaMemcpyHostToDevice));        
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_burst_duration, sizeof(float)*sz_burst));
     CUDA_CHECK_RETURN(cudaMemcpy(g_burst_duration, T_burst_duration.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
-    // CUDA_CHECK_RETURN(cudaMalloc((void **)&g_SgDivSr, sizeof(float)*sz_burst));
-    // CUDA_CHECK_RETURN(cudaMemcpy(g_SgDivSr, SgDivSr.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&g_SgDivSr, sizeof(float)*sz_burst));
+    CUDA_CHECK_RETURN(cudaMemcpy(g_SgDivSr, SgDivSr.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
+    CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));    
 }
-
-void mc::run_kernel(int cstart,int cstop){
+int mc::setBurstBd(int cstart,int cstop, int sid){
     int rcstart=cstart;
     int rcstop=cstop;
     if (cstop>=sz_burst||cstop<0)  
@@ -209,70 +254,75 @@ void mc::run_kernel(int cstart,int cstop){
         rcstart=0;
     }
     int N=rcstop-rcstart;
-    int dimension=256;  
-    dim3 threads = dim3(dimension, 1);
-    int blocksCount = ceil(float(N)/dimension);
-    dim3 blocks  = dim3(blocksCount, 1);    
-    int blockSize;   // The launch configurator returned block size 
-    int minGridSize; // The minimum grid size needed to achieve the 
-                     // maximum occupancy for a full device launch 
-    int gridSize;    // The actual grid size needed, based on input size   
-    // cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSize, mc_kernel, 0, 0); 
-    // gridSize = (N + blockSize - 1) / blockSize; 
-    CUDA_CHECK_RETURN(cudaFree ( devStates));
-    CUDA_CHECK_RETURN(cudaFree ( devQStates));    
-    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devStates, N*sizeof (rk_state ) ));
-    CUDA_CHECK_RETURN(cudaMalloc ( (void **)&devQStates, N*sizeof( curandStateScrambledSobol64) ));    
-    CUDA_CHECK_RETURN(cudaFree (devDirectionVectors64));
-    CUDA_CHECK_RETURN(cudaFree (devScrambleConstants64));
-    // CUDA_CHECK_RETURN
-    (curandGetDirectionVectors64( &hostVectors64, 
-        CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6));
-    // CUDA_CHECK_RETURN
-    (curandGetScrambleConstants64( &hostScrambleConstants64));              
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&(devDirectionVectors64), 
-    N * VECTOR_SIZE * sizeof(long long int)));        
-    CUDA_CHECK_RETURN(cudaMemcpy(devDirectionVectors64, hostVectors64,
-    N * VECTOR_SIZE * sizeof(long long int), 
-    cudaMemcpyHostToDevice)); 
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&(devScrambleConstants64), 
-    N * sizeof(long long int)));
-    CUDA_CHECK_RETURN(cudaMemcpy(devScrambleConstants64, hostScrambleConstants64,
-    N * sizeof(long long int), 
-    cudaMemcpyHostToDevice));
-    // setup_kernel <<<gridSize, blockSize >>>(devStates, 0,/*time(NULL)*/ N ,
-    setup_kernel <<<blocks, threads>>>(devStates, 0,/*time(NULL)*/ N ,    
-        devDirectionVectors64, devScrambleConstants64, devQStates);
+    if(cstart==-1){
+        gridSize[sid]=-blockSize;
+        N=-1;
+    }
+    if(end_burst[sid]-begin_burst[sid]!=N)
+        begin_burst[sid]=rcstart;
+        end_burst[sid]=rcstop;
+        // int dimension=256;  
+        // dim3 threads = dim3(dimension, 1);
+        // int blocksCount = ceil(float(N)/dimension);
+        // dim3 blocks  = dim3(blocksCount, 1);    
+        gridSize[sid] = (N + blockSize - 1) / blockSize; 
+        CUDA_CHECK_RETURN(cudaFree(mcE[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hmcE[sid]));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(mcE[sid]), N *reSampleTimes* sizeof(retype)));        
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype)));
+    }
+    CUDA_CHECK_RETURN(cudaMemset(mcE[sid], 0, N *reSampleTimes* sizeof(retype)));
+    return N;
+    
+}
+void mc::run_kernel(int N, int sid){ 
 
-    retype *mcE,*hmcE;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)&mcE, N *reSampleTimes* sizeof(retype)));
-    CUDA_CHECK_RETURN(cudaMemset(mcE, 0, N *reSampleTimes* sizeof(retype)));
-    CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE, N *reSampleTimes* sizeof(retype)));
-    // int ti=0;
-    // for( ;ti<N;ti++)
-    // mc_kernel<<<gridSize, blockSize >>>(gchi2, g_start,g_stop,        
-    mc_kernel<<<blocks, threads,0,streams[sid]>>>(gchi2, g_start,g_stop,
+    // mc_kernel<<<blocks, threads,0,streams[sid]>>>(gchi2, g_start,g_stop,
+    mc_kernel<<<gridSize[sid],blockSize,0,streams[sid]>>>(gchi2, g_start,g_stop,            
         g_istart,g_istop,
         g_times_ms,
         g_mask_ad,g_mask_dd,
         g_burst_duration,/*g_SgDivSr,*/
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
-        gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],devQStates,devStates, mcE, reSampleTimes/*,ti*/);
-    CUDA_CHECK_RETURN(cudaMemcpy(hmcE, mcE,N *reSampleTimes* sizeof(retype), cudaMemcpyDeviceToHost));        
-    std::vector<retype> my_vector(hmcE, hmcE + N*reSampleTimes);
-    for (int ip=0;ip<N;ip++)
-        cout<<my_vector.at(ip)<<" ";
-    cout<<endl;
-    // savehdf5("r.hdf5", "/r",my_vector);
-    CUDA_CHECK_RETURN(cudaFree(mcE));
-    CUDA_CHECK_RETURN(cudaFreeHost(hmcE));
+        gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N *reSampleTimes* sizeof(retype), cudaMemcpyDeviceToHost));        
+    if (debug){
+        std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
+        for (int ip=0;ip<N;ip++)
+            cout<<my_vector.at(ip)<<" ";
+        cout<<endl;
+        // savehdf5("r.hdf5", "/r",my_vector);
+    }
 }
 
 mc::~mc(){
     free_data_gpu();    
     delete(matK);delete(matP);
-    delete(streams);
-    delete(streamBits);
+    for(int sid=0;sid<streamNum;sid++)
+        cudaStreamDestroy ( streams[sid]);
+
+    delete[](streams);
+    delete[](s_n);
+    delete[](begin_burst);
+    delete[](end_burst);
+    free(hmcE);
+    free(mcE);
+    free(hpe);
+    free(hpv);
+    free(hpp);
+    free(hpk);    
+    free(gpe);
+    free(gpv);
+    free(gpp);
+    free(gpk);        
+
+    free(devStates);
+    free(devQStates);    
+    free(hostVectors64);
+    free(hostScrambleConstants64);
+    free(devDirectionVectors64);
+    free(devScrambleConstants64);        
+    
 }
 
 void mc::free_data_gpu(){            
@@ -283,14 +333,12 @@ void mc::free_data_gpu(){
     CUDA_CHECK_RETURN(cudaFree(g_istart));
     CUDA_CHECK_RETURN(cudaFree(g_istop)); 
     CUDA_CHECK_RETURN(cudaFree(g_times_ms));
-    // CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
-    CUDA_CHECK_RETURN(cudaFree(g_burst_duration));
-
-    // CUDA_CHECK_RETURN(cudaFree(r_size));
-    cudaDeviceSynchronize();
-    cout<<"rsize:"<<*hchi2<<endl;
+    CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
+    CUDA_CHECK_RETURN(cudaFree(g_burst_duration));    
+    // cudaDeviceSynchronize();
+    // cout<<"rsize:"<<*hchi2<<endl;
     CUDA_CHECK_RETURN(cudaFreeHost(hchi2));
-    CUDA_CHECK_RETURN(cudaFreeHost(mcE));
+    
     for (int sid=0;sid<streamNum;sid++){
         CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
         CUDA_CHECK_RETURN(cudaFreeHost(hpv[sid]));
@@ -300,6 +348,15 @@ void mc::free_data_gpu(){
         CUDA_CHECK_RETURN(cudaFree(gpv[sid]));
         CUDA_CHECK_RETURN(cudaFree(gpp[sid]));
         CUDA_CHECK_RETURN(cudaFree(gpk[sid]));    
+
+        CUDA_CHECK_RETURN(cudaFree(mcE[sid]));
+        CUDA_CHECK_RETURN(cudaFreeHost(hmcE[sid]));
+        CUDA_CHECK_RETURN(cudaFree(devStates[sid]));
+        CUDA_CHECK_RETURN(cudaFree(devQStates[sid]));
+        // CUDA_CHECK_RETURN(cudaFreeHost(hostVectors64[sid]));
+        // CUDA_CHECK_RETURN(cudaFreeHost(hostScrambleConstants64[sid]));
+        CUDA_CHECK_RETURN(cudaFree(devDirectionVectors64[sid]));
+        CUDA_CHECK_RETURN(cudaFree(devScrambleConstants64[sid]));            
     }
 
 }

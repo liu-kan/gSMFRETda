@@ -5,7 +5,8 @@
 using namespace std;
 #include "eigenhelper.hpp"
 #include <curand_kernel.h>
-
+#include "loadHdf5.hpp"
+#define DEBUGMC true
 
 typedef struct {
     unsigned int xor128[4];
@@ -35,22 +36,31 @@ class mc
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         MatrixXf *matK,*matP;        
         int *s_n;
-        rk_state* devStates;
-        curandStateScrambledSobol64* devQStates;        
-        curandDirectionVectors64_t *hostVectors64;
-        unsigned long long int * hostScrambleConstants64;
-        unsigned long long int * devDirectionVectors64;
-        unsigned long long int * devScrambleConstants64;
+        int *begin_burst;
+        int *end_burst;
+        rk_state** devStates;
+        curandStateScrambledSobol64** devQStates;
+        curandDirectionVectors64_t** hostVectors64;
+        unsigned long long int** hostScrambleConstants64;
+        unsigned long long int** devDirectionVectors64;
+        unsigned long long int** devScrambleConstants64;
         int reSampleTimes;    
-        cudaStream_t* streams;
-        vector<bool>* streamBits;
+        cudaStream_t* streams;        
         int streamNum;
+        int blockSize;   // The launch configurator returned block size 
+        int minGridSize; // The minimum grid size needed to achieve the 
+                        // maximum occupancy for a full device launch 
+        int *gridSize;    // The actual grid size needed, based on input size   
+        retype **mcE,**hmcE;
+        bool debug;
     public:        
         RowVectorXf eargs,vargs,kargs;
-        bool set_nstates(int n);
+        bool set_nstates(int n,int sid);
+        int setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
         void free_data_gpu();
-        void run_kernel(int cstart,int cstop);
+        void int_randstate(int N=-1);
+        void run_kernel(int N, int sid);
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
             vector<uint32_t>& istart,vector<uint32_t>& istop,
             vector<int64_t>& times_ms,
@@ -58,9 +68,9 @@ class mc
             vector<float>& T_burst_duration,vector<float>& SgDivSr,
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
-        mc(int devid,int _streamNum=16);
+        mc(int devid,int _streamNum=16,bool de=DEBUGMC);
         cudaStream_t* getAstream();
-        bool set_params(vector<float>& args);
+        bool set_params(int n,int sid,vector<float>& args);
 };
 
 #endif

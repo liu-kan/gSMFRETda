@@ -4,7 +4,7 @@
 
 
 __global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
-    unsigned long long * sobolDirectionVectors, 
+    unsigned long long *sobolDirectionVectors, 
     unsigned long long *sobolScrambleConstants, 
     curandStateScrambledSobol64* stateQ)
 {
