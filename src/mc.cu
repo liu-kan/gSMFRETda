@@ -143,7 +143,7 @@ mc::mc(int id,int _streamNum, bool de){
     gpv=(float **)malloc(sizeof(float*)*streamNum);
     gpk=(float **)malloc(sizeof(float*)*streamNum);
     gpp=(float **)malloc(sizeof(float*)*streamNum);
-    gpe=(float **)malloc(sizeof(float*)*streamNum);
+    gpe=(float **)malloc(sizeof(float*)*streamNum);    
     std::memset(hpv, 0, sizeof(float*)*streamNum);
     std::memset(hpk, 0, sizeof(float*)*streamNum);
     std::memset(hpp, 0, sizeof(float*)*streamNum);
@@ -153,9 +153,13 @@ mc::mc(int id,int _streamNum, bool de){
     std::memset(gpp, 0, sizeof(float*)*streamNum);
     std::memset(gpe, 0, sizeof(float*)*streamNum);        
     s_n=new int[streamNum];
+    gridSize = new int[streamNum];
     begin_burst=new int[streamNum];
     end_burst=new int[streamNum];
     std::fill_n(s_n, streamNum, 0); 
+    std::fill_n(gridSize, streamNum, 0); 
+    std::fill_n(begin_burst, streamNum, 0); 
+    std::fill_n(end_burst, streamNum, 0); 
     mcE=(retype **)malloc(sizeof(retype*)*streamNum);
     hmcE=(retype **)malloc(sizeof(retype*)*streamNum);
     std::memset(mcE, 0, sizeof(retype*)*streamNum);
@@ -184,8 +188,8 @@ void mc::int_randstate(int N){
     if (N==-1){
         NN=sz_burst;
     }
-    gridSize = (NN + blockSize - 1) / blockSize;
-    for (int i=0;i<streamNum;i++){
+    
+    for (int i=0;i<streamNum;i++){        
         CUDA_CHECK_RETURN(cudaFree ( devStates[i]));
         CUDA_CHECK_RETURN(cudaFree ( devQStates[i]));    
         CUDA_CHECK_RETURN(cudaMalloc ( (void **)&(devStates[i]), N*sizeof (rk_state ) ));
@@ -208,8 +212,9 @@ void mc::int_randstate(int N){
         CUDA_CHECK_RETURN(cudaMemcpyAsync(devScrambleConstants64[i], hostScrambleConstants64[i],
         N * sizeof(long long int), 
         cudaMemcpyHostToDevice,streams[i]));
+        gridSize[i] = (NN + blockSize - 1) / blockSize;
         // setup_kernel <<<blocks,     threads,0,streams[i]>>>(devStates[i], 0,/*time(NULL)*/ NN ,          
-        setup_kernel <<<gridSize, blockSize,0,streams[i]>>>(devStates[i], 0,/*time(NULL)*/ NN,        
+        setup_kernel <<<gridSize[i], blockSize,0,streams[i]>>>(devStates[i], 0,/*time(NULL)*/ NN,        
             devDirectionVectors64[i], devScrambleConstants64[i], devQStates[i]);    
     }
 }
@@ -225,7 +230,7 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMallocHost((void **)&hchi2, sizeof(float)));
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_mask_ad, sizeof(unsigned char)*sz_tag));
     CUDA_CHECK_RETURN(cudaMemcpy(g_mask_ad, mask_ad.data(), sizeof(unsigned char)*sz_tag, 
-        cudaMemcpyHostToDevice));    
+        cudaMemcpyHostToDevice));
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_mask_dd, sizeof(unsigned char)*sz_tag));
     CUDA_CHECK_RETURN(cudaMemcpy(g_mask_dd, mask_dd.data(), sizeof(unsigned char)*sz_tag,cudaMemcpyHostToDevice));
     sz_burst=start.size();         
@@ -258,7 +263,7 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         gridSize[sid]=-blockSize;
         N=-1;
     }
-    if(end_burst[sid]-begin_burst[sid]!=N)
+    if(end_burst[sid]-begin_burst[sid]!=N){
         begin_burst[sid]=rcstart;
         end_burst[sid]=rcstop;
         // int dimension=256;  
@@ -272,8 +277,7 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype)));
     }
     CUDA_CHECK_RETURN(cudaMemset(mcE[sid], 0, N *reSampleTimes* sizeof(retype)));
-    return N;
-    
+    return N;    
 }
 void mc::run_kernel(int N, int sid){ 
 
@@ -305,6 +309,7 @@ mc::~mc(){
     delete[](s_n);
     delete[](begin_burst);
     delete[](end_burst);
+    delete[](gridSize);
     free(hmcE);
     free(mcE);
     free(hpe);
