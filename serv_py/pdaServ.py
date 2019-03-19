@@ -29,8 +29,6 @@ def paramsServ(port):
             for i in range(ps_n):
                 pb_ga.params.append(i)    
             s1.send(pb_ga.SerializeToString())
-            
-    
     s1.close()
 
 if __name__ == '__main__':
