@@ -2,6 +2,7 @@
 #define mc_HPP_INCLUDED
 #include <vector>
 #include <cstdint>
+#include <queue>
 using namespace std;
 #include "eigenhelper.hpp"
 #include <curand_kernel.h>
@@ -49,14 +50,17 @@ class mc
         int streamNum;
         int blockSize;   // The launch configurator returned block size 
         int minGridSize; // The minimum grid size needed to achieve the 
-                        // maximum occupancy for a full device launch 
-        int *gridSize;    // The actual grid size needed, based on input size   
+                         // maximum occupancy for a full device launch 
+        int *gridSize;   // The actual grid size needed, based on input size   
         retype **mcE,**hmcE;
         bool debug;
+        std::queue<int> streamFIFO;
     public:        
+        int getStream();
+        void givebackStream(int i);
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n,int sid);
-        int setBurstBd(int cstart,int cstop, int sid);
+        int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
         void free_data_gpu();
         void int_randstate(int N=-1);
@@ -68,7 +72,7 @@ class mc
             vector<float>& T_burst_duration,vector<float>& SgDivSr,
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
-        mc(int devid,int _streamNum=16,bool de=DEBUGMC);
+        mc(int devid,int _streamNum=16,bool debug=DEBUGMC);
         cudaStream_t* getAstream();
         bool set_params(int n,int sid,vector<float>& args);
 };

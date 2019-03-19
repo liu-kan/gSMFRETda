@@ -133,8 +133,10 @@ mc::mc(int id,int _streamNum, bool de){
     streams=new cudaStream_t[streamNum];
     devid=id;
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
-    for(int sid=0;sid<_streamNum;sid++)
-        cudaStreamCreate ( &(streams[sid])) ;    
+    for(int sid=0;sid<_streamNum;sid++){
+        cudaStreamCreate ( &(streams[sid])) ;
+        streamFIFO.push(sid);
+    }
     matK=NULL;matP=NULL;    
     hpv=(float **)malloc(sizeof(float*)*streamNum);
     hpk=(float **)malloc(sizeof(float*)*streamNum);
@@ -183,13 +185,25 @@ mc::mc(int id,int _streamNum, bool de){
 void mc::set_reSampleTimes(int t){
     reSampleTimes=t;
 }
+int mc::getStream(){
+    int r=-1;
+    if(!streamFIFO.empty()){
+        int r=streamFIFO.front();
+        streamFIFO.pop();
+    }
+    return r;
+}
+
+void mc::givebackStream(int i){    
+    streamFIFO.push(i);
+}
+
 void mc::int_randstate(int N){
     int NN=N;
     if (N==-1){
         NN=sz_burst;
-    }
-    
-    for (int i=0;i<streamNum;i++){        
+    }    
+    for (int i=0;i<streamNum;i++){
         CUDA_CHECK_RETURN(cudaFree ( devStates[i]));
         CUDA_CHECK_RETURN(cudaFree ( devQStates[i]));    
         CUDA_CHECK_RETURN(cudaMalloc ( (void **)&(devStates[i]), N*sizeof (rk_state ) ));
