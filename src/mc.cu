@@ -264,6 +264,7 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
     CUDA_CHECK_RETURN(cudaMemcpy(g_SgDivSr, SgDivSr.data(), sizeof(float)*sz_burst,cudaMemcpyHostToDevice));        
     CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));    
 }
+
 int mc::setBurstBd(int cstart,int cstop, int sid){
     int rcstart=cstart;
     int rcstop=cstop;
@@ -293,8 +294,8 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
     CUDA_CHECK_RETURN(cudaMemset(mcE[sid], 0, N *reSampleTimes* sizeof(retype)));
     return N;    
 }
-void mc::run_kernel(int N, int sid){ 
 
+void mc::run_kernel(int N, int sid){ 
     // mc_kernel<<<blocks, threads,0,streams[sid]>>>(gchi2, g_start,g_stop,
     mc_kernel<<<gridSize[sid],blockSize,0,streams[sid]>>>(gchi2, g_start,g_stop,            
         g_istart,g_istop,
