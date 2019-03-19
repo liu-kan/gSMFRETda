@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include "tools.hpp"
 
-int getC6MacAddress(unsigned char *cMacAddr,char *pIface)
+int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
 {
     int nSD;                        // Socket descriptor
     struct ifreq sIfReq;            // Interface request
@@ -18,6 +18,7 @@ int getC6MacAddress(unsigned char *cMacAddr,char *pIface)
     //
     pIfList = (struct if_nameindex *)NULL;
     pListSave = (struct if_nameindex *)NULL;
+    int counteth=0;
 #ifndef SIOCGIFADDR
     // The kernel does not support the required ioctls
     return (0);
@@ -37,7 +38,7 @@ int getC6MacAddress(unsigned char *cMacAddr,char *pIface)
     //
     pIfList = pListSave = if_nameindex();
     // printf("pIfList:%s\n",pIfList);
-    if(pIface==NULL){
+    if(pIface==NULL && ifIdx==0){
         // printf("pIface:%s\n",pIface);
         for (pIfList; *(char *)pIfList != 0; pIfList++){
             strncpy(sIfReq.ifr_name, pIfList->if_name, IF_NAMESIZE);
@@ -46,16 +47,30 @@ int getC6MacAddress(unsigned char *cMacAddr,char *pIface)
                     // printf("get lo\n");
                     continue;
                 }
-            if (ioctl(nSD, SIOCGIFHWADDR, &sIfReq) != 0)
-            {
-                // We failed to get the MAC address for the interface
-                printf("File %s: line %d: Ioctl failed\n", __FILE__, __LINE__);
-                return (0);
-            }
-            memmove((void *)cMacAddr, (void *)&sIfReq.ifr_ifru.ifru_hwaddr.sa_data[0], 6);
-            break;
+            counteth++;
         }    
     }
+    if(pIface==NULL && ifIdx!=0){
+        int idx=0;
+        for (pIfList; *(char *)pIfList != 0; pIfList++){
+            strncpy(sIfReq.ifr_name, pIfList->if_name, IF_NAMESIZE);
+            if (ioctl(nSD, SIOCGIFFLAGS, &sIfReq) == 0)
+                if (sIfReq.ifr_flags & IFF_LOOPBACK){
+                    // printf("get lo\n");
+                    continue;
+                }
+            if(ifIdx==idx++){
+                if (ioctl(nSD, SIOCGIFHWADDR, &sIfReq) != 0)
+                {
+                    // We failed to get the MAC address for the interface
+                    printf("File %s: line %d: Ioctl failed\n", __FILE__, __LINE__);
+                    return (0);
+                }
+                memmove((void *)cMacAddr, (void *)&sIfReq.ifr_ifru.ifru_hwaddr.sa_data[0], 6);
+            }
+            
+        }    
+    }    
     //
     // Walk thru the array returned and query for each interface's
     // address
@@ -89,31 +104,36 @@ int getC6MacAddress(unsigned char *cMacAddr,char *pIface)
     //
     if_freenameindex(pListSave);
     close(nSD);
-    return (1);
+    return (counteth);
 }
-
+#include <iostream>
 void genuid(std::string* id){
     std::string pid=std::to_string(getpid());
-    unsigned char dMacAddr[6];
+    unsigned char dMacAddr[8];
     char cMacAddr[13];
     memset(dMacAddr,0, sizeof(char)*6);
     memset(cMacAddr,0, sizeof(char)*13);    
-    getC6MacAddress(dMacAddr,NULL);
-    // printf("HWaddr %2X:%2x:%2x:%2x:%2x:%2X\n",
-    //        dMacAddr[0], dMacAddr[1], dMacAddr[2],
-    //        dMacAddr[3], dMacAddr[4], dMacAddr[5]);
-    snprintf(cMacAddr,13,"%02X%02X%02X%02X%02X%02X",
-           dMacAddr[0], dMacAddr[1], dMacAddr[2],
-           dMacAddr[3], dMacAddr[4], dMacAddr[5]);
-    std::string smac=cMacAddr;
+    int ethNum=getC6MacAddress(dMacAddr,NULL);
+    std::string smac;
+    for(int i=0;i<ethNum;i++){
+        // printf("HWaddr %2X:%2x:%2x:%2x:%2x:%2X\n",
+        //        dMacAddr[0], dMacAddr[1], dMacAddr[2],
+        //        dMacAddr[3], dMacAddr[4], dMacAddr[5]);
+        getC6MacAddress(dMacAddr,NULL,i);
+        snprintf(cMacAddr,13,"%02X%02X%02X%02X%02X%02X",
+            dMacAddr[0], dMacAddr[1], dMacAddr[2],
+            dMacAddr[3], dMacAddr[4], dMacAddr[5]);
+        smac+=cMacAddr;
+    }
     // std::cout<<smac<<std::endl;
     *id=smac+pid;
+    // std::cout<<id->size()<<std::endl;
 }
 
-// #include <iostream>
-// int main(){    
-//     std::string id;
-//     genuid(&id);
-//     std::cout<<id<<std::endl;
-//     exit(0);
-// }
+
+int _main(){    
+    std::string id;
+    genuid(&id);
+    std::cout<<id<<std::endl;
+    exit(0);
+}

@@ -6,7 +6,7 @@ endif
 CXXFLAGS =	$(CFLAGS)
 HEADER = -I3rdparty/HighFive/include -I3rdparty/cxxopts/include -I/opt/cuda/include \
 	-I3rdparty/eigen -I/usr/local/cuda/include -I3rdparty/cpp-base64
-LIBS = `pkg-config --libs-only-L hdf5` `pkg-config --libs protobuf` -L/opt/cuda/lib64 -L/usr/local/cuda/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg
+LIBS = -L/opt/cuda/lib64 -L/usr/local/cuda/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf -pthread
 OUT_DIR=bin
 MKDIR_P = mkdir -p
 .PHONY: directories
