@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "cxxopts.hpp"
 #include "loadHdf5.hpp"
-
+#include <thread> 
 #include "eigenhelper.hpp"
 #include "mc.hpp"
 #include <assert.h>
@@ -69,8 +69,7 @@ int main(int argc, char* argv[])
     cout<<T_burst_duration.size()<<endl;    
     mc pdamc(0);
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
-         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
-        
+         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);        
     // vector<float> args={0.2,0.3,0.4,1,1,1,1,1,1,0.9,0.9,0.9};
     // for (int i=0;i<args.size();i++)cout<< args[i];cout<<endl;
     // pdamc.set_nstates(3);
@@ -78,5 +77,7 @@ int main(int argc, char* argv[])
     // pdamc.run_kernel(0,1570);
     // cout<<pdamc.eargs<<endl;
     // cout<<pdamc.vargs<<endl;
+    std::vector<std::thread> threads;
+
     return 0;   
 }
