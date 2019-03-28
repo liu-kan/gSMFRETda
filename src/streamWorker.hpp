@@ -1,23 +1,18 @@
 #ifndef stream_thr_hpp
 #define stream_thr_hpp
 
-#include <Poco/Runnable.h>
-#include <Poco/Thread.h>
 #include "mc.hpp"
-#include "protobuf/args.pb.h"
+#include <string>
 
-class streamWorker : public Runnable
+class streamWorker 
 {
 public:
   streamWorker(mc* pdamc,string* url);
-  virtual void run();
+  void run(int sid);
 
 private:
   mc* pdamc;
   string* url;
-  int sock;
-  int s_n;
-  int ps_n;
 };
 
 #endif

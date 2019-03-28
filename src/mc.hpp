@@ -8,7 +8,7 @@ using namespace std;
 #include <curand_kernel.h>
 #include "loadHdf5.hpp"
 #define DEBUGMC true
-#include "Poco/Mutex.h"
+// #include "Poco/Mutex.h"
 
 typedef struct {
     unsigned int xor128[4];
@@ -58,7 +58,7 @@ class mc
         std::queue<int> streamFIFO;
         int getStream();
         void givebackStream(int i); 
-        Poco::FastMutex streamLock;
+        // Poco::FastMutex streamLock;
     public:        
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n,int sid);

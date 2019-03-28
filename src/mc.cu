@@ -137,11 +137,11 @@ mc::mc(int id,int _streamNum, bool de){
         cudaStreamCreate ( &(streams[sid])) ;
         streamFIFO.push(sid);
     }
-    matK=NULL;matP=NULL;    
+    matK=NULL;matP=NULL;        
     hpv=(float **)malloc(sizeof(float*)*streamNum);
     hpk=(float **)malloc(sizeof(float*)*streamNum);
     hpp=(float **)malloc(sizeof(float*)*streamNum);
-    hpe=(float **)malloc(sizeof(float*)*streamNum);
+    hpe=(float **)malloc(sizeof(float*)*streamNum);    
     gpv=(float **)malloc(sizeof(float*)*streamNum);
     gpk=(float **)malloc(sizeof(float*)*streamNum);
     gpp=(float **)malloc(sizeof(float*)*streamNum);
