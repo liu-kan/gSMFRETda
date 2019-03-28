@@ -16,7 +16,7 @@ git submodule update
 
 ## Build the code
 ```bash
-sudo apt install libhdf5-dev pkg-config
+sudo apt install libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev 
 cd gSMFRETda
 make main -j8
 ```

@@ -6,6 +6,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "tools.hpp"
+#include <iostream>
+#include <sstream> 
+#include <thread> 
 
 int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
 {
@@ -106,9 +109,13 @@ int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
     close(nSD);
     return (counteth);
 }
-#include <iostream>
+
 void genuid(std::string* id){
     std::string pid=std::to_string(getpid());
+    auto myid = std::this_thread::get_id();
+    std::stringstream ss;
+    ss << myid;
+    pid+= ss.str();
     unsigned char dMacAddr[8];
     char cMacAddr[13];
     memset(dMacAddr,0, sizeof(char)*6);
