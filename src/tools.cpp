@@ -10,6 +10,16 @@
 #include <sstream> 
 #include <thread> 
 
+
+#include <cassert>
+#include <cstdio>
+#include <ctime>
+#include <memory>
+#include <random>
+
+using namespace boost::histogram;
+using reg = axis::regular<>;
+
 int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
 {
     int nSD;                        // Socket descriptor
@@ -138,9 +148,57 @@ void genuid(std::string* id){
 }
 
 
-int _main(){    
+std::unique_ptr<double[]> random_array(unsigned n, int type) {
+  std::unique_ptr<double[]> r(new double[n]);
+  std::default_random_engine gen(1);
+  if (type) { // type == 1
+    std::normal_distribution<> d(0.5, 0.3);
+    for (unsigned i = 0; i < n; ++i) r[i] = d(gen);
+  } else { // type == 0
+    std::uniform_real_distribution<> d(0.0, 1.0);
+    for (unsigned i = 0; i < n; ++i) r[i] = d(gen);
+  }
+  return r;
+}
+
+template <typename Tag, typename Storage>
+double compare_1d(unsigned n, int distrib) {
+  auto r = random_array(n, distrib);
+  auto h = make_s(Tag(), Storage(), reg(100, 0, 1));
+  auto t = clock();
+  for (auto it = r.get(), end = r.get() + n; it != end;) h(*it++);
+  return (double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
+}
+double baseline(unsigned n) {
+  auto r = random_array(n, 0);
+  auto t = clock();
+  for (auto it = r.get(), end = r.get() + n; it != end;) {
+    volatile auto x = *it++;
+    (void)(x);
+  }
+  return (double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
+}
+
+
+int main(){    
     std::string id;
     genuid(&id);
     std::cout<<id<<std::endl;
+
+
+  const unsigned nfill = 2000;
+  using SStore = std::vector<int>;
+  using DStore = unlimited_storage<>;
+   printf("baseline %.1f\n", baseline(nfill));
+
+  for (int itype = 0; itype < 2; ++itype) {
+    const char* d = itype == 0 ? "uniform" : "normal ";
+    printf("1D-boost:SS-%s %5.1f\n", d, compare_1d<static_tag, SStore>(nfill, itype));
+    printf("1D-boost:SD-%s %5.1f\n", d, compare_1d<static_tag, DStore>(nfill, itype));
+    printf("1D-boost:DS-%s %5.1f\n", d, compare_1d<dynamic_tag, SStore>(nfill, itype));
+    printf("1D-boost:DD-%s %5.1f\n", d, compare_1d<dynamic_tag, DStore>(nfill, itype));
+
+  }
+
     exit(0);
 }

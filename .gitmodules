@@ -7,6 +7,12 @@
 [submodule "3rdparty/eigen"]
 	path = 3rdparty/eigen
 	url = https://github.com/eigenteam/eigen-git-mirror.git
-[submodule "3rdparty/cpp-base64"]
-	path = 3rdparty/cpp-base64
-	url = https://github.com/ReneNyffenegger/cpp-base64.git
+[submodule "3rdparty/boost/iterator"]
+	path = 3rdparty/boost/iterator
+	url = https://github.com/boostorg/iterator.git
+[submodule "3rdparty/boost/core"]
+	path = 3rdparty/boost/core
+	url = https://github.com/boostorg/core.git
+[submodule "3rdparty/boost/histogram"]
+	path = 3rdparty/boost/histogram
+	url = https://github.com/boostorg/histogram.git
