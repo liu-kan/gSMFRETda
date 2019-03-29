@@ -91,7 +91,7 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
             arrF f_ia(bins.len-1);
             binTimeHist(&f_ia,burst_ad,bins);
             arrF f_id(bins.len-1);
-            binTimeHist(&f_id,burst_dd,bins);            
+            binTimeHist(&f_id,burst_dd,bins);
             arrF f_i(bins.len-1);
             arrF f_if(bins.len-1);
             f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
@@ -123,8 +123,7 @@ __global__ void mc_kernel(float *chi2, int64_t* start,int64_t* stop,
             sidx.freeList();
             bins.freeList();
         }
-    }
-    
+    }    
 }
 
 mc::mc(int id,int _streamNum, bool de){    
