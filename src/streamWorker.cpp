@@ -7,9 +7,25 @@
 #include "tools.hpp"
 #include <iostream>
 
-streamWorker::streamWorker(mc* _pdamc,string* _url){
+using namespace boost::histogram;
+streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,
+  int _fretHistNum){
     pdamc=_pdamc;
     url=_url;       
+    SgDivSr=_d;
+    fretHistNum=_fretHistNum;
+    
+}
+// template <typename Tag, typename Storage>
+auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
+    auto h = make_s(static_tag(), std::vector<float>(), reg(binnum, lv, uv));
+    for (auto it = SgDivSr->begin(), end = SgDivSr->end(); it != end;) 
+        h(*it++);
+    // auto h = make_histogram(
+    //   axis::regular<>(binnum, 0.0, 1.0, "x")
+    // );    
+    // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
+    return h;
 }
 void streamWorker::run(int sid){
     int sock;
@@ -22,6 +38,8 @@ void streamWorker::run(int sid){
     ps_n=0;
     std::string gpuNodeId;
     genuid(&gpuNodeId);
+    
+    auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
       gSMFRETda::pb::p_cap cap;
       cap.set_cap(-1);
@@ -57,14 +75,7 @@ void streamWorker::run(int sid){
       nn_freemsg (rbuf);
       int N=pdamc->setBurstBd(ga.start(),ga.stop(), sid);
       pdamc->run_kernel(N,sid);
-      // cout<< ga.idx()<<endl;
-      // vector<float> fData={1,3,5,8,7,9};
-      // *ga.mutable_params() = {fData.begin(), fData.end()};
-      // size = ga.ByteSize(); 
-      // buffer = malloc(size);
-      // ga.SerializeToArray(buffer,size);
-      // bytes = nn_send (sock, buffer, size, 0);
-      // free(buffer);
+      
     }while(0);
 
 }

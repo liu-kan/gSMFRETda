@@ -22,6 +22,7 @@ parse(int argc, char* argv[])
       ("i,input", "Input HDF5", cxxopts::value<string>())
       ("g,gpuid", "The index of the GPU will be used", cxxopts::value<string>()->default_value("0"))
       ("s,snum", "Stream Number", cxxopts::value<string>()->default_value("16"))
+      ("f,fret_hist_num", "fret hist Number", cxxopts::value<string>()->default_value("200"))
       ("d,debug", "debug the gpu kernel 0 or 1", cxxopts::value<string>()->default_value("0"))
       ("h,help", "Print help")      
     ;
@@ -52,6 +53,7 @@ int main(int argc, char* argv[])
     string H5FILE_NAME=result["input"].as<string>();    
     string url=result["url"].as<string>();    
     int streamNum=std::stoi(result["snum"].as<string>());    
+    int fretHistNum=std::stoi(result["fret_hist_num"].as<string>());    
     int debugmc=std::stoi(result["debug"].as<string>());
     bool debugbool=(debugmc==0?false:true);
     int gpuid=std::stoi(result["gpuid"].as<string>());    
@@ -78,7 +80,8 @@ int main(int argc, char* argv[])
     // pdamc.run_kernel(0,1570);
     // cout<<pdamc.eargs<<endl;
     // cout<<pdamc.vargs<<endl;
-    streamWorker worker(&pdamc,&url);
+    
+    streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum);
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
       threads.push_back(std::thread(&streamWorker::run,&worker,i));

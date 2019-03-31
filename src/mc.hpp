@@ -31,8 +31,7 @@ class mc
         unsigned char *g_mask_ad,*g_mask_dd;
         float *gchi2,*hchi2;
         float **hpe,**hpk,**hpp,**hpv;
-        float **gpe,**gpk,**gpp,**gpv;
-        int sz_burst;
+        float **gpe,**gpk,**gpp,**gpv;        
         int64_t *g_start,*g_stop,*g_times_ms;
         uint32_t *g_istart,*g_istop;   
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
@@ -46,20 +45,23 @@ class mc
         unsigned long long int** hostScrambleConstants64;
         unsigned long long int** devDirectionVectors64;
         unsigned long long int** devScrambleConstants64;
-        int reSampleTimes;    
+        
         cudaStream_t* streams;        
         int streamNum;
         int blockSize;   // The launch configurator returned block size 
         int minGridSize; // The minimum grid size needed to achieve the 
                          // maximum occupancy for a full device launch 
         int *gridSize;   // The actual grid size needed, based on input size   
-        retype **mcE,**hmcE;
+        retype **mcE;
         bool debug;
         std::queue<int> streamFIFO;
         int getStream();
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
     public:        
+        retype **hmcE;
+        int sz_burst;
+        int reSampleTimes;
         RowVectorXf eargs,vargs,kargs;
         bool set_nstates(int n,int sid);
         int  setBurstBd(int cstart,int cstop, int sid);

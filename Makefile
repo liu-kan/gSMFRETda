@@ -5,13 +5,14 @@ else
 endif
 CXXFLAGS =	$(CFLAGS)
 HEADER = -I3rdparty/HighFive/include -I3rdparty/cxxopts/include -I/opt/cuda/include \
-	-I3rdparty/eigen -I/usr/local/cuda/include -I3rdparty/cpp-base64 
-BOOSTHEADER = -I 3rdparty/boost/histogram/include -I 3rdparty/boost/core/include/ -I 3rdparty/boost/iterator/include/ -I 3rdparty/boost_1_69_0/
+	-I3rdparty/eigen -I/usr/local/cuda/include
+#BOOSTHEADER = -I 3rdparty/boost/histogram/include -I 3rdparty/boost/core/include/ -I 3rdparty/boost/iterator/include/ -I 3rdparty/boost_1_69_0/
+BOOSTHEADER = -I 3rdparty/boost_1_70_0/
 LIBS = `pkg-config --libs hdf5` -L/opt/cuda/lib64 -L/usr/local/cuda/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf -pthread
 OUT_DIR=bin
 MKDIR_P = mkdir -p
-.PHONY: directories
-all: directories
+.PHONY: all
+all: directories main
 directories: ${OUT_DIR}
 ${OUT_DIR}:
 	${MKDIR_P} ${OUT_DIR}
@@ -35,7 +36,9 @@ loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 eigenhelper.o: src/eigenhelper.cpp src/eigenhelper.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/eigenhelper.cpp
 tools.o: src/tools.cpp src/tools.hpp
-	$(CXX) $(CXXFLAGS) $(BOOSTHEADER) -c src/tools.cpp	
+	$(CXX) $(CXXFLAGS) $(BOOSTHEADER) -c src/tools.cpp
+tools: src/tools.cpp src/tools.hpp
+	$(CXX) $(CXXFLAGS) $(BOOSTHEADER) src/tools.cpp -o bin/tools		
 args.pb.o: protobuf/args.proto 
 	protoc --cpp_out=src protobuf/args.proto
 	protoc --python_out=serv_py protobuf/args.proto

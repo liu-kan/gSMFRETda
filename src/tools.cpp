@@ -17,8 +17,8 @@
 #include <memory>
 #include <random>
 
-using namespace boost::histogram;
-using reg = axis::regular<>;
+
+
 
 int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
 {
@@ -160,14 +160,20 @@ std::unique_ptr<double[]> random_array(unsigned n, int type) {
   }
   return r;
 }
-
+#include <boost/format.hpp>
 template <typename Tag, typename Storage>
 double compare_1d(unsigned n, int distrib) {
   auto r = random_array(n, distrib);
   auto h = make_s(Tag(), Storage(), reg(100, 0, 1));
   auto t = clock();
+  double timesp=(double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
   for (auto it = r.get(), end = r.get() + n; it != end;) h(*it++);
-  return (double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
+      for (auto x : indexed(h)) {
+      std::cout << boost::format("bin %3i [%4.4f, %4.4f): %i\n")
+        % x.index() % x.bin().lower() % x.bin().upper() % *x;
+    }
+
+  return timesp;
 }
 double baseline(unsigned n) {
   auto r = random_array(n, 0);
@@ -180,25 +186,32 @@ double baseline(unsigned n) {
 }
 
 
-int main(){    
+
+
+int _main(){    
     std::string id;
     genuid(&id);
     std::cout<<id<<std::endl;
 
+    const unsigned nfill = 2000;
+    using SStore = std::vector<int>;
+    using SFStore = std::vector<float>;
+    using DStore = unlimited_storage<>;
+    printf("baseline %.1f\n", baseline(nfill));
+    for (int itype = 0; itype < 2; ++itype) {
+        const char* d = itype == 0 ? "uniform" : "normal ";
+        printf("1D-boost:SS-%s %5.1f\n", d, compare_1d<static_tag, SStore>(nfill, itype));
+        printf("1D-boost:SD-%s %5.1f\n", d, compare_1d<static_tag, DStore>(nfill, itype));
+        printf("1D-boost:DS-%s %5.1f\n", d, compare_1d<dynamic_tag, SStore>(nfill, itype));
+        printf("1D-boost:DD-%s %5.1f\n", d, compare_1d<dynamic_tag, DStore>(nfill, itype));
 
-  const unsigned nfill = 2000;
-  using SStore = std::vector<int>;
-  using DStore = unlimited_storage<>;
-   printf("baseline %.1f\n", baseline(nfill));
-
-  for (int itype = 0; itype < 2; ++itype) {
-    const char* d = itype == 0 ? "uniform" : "normal ";
-    printf("1D-boost:SS-%s %5.1f\n", d, compare_1d<static_tag, SStore>(nfill, itype));
-    printf("1D-boost:SD-%s %5.1f\n", d, compare_1d<static_tag, DStore>(nfill, itype));
-    printf("1D-boost:DS-%s %5.1f\n", d, compare_1d<dynamic_tag, SStore>(nfill, itype));
-    printf("1D-boost:DD-%s %5.1f\n", d, compare_1d<dynamic_tag, DStore>(nfill, itype));
-
-  }
-
-    exit(0);
+    }
+    std::vector<float> s={-34.4,0.435,5.3,.67,.45,.72,.56487,.678,.89,.432};
+    // auto h=mkhist(s,3,0,1);//<static_tag,SFStore>
+        
+    //     for (auto x : indexed(h)) {
+    //     std::cout << boost::format("bin %3i [%4.4f, %4.4f): %i\n")
+    //     % x.index() % x.bin().lower() % x.bin().upper() % *x;
+    // }
+exit(0);
 }

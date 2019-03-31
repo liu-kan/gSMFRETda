@@ -4,13 +4,12 @@
 #include <string>
 void genuid(std::string* id);
 
-#include <boost/histogram/axis/ostream.hpp>
-#include <boost/histogram/axis/variant.hpp>
-#include <boost/histogram/make_histogram.hpp>
-#include <boost/histogram/ostream.hpp>
-#include <type_traits>
-#include <vector>
 
+#include <boost/histogram.hpp>
+
+#include <vector>
+using namespace boost::histogram;
+using reg = axis::regular<>;
 namespace boost {
 namespace histogram {
 
@@ -45,6 +44,5 @@ auto make_s(dynamic_tag, S&& s, Axes&&... axes) {
 
 } // namespace histogram
 } // namespace boost
-
 
 #endif
