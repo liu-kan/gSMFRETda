@@ -75,7 +75,39 @@ void streamWorker::run(int sid){
       nn_freemsg (rbuf);
       int N=pdamc->setBurstBd(ga.start(),ga.stop(), sid);
       pdamc->run_kernel(N,sid);
-      
-    }while(0);
-
+      vector<float> mcE(pdamc->hmcE[sid], 
+        pdamc->hmcE[sid] + N*pdamc->reSampleTimes);
+      auto mcHist=mkhist(&mcE,fretHistNum,0,1);
+      vector<float> vMcHist(fretHistNum);
+      vector<float> vOEHist(fretHistNum);
+      int ihist=0;
+      for (auto x : indexed(fretHist))
+        vOEHist[ihist++]=*x;
+      ihist=0;
+      for (auto x : indexed(mcHist))
+        vMcHist[ihist++]=*x;      
+      int effN=fretHistNum;           
+      float chisqr=0;
+      for(ihist=0;ihist<fretHistNum;ihist++){
+        if(vOEHist[ihist]>0)
+          chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist])),2)
+            /float(vOEHist[ihist]);
+        else
+          effN--;      
+      }
+      chisqr=chisqr/(effN-s_n*(s_n+1));
+      gSMFRETda::pb::res chi2res;
+      chi2res.set_s_n(s_n);
+      chi2res.set_idx(gpuNodeId);
+      for (auto v : params)
+        chi2res.add_params(v);
+      chi2res.set_e(chisqr);
+      string sres;
+      chi2res.SerializeToString(&sres);
+      sres="r"+sres;
+      bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
+      rbuf = NULL;
+      bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
+    }while(1);
+    // std::cout<<"end\n";
 }

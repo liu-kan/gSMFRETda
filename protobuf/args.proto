@@ -18,5 +18,9 @@ message p_cap {
 }
 
 message res {    
-    repeated float elist = 1 [packed=true];
+    int32 s_n = 1; 
+    float e = 2;
+    string idx = 3;
+    repeated float params = 4 [packed=true];
+    
 }

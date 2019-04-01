@@ -25,10 +25,16 @@ def paramsServ(port):
             pb_ga.start=0
             pb_ga.stop=pb_cap.cap
             # print(base64.b64decode(recvstr[1:]))
-            pb_ga.idx=base64.b64decode(recvstr[1:])
+            # pb_ga.idx=base64.b64decode(recvstr[1:])
+            pb_ga.idx=recvstr[1:]
             for i in range(ps_n):
                 pb_ga.params.append(i)    
             s1.send(pb_ga.SerializeToString())
+        elif recvstr[0]==ord('r'):
+            res=args_pb2.res()
+            res.ParseFromString(recvstr[1:])
+            print("res chi2",res.e)
+            s1.send("ok")
     s1.close()
 
 if __name__ == '__main__':

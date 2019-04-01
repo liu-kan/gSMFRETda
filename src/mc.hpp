@@ -29,14 +29,13 @@ class mc
         int devid;
         long sz_tag;
         unsigned char *g_mask_ad,*g_mask_dd;
-        float *gchi2,*hchi2;
+        // float *gchi2,*hchi2;
         float **hpe,**hpk,**hpp,**hpv;
         float **gpe,**gpk,**gpp,**gpv;        
         int64_t *g_start,*g_stop,*g_times_ms;
         uint32_t *g_istart,*g_istop;   
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
-        MatrixXf *matK,*matP;        
-        int *s_n;
+        MatrixXf *matK,*matP;                
         int *begin_burst;
         int *end_burst;
         rk_state** devStates;
@@ -60,9 +59,9 @@ class mc
         // Poco::FastMutex streamLock;
     public:        
         retype **hmcE;
-        int sz_burst;
-        int reSampleTimes;
-        RowVectorXf eargs,vargs,kargs;
+        int *s_n;
+        int sz_burst;        
+        int reSampleTimes;        
         bool set_nstates(int n,int sid);
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
