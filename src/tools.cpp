@@ -184,7 +184,16 @@ double baseline(unsigned n) {
   }
   return (double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
 }
-
+auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
+    auto h = make_s(static_tag(), std::vector<float>(), reg(binnum, lv, uv));
+    for (auto it = SgDivSr->begin(), end = SgDivSr->end(); it != end;) 
+        h(*it++);
+    // auto h = make_histogram(
+    //   axis::regular<>(binnum, 0.0, 1.0, "x")
+    // );    
+    // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
+    return h;
+}
 
 
 
@@ -207,11 +216,11 @@ int _main(){
 
     }
     std::vector<float> s={-34.4,0.435,5.3,.67,.45,.72,.56487,.678,.89,.432};
-    // auto h=mkhist(s,3,0,1);//<static_tag,SFStore>
-        
-    //     for (auto x : indexed(h)) {
-    //     std::cout << boost::format("bin %3i [%4.4f, %4.4f): %i\n")
-    //     % x.index() % x.bin().lower() % x.bin().upper() % *x;
-    // }
+    auto h=mkhist(&s,3,0,1);//<static_tag,SFStore>
+    
+        for (auto x : indexed(h)) {
+        std::cout << boost::format("bin %3i [%4.4f, %4.4f): %i\n")
+        % x.index() % x.bin().lower() % x.bin().upper() % *x;
+    }
 exit(0);
 }
