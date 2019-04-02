@@ -8,7 +8,7 @@ class streamWorker
 {
 public:
   streamWorker(mc* pdamc,string* url,std::vector<float> *d,int fretHistNum);
-  void run(int sid);
+  void run(int sid,int sz_burst);
 auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 private:
   mc* pdamc;
