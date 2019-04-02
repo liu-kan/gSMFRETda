@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
     streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum);
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
-      threads.push_back(std::thread(&streamWorker::run,&worker,i));
+      threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
     }
     for (auto& th : threads) th.join();
     return 0;   

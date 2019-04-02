@@ -66,7 +66,7 @@ class mc
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
         void free_data_gpu();
-        void int_randstate(int N=-1);
+        void int_randstate(int N,int sid);
         void run_kernel(int N, int sid);
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
             vector<uint32_t>& istart,vector<uint32_t>& istop,
@@ -76,8 +76,7 @@ class mc
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
         mc(int devid,int _streamNum=16,bool debug=DEBUGMC);
-        bool set_params(int n,int sid,vector<float>& args);
-        int startStream();
+        bool set_params(int n,int sid,vector<float>& args);        
 };
 
 #endif

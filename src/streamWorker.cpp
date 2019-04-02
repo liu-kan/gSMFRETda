@@ -27,7 +27,7 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
     return h;
 }
-void streamWorker::run(int sid){
+void streamWorker::run(int sid,int sz_burst){
     int sock;
     int s_n;
     int ps_n;
@@ -42,7 +42,7 @@ void streamWorker::run(int sid){
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
       gSMFRETda::pb::p_cap cap;
-      cap.set_cap(-1);
+      cap.set_cap(sz_burst);
       cap.set_idx(gpuNodeId);
       string scap;
       cap.SerializeToString(&scap);
@@ -108,6 +108,6 @@ void streamWorker::run(int sid){
       bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
       rbuf = NULL;
       bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
-    }while(1);
+    }while(0);
     // std::cout<<"end\n";
 }
