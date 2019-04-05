@@ -51,70 +51,71 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
     float Dch2Ach=0.07,float r0=52){
     
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;    
-    if (tidx<N*reSampleTimes){
+    if (tidx<N){
         int idx=tidx/reSampleTimes;
         arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
         arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
         arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
         arrI64 burst_dd=mask_ddA.cast<int64_t>()*times_msA;
         arrI64 burst_ad=mask_adA.cast<int64_t>()*times_msA;
-        // for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
-            // int sampleTime=tidx%reSampleTimes;
-            int si=drawDisIdx(s_n,gpp,devQStates+idx);
-            cuList<int> sidx;
-            cuList<int64_t> bins;
-            bins.append(start[idx]);
-            sidx.append(si);            
+        for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
+            // // int sampleTime=tidx%reSampleTimes;
+            int si=drawDisIdx(s_n,gpp,devQStates+tidx);
+            // cuList<int> sidx;
+            // cuList<int64_t> bins;
+            // bins.append(start[idx]);
+            // sidx.append(si);            
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
             while (T[idx]>mcSpendTime){
-                int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+idx);
-                sidx.append(sj);
-                mcSpendTime+=drawTau(matK(si,sj),devQStates+idx);
+                int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
+                // sidx.append(sj);
+                mcSpendTime+=1;//drawTau(matK(si,sj),devQStates+tidx);
                 si=sj;                
-                if(mcSpendTime>=T[idx]){
-                    bins.append(stop[idx]);
-                }
-                else{
-                    bins.append(*(bins.at(0))+mcSpendTime/clk_p);
-                }
+            //     if(mcSpendTime>=T[idx]){
+            //         bins.append(stop[idx]);
+            //     }
+            //     else{
+            //         bins.append(*(bins.at(0))+mcSpendTime/clk_p);
+            //     }
             }            
-            arrF f_ia(bins.len-1);
-            binTimeHist(&f_ia,burst_ad,bins);
-            arrF f_id(bins.len-1);
-            binTimeHist(&f_id,burst_dd,bins);
-            arrF f_i(bins.len-1);
-            arrF f_if(bins.len-1);
-            f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
+            // arrF f_ia(bins.len-1);
+            // binTimeHist(&f_ia,burst_ad,bins);
+            // arrF f_id(bins.len-1);
+            // binTimeHist(&f_id,burst_dd,bins);
+            // arrF f_i(bins.len-1);
+            // arrF f_if(bins.len-1);
+            // f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
             if (bg_dd_rate<1e-4){
-                f_i=(f_if+0.5).floor();
+                // f_i=(f_if+0.5).floor();
             }
             else{
-                arrF t_diff(bins.len-1);
-                bins.diff(&t_diff);
-                t_diff=t_diff*clk_p;
-                arrF rf_ia(bins.len-1);
-                rf_ia=(1-DexDirAem)*f_ia;
-                arrF bg_a(bins.len-1);
-                draw_P_B_Tr(bg_a.data(),rf_ia.data(),bins.len-1,t_diff.data(),bg_ad_rate ,devQStates+idx);
-                arrF rf_id(bins.len-1);
-                rf_id=(gamma-Dch2Ach)*f_id;
-                arrF bg_d(bins.len-1);
-                draw_P_B_Tr(bg_d.data(),rf_id.data(),bins.len-1,t_diff.data(),bg_dd_rate ,devQStates+idx);   
-                f_i=(f_if - bg_d - bg_a+0.5).floor();             
+                // arrF t_diff(bins.len-1);
+                // bins.diff(&t_diff);
+                // t_diff=t_diff*clk_p;
+                // arrF rf_ia(bins.len-1);
+                // rf_ia=(1-DexDirAem)*f_ia;
+                // arrF bg_a(bins.len-1);
+                // draw_P_B_Tr(bg_a.data(),rf_ia.data(),bins.len-1,t_diff.data(),bg_ad_rate ,devQStates+tidx);
+                // arrF rf_id(bins.len-1);
+                // rf_id=(gamma-Dch2Ach)*f_id;
+                // arrF bg_d(bins.len-1);
+                // draw_P_B_Tr(bg_d.data(),rf_id.data(),bins.len-1,t_diff.data(),bg_dd_rate ,devQStates+tidx);   
+                // f_i=(f_if - bg_d - bg_a+0.5).floor();             
             }
-            float F=f_if.sum();
-            for (int s_trans=0;s_trans<bins.len-1;s_trans++){
-                float de=drawE(gpe[*(sidx.at(s_trans))],r0,
-                    gpv[*(sidx.at(s_trans))],devQStates+idx);
-                long ai=drawA_fi_e(devStates+idx, f_i(s_trans), de) ;
-                // mcE[idx*reSampleTimes+sampleTime]+=ai;
-                mcE[tidx]+=ai;
-            }
-            mcE[tidx]/=F;
-            sidx.freeList();
-            bins.freeList();
-        // }
+            // float F=f_if.sum();
+            // if(F>0){
+            //     for (int s_trans=0;s_trans<bins.len-1;s_trans++){
+                    // float de=drawE(gpe[*(sidx.at(s_trans))],r0,gpv[*(sidx.at(s_trans))],devQStates+tidx);
+                    // long ai=drawA_fi_e(devStates+tidx, f_i(s_trans), de) ;
+                    // mcE[idx*reSampleTimes+sampleTime]+=ai;
+                    // mcE[tidx]+=ai;
+            //     }
+            //     mcE[tidx]/=F;
+            // }
+            // sidx.freeList();
+            // bins.freeList();
+        }
     }    
 }
 
@@ -125,7 +126,7 @@ mc::mc(int id,int _streamNum, bool de){
     devid=id;
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
     for(int sid=0;sid<_streamNum;sid++){
-        cudaStreamCreate ( streams+sid) ;
+        cudaStreamCreate ( &(streams[sid]) );
         streamFIFO.push(sid);
     }
     matK=NULL;matP=NULL;        
@@ -157,6 +158,7 @@ mc::mc(int id,int _streamNum, bool de){
     hmcE=(retype **)malloc(sizeof(retype*)*streamNum);
     std::memset(mcE, 0, sizeof(retype*)*streamNum);
     std::memset(hmcE, 0, sizeof(retype*)*streamNum);
+    // hmcE=mcE=NULL;
     devStates=(rk_state**)malloc(sizeof(rk_state*)*streamNum);
     devQStates=(curandStateScrambledSobol64**)malloc(sizeof(curandStateScrambledSobol64*)*streamNum);
     hostVectors64=(curandDirectionVectors64_t**)malloc(sizeof(curandDirectionVectors64_t*)*streamNum);
@@ -171,7 +173,7 @@ mc::mc(int id,int _streamNum, bool de){
     std::memset(devScrambleConstants64, 0, sizeof(unsigned long long int*)*streamNum);    
     reSampleTimes=5;
     cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSize, mc_kernel, 0, 0);     
-    
+    blockSize=256;
 }
 void mc::set_reSampleTimes(int t){
     reSampleTimes=t;
@@ -192,7 +194,7 @@ void mc::givebackStream(int i){
 void mc::int_randstate(int N,int sid){
     int NN=N;
     if (N==-1){
-        NN=sz_burst;
+        NN=sz_burst*reSampleTimes;
     }    
     // for (int sid=0;sid<streamNum;sid++){
         CUDA_CHECK_RETURN(cudaFree ( devStates[sid]));
@@ -219,7 +221,7 @@ void mc::int_randstate(int N,int sid){
         NN * sizeof(long long int), 
         cudaMemcpyHostToDevice,streams[sid]));
         gridSize[sid] = (NN + blockSize - 1) / blockSize;
-        cudaStreamSynchronize(streams[sid]);
+        CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
         setup_kernel <<<gridSize[sid], blockSize,0,streams[sid]>>>(devStates[sid], 0,/*time(NULL)*/ NN,        
             devDirectionVectors64[sid], devScrambleConstants64[sid], devQStates[sid]);    
         CUDAstream_CHECK_LAST_ERROR;
@@ -278,14 +280,17 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         // dim3 threads = dim3(dimension, 1);
         // int blocksCount = ceil(float(N)/dimension);
         // dim3 blocks  = dim3(blocksCount, 1);    
-        gridSize[sid] = (N*reSampleTimes + blockSize - 1) / blockSize;         
-        CUDA_CHECK_RETURN(cudaFree(mcE[sid]));
-        CUDA_CHECK_RETURN(cudaFreeHost(hmcE[sid]));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&(mcE[sid]), N *reSampleTimes* sizeof(retype)));        
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype)));
+        gridSize[sid] = (N*reSampleTimes + blockSize - 1) / blockSize;
+        cout<<gridSize[sid]<<"g"<<N*reSampleTimes<<"tN"<<blockSize<<"bS"<<mcE[sid]<<endl;
+        
+        CUDA_CHECK_RETURN(cudaFree((void*)mcE[sid]));
+        cout<<mcE[sid]<<endl;
+        CUDA_CHECK_RETURN(cudaFreeHost((void*)hmcE[sid]));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&mcE[sid], N *reSampleTimes* sizeof(retype)));        
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE[sid], N *reSampleTimes* sizeof(retype)));
     }    
     CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
-    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return N;    
 }
 
@@ -299,12 +304,13 @@ void mc::run_kernel(int N, int sid){
         gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],
         devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
     CUDAstream_CHECK_LAST_ERROR;
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N *reSampleTimes* sizeof(retype), cudaMemcpyDeviceToHost));
-    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    cout<<"sid:"<<sid<<endl;
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * sizeof(retype), cudaMemcpyDeviceToHost,streams[sid]));
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
         std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
-        for (int ip=0;ip<N;ip++)
-            cout<<my_vector.at(ip)<<" ";
+        for (int ip=0;ip<N*reSampleTimes;ip++)
+            printf("%2.4f \t",my_vector.at(ip));
         cout<<endl;
         // savehdf5("r.hdf5", "/r",my_vector);
     }
@@ -397,7 +403,7 @@ bool mc::set_nstates(int n,int sid){
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpv[sid]), n*sizeof(float)));
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpp[sid]), n*sizeof(float)));
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpk[sid]), n*n*sizeof(float)));   
-        int_randstate(n,sid);
+        int_randstate(n*reSampleTimes,sid);
     }
     return r;
 }
@@ -426,6 +432,6 @@ bool mc::set_params(int n,int sid,vector<float>& args){
         cudaMemcpyHostToDevice,streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid],matP->data(), sizeof(float)*n,
         cudaMemcpyHostToDevice,streams[sid]));    
-    cudaStreamSynchronize(streams[sid]);
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return r;
 }

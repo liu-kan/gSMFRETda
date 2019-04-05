@@ -48,8 +48,6 @@ parse(int argc, char* argv[])
 int main(int argc, char* argv[])
 {
     auto result = parse(argc, argv);
-    // auto arguments = result.arguments();
-    // cout << "Saw " << arguments[0].key() << " arguments" << endl;
     string H5FILE_NAME=result["input"].as<string>();    
     string url=result["url"].as<string>();    
     int streamNum=std::stoi(result["snum"].as<string>());    
@@ -65,27 +63,25 @@ int main(int argc, char* argv[])
     float clk_p,bg_ad_rate,bg_dd_rate;
     loadhdf5(H5FILE_NAME,start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
-    // cout << "mask_ad len " << mask_ad.size() << " mask_ad last " << mask_ad[34367292]<< endl;
     assert (mask_ad.size() == times_ms.size());
     assert (T_burst_duration.size() == SgDivSr.size());
     assert (T_burst_duration.size() == istart.size());
-    cout<<T_burst_duration.size()<<endl;    
+    cout<<T_burst_duration.size()<<endl;
     mc pdamc(gpuid,streamNum,debugbool);
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
-         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);        
-    // vector<float> args={0.2,0.3,0.4,1,1,1,1,1,1,0.9,0.9,0.9};
-    // for (int i=0;i<args.size();i++)cout<< args[i];cout<<endl;
-    // pdamc.set_nstates(3);
-    // pdamc.set_params(args);
-    // pdamc.run_kernel(0,1570);
-    // cout<<pdamc.eargs<<endl;
-    // cout<<pdamc.vargs<<endl;
-    
+         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum);
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
       threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
     }
     for (auto& th : threads) th.join();
+   	// for (std::thread & th : threads)
+    // {
+    //   if (th.joinable())
+    //     th.join();
+    // }
+  
+    // worker.run(0,pdamc.sz_burst);
     return 0;   
 }

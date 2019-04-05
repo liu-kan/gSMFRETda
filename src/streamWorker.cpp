@@ -38,7 +38,7 @@ void streamWorker::run(int sid,int sz_burst){
     ps_n=0;
     std::string gpuNodeId;
     genuid(&gpuNodeId);
-    
+    int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
       gSMFRETda::pb::p_cap cap;
@@ -108,6 +108,7 @@ void streamWorker::run(int sid,int sz_burst){
       bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
       rbuf = NULL;
       bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
-    }while(0);
+      countcalc++;
+    }while(countcalc<3);
     // std::cout<<"end\n";
 }

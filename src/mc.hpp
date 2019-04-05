@@ -45,20 +45,20 @@ class mc
         unsigned long long int** devDirectionVectors64;
         unsigned long long int** devScrambleConstants64;
         
-        cudaStream_t* streams;        
+        cudaStream_t* streams;
         int streamNum;
         int blockSize;   // The launch configurator returned block size 
         int minGridSize; // The minimum grid size needed to achieve the 
                          // maximum occupancy for a full device launch 
         int *gridSize;   // The actual grid size needed, based on input size   
-        retype **mcE;
+        retype** mcE;
         bool debug;
         std::queue<int> streamFIFO;
         int getStream();
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
     public:        
-        retype **hmcE;
+        retype** hmcE;
         int *s_n;
         int sz_burst;        
         int reSampleTimes;        
