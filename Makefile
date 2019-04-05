@@ -26,11 +26,12 @@ endif
 mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp src/binom.cuh src/gen_rand.cuh src/cuList.cuh
 	# nvcc $(CXXFLAGS) -arch=compute_30 -code=sm_30,sm_61,sm_70 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
 	nvcc $(CXXFLAGS) -gencode arch=compute_30,code=sm_30\
-					 -gencode arch=compute_52,code=sm_52\
-	 				 -gencode arch=compute_61,code=sm_61\
-					 -gencode arch=compute_70,code=sm_70\
-					 -gencode arch=compute_75,code=sm_75\
-					 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
+					--expt-relaxed-constexpr $(HEADER) -c src/mc.cu
+					#  -gencode arch=compute_52,code=sm_52\
+	 				#  -gencode arch=compute_61,code=sm_61\
+					#  -gencode arch=compute_70,code=sm_70\
+					#  -gencode arch=compute_75,code=sm_75\
+					 
 loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp
 eigenhelper.o: src/eigenhelper.cpp src/eigenhelper.hpp

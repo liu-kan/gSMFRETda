@@ -19,19 +19,21 @@ class cuList
 public:
     clist<T> *l;
     int sz;
-    int len;    
+    int len;   
+    int errno; 
     CU_CALL_MEMBER cuList(){
         l=new clist<T>();
         l->x=new T[_sz];
         sz=_sz;
         len=0;
+        errno=0;
     };
     CU_CALL_MEMBER void freeList(){
         int len1=sz/_sz;
         clist<T> *r=l;
         if (len1>0){
             for (int i=0;i<len1;i++){
-                delete r->x;
+                delete[](r->x);
                 clist<T> *t=r;
                 r=r->nx;
                 delete(t); 
@@ -72,6 +74,10 @@ public:
             r->nx=new clist<T>();
             r=r->nx;
             r->x=new T[_sz];
+            if (r->nx==NULL||r->x==NULL)                
+                printf("cuList malloc NULL #\n");
+            // else
+            //     printf("cuList malloc fine!\n");
             sz+=_sz;
         }
     };
