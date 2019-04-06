@@ -27,8 +27,12 @@ def paramsServ(port):
             # print(base64.b64decode(recvstr[1:]))
             # pb_ga.idx=base64.b64decode(recvstr[1:])
             pb_ga.idx=recvstr[1:]
-            for i in range(ps_n):
-                pb_ga.params.append(i)    
+            for i in range(s_n):
+                pb_ga.params.append((i+1)*0.3)
+            for i in range(s_n*s_n-s_n):
+                pb_ga.params.append((i+1)*1000)
+            for i in range(s_n):
+                pb_ga.params.append(20)                
             s1.send(pb_ga.SerializeToString())
         elif recvstr[0]==ord('r'):
             res=args_pb2.res()

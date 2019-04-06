@@ -35,7 +35,8 @@ class mc
         int64_t *g_start,*g_stop,*g_times_ms;
         uint32_t *g_istart,*g_istop;   
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
-        MatrixXf *matK,*matP;                
+        arrFF *matK;
+        arrF* matP;                
         int *begin_burst;
         int *end_burst;
         rk_state** devStates;
