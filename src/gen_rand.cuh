@@ -2,6 +2,7 @@
 #define genrand_INCLUDED
 #include <Eigen/Eigen>
 
+#define VECTOR_SIZE 64
 
 __global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
     unsigned long long *sobolDirectionVectors, 
@@ -39,7 +40,11 @@ __device__ float drawTau(float k,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
     *state=s;
-    return logf(1-pv)/(-k);
+    if (pv<1e-5)
+        pv+=1e-5;
+    else if(pv>1-1e-15)
+        pv=pv-1e-15;
+    return logf(1-pv)/(-k)+1e-5;
 }
 __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;

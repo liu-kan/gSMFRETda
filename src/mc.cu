@@ -70,7 +70,9 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
             while (T[idx]>mcSpendTime){
                 int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
                 // sidx.append(sj);
-                mcSpendTime+=1;//drawTau(matK(si,sj),devQStates+tidx);
+                float st=drawTau(matK(si,sj),devQStates+tidx);
+                // printf("%f\t",st);
+                mcSpendTime=mcSpendTime+st;
                 si=sj;                
             //     if(mcSpendTime>=T[idx]){
             //         bins.append(stop[idx]);
@@ -207,12 +209,22 @@ void mc::int_randstate(int N,int sid){
         NN * VECTOR_SIZE * sizeof(long long int)));       
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(devScrambleConstants64[sid]), 
         NN * sizeof(long long int)));
-        // CUDA_CHECK_RETURN
-        (curandGetDirectionVectors64( &(hostVectors64[sid]), 
-            CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6));
-        // CUDA_CHECK_RETURN
-        (curandGetScrambleConstants64( &(hostScrambleConstants64[sid]))); 
-
+        
+        curandStatus_t curandResult =curandGetDirectionVectors64( &(hostVectors64[sid]), 
+            CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6);
+        if (curandResult != CURAND_STATUS_SUCCESS)
+        {
+            string msg("Could not get direction vectors for quasi-random number generator: ");
+            msg += curandResult;
+            throw std::runtime_error(msg);
+        }    
+        curandResult=curandGetScrambleConstants64( &(hostScrambleConstants64[sid])); 
+        if (curandResult != CURAND_STATUS_SUCCESS)
+        {
+            string msg("Could not get direction vectors for quasi-random number generator: ");
+            msg += curandResult;
+            throw std::runtime_error(msg);
+        }
         CUDA_CHECK_RETURN(cudaMemcpyAsync(devDirectionVectors64[sid],
              hostVectors64[sid],
             NN * VECTOR_SIZE * sizeof(long long int), 
@@ -221,10 +233,10 @@ void mc::int_randstate(int N,int sid){
         NN * sizeof(long long int), 
         cudaMemcpyHostToDevice,streams[sid]));
         gridSize[sid] = (NN + blockSize - 1) / blockSize;
-        CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+        // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
         setup_kernel <<<gridSize[sid], blockSize,0,streams[sid]>>>(devStates[sid], 0,/*time(NULL)*/ NN,        
             devDirectionVectors64[sid], devScrambleConstants64[sid], devQStates[sid]);    
-        CUDAstream_CHECK_LAST_ERROR;
+        // CUDAstream_CHECK_LAST_ERROR;
     // }
 }
 
@@ -290,7 +302,7 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE[sid], N *reSampleTimes* sizeof(retype)));
     }    
     CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return N;    
 }
 
@@ -303,10 +315,11 @@ void mc::run_kernel(int N, int sid){
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
         gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],
         devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
-    CUDAstream_CHECK_LAST_ERROR;
+    // CUDAstream_CHECK_LAST_ERROR;
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     cout<<"sid:"<<sid<<endl;
     CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * sizeof(retype), cudaMemcpyDeviceToHost,streams[sid]));
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
         std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
         for (int ip=0;ip<N*reSampleTimes;ip++)
@@ -419,7 +432,7 @@ bool mc::set_params(int n,int sid,vector<float>& args){
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
-    // cout<<"p:"<<*matP<<endl;
+    cout<<"k:"<<*matK<<endl;
     // memcpy(hpe[sid], peargs, sizeof(float)*n);
     // memcpy(hpv[sid], pvargs, sizeof(float)*n);
     // memcpy(hpk[sid], matK->data(), sizeof(float)*n*n);

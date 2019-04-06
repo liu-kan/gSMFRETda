@@ -2,14 +2,14 @@
 #include <iostream>
 using namespace std;
 using namespace Eigen;
-bool genMatK(Eigen::MatrixXf** matK,int n, RowVectorXf& args){
+bool genMatK(arrFF** matK,int n, RowVectorXf& args){
     if (args.size()<1)
         return false;
     if (args.size()!=n*n-n)
         return false;
     // if (*matK!=NULL)
         delete(*matK);
-    *matK=new Eigen::MatrixXf(n,n);
+    *matK=new arrFF(n,n);
     for (int i=0;i<n;i++)
         for (int j=0;j<n;j++)
             if (i<j)
@@ -40,17 +40,17 @@ def genMatP(matK):
     # print(matP)        
     return matP
     */
-bool genMatP(Eigen::MatrixXf** matP,Eigen::MatrixXf* matK){
+bool genMatP(arrF** matP,arrFF* matK){
     int n=matK->rows();
     if (n<1)
         return false;
     // if (*matP!=NULL)
         delete(*matP);        
-    *matP=new Eigen::MatrixXf(n,1);
+    *matP=new arrF(n);
     float ap=0;
     for (int i=0;i<n;i++)
         ap+=(*matK)(i,i);
     for (int i=0;i<n;i++)
-        (**matP)(i,0)=(*matK)(i,i)/ap;
+        (**matP)(i)=(*matK)(i,i)/ap;
     return true;
 }
