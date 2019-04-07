@@ -61,6 +61,7 @@ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSob
     j=drawDisIdx(np.arange(n_states),P_i2j)
     return j
     */
+    //预先生成不同初始状态之间的转换矩阵
     float *P_i2j=(float *)malloc(sizeof(float)*n_sates);
     memcpy(P_i2j,matP,sizeof(float)*n_sates);   
     // matFlMapper P_i2jM(P_i2j,n_sates,1);

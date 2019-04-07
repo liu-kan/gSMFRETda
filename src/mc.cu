@@ -74,12 +74,12 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                 // printf("%f\t",st);
                 mcSpendTime=mcSpendTime+st;
                 si=sj;                
-            //     if(mcSpendTime>=T[idx]){
-            //         bins.append(stop[idx]);
-            //     }
-            //     else{
-            //         bins.append(*(bins.at(0))+mcSpendTime/clk_p);
-            //     }
+                // if(mcSpendTime>=T[idx]){
+                //     bins.append(stop[idx]);
+                // }
+                // else{
+                //     bins.append(*(bins.at(0))+mcSpendTime/clk_p);
+                // }
             }            
             // arrF f_ia(bins.len-1);
             // binTimeHist(&f_ia,burst_ad,bins);
