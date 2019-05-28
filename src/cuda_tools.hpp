@@ -5,16 +5,16 @@
 #include <cuda.h>
 #include <memory>
 #include <iostream>
-static void HandleError( cudaError_t err )
-{
-	// CUDA error handeling from the "CUDA by example" book
-	if (err != cudaSuccess)
-    {
-		printf( "%s  \n", cudaGetErrorString( err ) );
-		exit( EXIT_FAILURE );
-	}
-}
-#define HANDLE_ERROR( err ) (HandleError( err))
+//static void HandleError( cudaError_t err )
+//{
+//	// CUDA error handeling from the "CUDA by example" book
+//	if (err != cudaSuccess)
+//    {
+//		printf( "%s  \n", cudaGetErrorString( err ) );
+//		exit( EXIT_FAILURE );
+//	}
+//}
+//#define HANDLE_ERROR( err ) (HandleError( err))
 
 
 static void CheckCudaErrorAux (const char *, unsigned, const char *, cudaError_t);
