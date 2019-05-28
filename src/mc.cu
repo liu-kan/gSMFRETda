@@ -67,6 +67,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
             // sidx.append(si);            
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
+            int count=0;
             while (T[idx]>mcSpendTime){
                 int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
                 // sidx.append(sj);
@@ -80,6 +81,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                 // else{
                 //     bins.append(*(bins.at(0))+mcSpendTime/clk_p);
                 // }
+                count++;
             }            
             // arrF f_ia(bins.len-1);
             // binTimeHist(&f_ia,burst_ad,bins);
@@ -114,6 +116,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                     // mcE[tidx]+=ai;
             //     }
             //     mcE[tidx]/=F;
+            mcE[tidx+sampleTime*N]=11;
             // }
             // sidx.freeList();
             // bins.freeList();
@@ -128,7 +131,7 @@ mc::mc(int id,int _streamNum, bool de){
     devid=id;
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
     for(int sid=0;sid<_streamNum;sid++){
-        cudaStreamCreate ( &(streams[sid]) );
+        CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( streams+sid,cudaStreamNonBlocking) );
         streamFIFO.push(sid);
     }
     matK=NULL;matP=NULL;        
@@ -293,7 +296,7 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         // int blocksCount = ceil(float(N)/dimension);
         // dim3 blocks  = dim3(blocksCount, 1);    
         gridSize[sid] = (N*reSampleTimes + blockSize - 1) / blockSize;
-        cout<<gridSize[sid]<<"g"<<N*reSampleTimes<<"tN"<<blockSize<<"bS"<<mcE[sid]<<endl;
+        cout<<gridSize[sid]<<" g "<<N*reSampleTimes<<" tN "<<blockSize<<" bS "<<mcE[sid]<<endl;
         
         CUDA_CHECK_RETURN(cudaFree((void*)mcE[sid]));
         cout<<mcE[sid]<<endl;
@@ -315,15 +318,17 @@ void mc::run_kernel(int N, int sid){
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
         gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],
         devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
-    // CUDAstream_CHECK_LAST_ERROR;
+    CUDAstream_CHECK_LAST_ERROR;
     // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     cout<<"sid:"<<sid<<endl;
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * sizeof(retype), cudaMemcpyDeviceToHost,streams[sid]));
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * reSampleTimes*sizeof(retype), 
+        cudaMemcpyDeviceToHost,streams[sid]));
+
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
-        std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
-        for (int ip=0;ip<N*reSampleTimes;ip++)
-            printf("%2.4f \t",my_vector.at(ip));
+        // std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
+        for (int ip=0;ip<N;ip++)
+            printf("%2.4f \t",*(hmcE[sid]+ip));
         cout<<endl;
         // savehdf5("r.hdf5", "/r",my_vector);
     }

@@ -6,6 +6,7 @@
 using namespace std;
 #include "eigenhelper.hpp"
 #include <curand_kernel.h>
+#include "cuda_tools.hpp"
 #include "loadHdf5.hpp"
 #define DEBUGMC true
 // #include "Poco/Mutex.h"
