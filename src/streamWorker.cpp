@@ -28,6 +28,7 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     return h;
 }
 void streamWorker::run(int sid,int sz_burst){
+    pdamc->set_gpuid();
     int sock;
     int s_n;
     int ps_n;

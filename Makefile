@@ -1,7 +1,7 @@
 ifdef debug
 	CFLAGS = -std=c++14 -g `pkg-config --cflags hdf5`
 else
-	CFLAGS = -std=c++14 -O3 `pkg-config --cflags hdf5`
+	CFLAGS = -std=c++14 -O2 `pkg-config --cflags hdf5`
 endif
 CXXFLAGS =	$(CFLAGS)
 HEADER = -I3rdparty/HighFive/include -I3rdparty/cxxopts/include -I/opt/cuda/include \
@@ -26,11 +26,11 @@ endif
 mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp src/binom.cuh src/gen_rand.cuh src/cuList.cuh
 	# nvcc $(CXXFLAGS) -arch=compute_30 -code=sm_30,sm_61,sm_70 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
 	nvcc $(CXXFLAGS) -gencode arch=compute_30,code=sm_30\
+					-gencode arch=compute_52,code=sm_52\
+	 				-gencode arch=compute_61,code=sm_61\
+					-gencode arch=compute_70,code=sm_70\
+					-gencode arch=compute_75,code=sm_75\
 					--expt-relaxed-constexpr $(HEADER) -c src/mc.cu
-					#  -gencode arch=compute_52,code=sm_52\
-	 				#  -gencode arch=compute_61,code=sm_61\
-					#  -gencode arch=compute_70,code=sm_70\
-					#  -gencode arch=compute_75,code=sm_75\
 					 
 loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c src/loadHdf5.cpp
