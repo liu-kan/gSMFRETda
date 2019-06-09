@@ -65,6 +65,7 @@ class mc
         int sz_burst;        
         int reSampleTimes;        
         bool set_nstates(int n,int sid);
+        void set_gpuid();
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
         void free_data_gpu();

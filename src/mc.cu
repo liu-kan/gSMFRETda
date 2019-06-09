@@ -58,6 +58,8 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
         arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
         arrI64 burst_dd=mask_ddA.cast<int64_t>()*times_msA;
         arrI64 burst_ad=mask_adA.cast<int64_t>()*times_msA;
+        
+        // printf("%d \n", mcE[tidx]);
         for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
             // // int sampleTime=tidx%reSampleTimes;
             int si=drawDisIdx(s_n,gpp,devQStates+tidx);
@@ -116,20 +118,22 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                     // mcE[tidx]+=ai;
             //     }
             //     mcE[tidx]/=F;
-            mcE[tidx+sampleTime*N]=11;
+            mcE[tidx]=11.0;
             // }
             // sidx.freeList();
             // bins.freeList();
         }
     }    
 }
-
+void mc::set_gpuid(){
+    CUDA_CHECK_RETURN(cudaSetDevice(devid));
+}
 mc::mc(int id,int _streamNum, bool de){    
     debug=de;
     streamNum=_streamNum;
     streams=new cudaStream_t[streamNum];
     devid=id;
-    CUDA_CHECK_RETURN(cudaSetDevice(devid));
+    set_gpuid();
     for(int sid=0;sid<_streamNum;sid++){
         CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( streams+sid,cudaStreamNonBlocking) );
         streamFIFO.push(sid);
@@ -299,10 +303,11 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         cout<<gridSize[sid]<<" g "<<N*reSampleTimes<<" tN "<<blockSize<<" bS "<<mcE[sid]<<endl;
         
         CUDA_CHECK_RETURN(cudaFree((void*)mcE[sid]));
-        cout<<mcE[sid]<<endl;
+        cout<<"mcE[sid]0:"<<mcE[sid]<<endl;
         CUDA_CHECK_RETURN(cudaFreeHost((void*)hmcE[sid]));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&mcE[sid], N *reSampleTimes* sizeof(retype)));        
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&hmcE[sid], N *reSampleTimes* sizeof(retype)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(mcE[sid]), N *reSampleTimes* sizeof(retype)));     
+        cout<<"mcE[sid]1:"<<mcE[sid]<<endl;   
+        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype)));
     }    
     CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
@@ -310,6 +315,7 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
 }
 
 void mc::run_kernel(int N, int sid){     
+    cout<<"mcE[sid]2:"<<mcE[sid]<<endl;   
     mc_kernel<<<gridSize[sid],blockSize,0,streams[sid]>>>(g_start,g_stop,            
         g_istart,g_istop,
         g_times_ms,
@@ -319,15 +325,16 @@ void mc::run_kernel(int N, int sid){
         gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],
         devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
     CUDAstream_CHECK_LAST_ERROR;
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     cout<<"sid:"<<sid<<endl;
+    cout<<"hmcE[sid]2:"<<hmcE[sid]<<endl;   
     CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * reSampleTimes*sizeof(retype), 
         cudaMemcpyDeviceToHost,streams[sid]));
 
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
         // std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
-        for (int ip=0;ip<N;ip++)
+        for (int ip=0;ip<10;ip++)
             printf("%2.4f \t",*(hmcE[sid]+ip));
         cout<<endl;
         // savehdf5("r.hdf5", "/r",my_vector);
