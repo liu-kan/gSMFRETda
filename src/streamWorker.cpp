@@ -77,7 +77,7 @@ void streamWorker::run(int sid,int sz_burst){
       int N=pdamc->setBurstBd(ga.start(),ga.stop(), sid);
       pdamc->run_kernel(N,sid);
       vector<float> mcE(pdamc->hmcE[sid], 
-        pdamc->hmcE[sid] + N*pdamc->reSampleTimes);
+        pdamc->hmcE[sid] + N);//*pdamc->reSampleTimes
       auto mcHist=mkhist(&mcE,fretHistNum,0,1);
       vector<float> vMcHist(fretHistNum);
       vector<float> vOEHist(fretHistNum);
