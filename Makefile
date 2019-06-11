@@ -8,7 +8,7 @@ HEADER = -I3rdparty/HighFive/include -I3rdparty/cxxopts/include -I/opt/cuda/incl
 	-I3rdparty/eigen -I/usr/local/cuda-10.1/include
 #BOOSTHEADER = -I 3rdparty/boost/histogram/include -I 3rdparty/boost/core/include/ -I 3rdparty/boost/iterator/include/ -I 3rdparty/boost_1_69_0/
 BOOSTHEADER = -I 3rdparty/boost_1_70_0/
-LIBS = `pkg-config --libs hdf5` -L/opt/cuda/lib64 -L/usr/local/cuda-10.1/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf -pthread
+LIBS = `pkg-config --libs hdf5`  -lrmm -L/opt/cuda/lib64 -L/usr/local/cuda-10.1/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf -pthread
 OUT_DIR=bin
 MKDIR_P = mkdir -p
 .PHONY: all
@@ -23,13 +23,12 @@ main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o args.pb.o streamWor
 ifndef debug
 	strip bin/gSMFRETda
 endif
-mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp src/binom.cuh src/gen_rand.cuh src/cuList.cuh
+mc.o: src/mc.cu src/mc.hpp src/loadHdf5.hpp src/binom.cuh src/gen_rand.cuh src/cuList.cuh src/rmm.hpp
 	# nvcc $(CXXFLAGS) -arch=compute_30 -code=sm_30,sm_61,sm_70 --expt-relaxed-constexpr $(HEADER) -c src/mc.cu
 	nvcc $(CXXFLAGS) -gencode arch=compute_30,code=sm_30\
 					-gencode arch=compute_52,code=sm_52\
 	 				-gencode arch=compute_61,code=sm_61\
 					-gencode arch=compute_70,code=sm_70\
-					-gencode arch=compute_75,code=sm_75\
 					--expt-relaxed-constexpr $(HEADER) -c src/mc.cu
 					 
 loadHdf5.o:	src/loadHdf5.cpp src/loadHdf5.hpp src/bitUbyte.hpp

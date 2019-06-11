@@ -1,13 +1,14 @@
 #include "mc.hpp"
 #include "cuda_tools.hpp"
-
+#include <algorithm>
 #include <time.h>
 #define VECTOR_SIZE 64
 #include <algorithm> 
+#include <numeric>
 #include "binom.cuh"
 #include "gen_rand.cuh"
 #include "cuList.cuh"
-
+#include "rmm.hpp"
 void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *data) {
     if (status) {
       std::cout << "Error: " << cudaGetErrorString(status) << "-->";
@@ -52,7 +53,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
     
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;    
     if (tidx<N){
-        int idx=tidx/reSampleTimes;
+        int idx=tidx;///reSampleTimes;
         arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
         arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
         arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
@@ -118,7 +119,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                     // mcE[tidx]+=ai;
             //     }
             //     mcE[tidx]/=F;
-            mcE[tidx]=11.0;
+            mcE[N*sampleTime+tidx]=count;
             // }
             // sidx.freeList();
             // bins.freeList();
@@ -131,11 +132,12 @@ void mc::set_gpuid(){
 mc::mc(int id,int _streamNum, bool de){    
     debug=de;
     streamNum=_streamNum;
-    streams=new cudaStream_t[streamNum];
+    streams=(cudaStream_t*)malloc (sizeof(cudaStream_t)*streamNum);
     devid=id;
     set_gpuid();
+    setAllocator("rmmDefaultPool");
     for(int sid=0;sid<_streamNum;sid++){
-        CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( streams+sid,cudaStreamNonBlocking) );
+        CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( &(streams[sid]),cudaStreamNonBlocking) );
         streamFIFO.push(sid);
     }
     matK=NULL;matP=NULL;        
@@ -203,7 +205,7 @@ void mc::givebackStream(int i){
 void mc::int_randstate(int N,int sid){
     int NN=N;
     if (N==-1){
-        NN=sz_burst*reSampleTimes;
+        NN=sz_burst;//*reSampleTimes;
     }    
     // for (int sid=0;sid<streamNum;sid++){
         CUDA_CHECK_RETURN(cudaFree ( devStates[sid]));
@@ -240,10 +242,11 @@ void mc::int_randstate(int N,int sid){
         NN * sizeof(long long int), 
         cudaMemcpyHostToDevice,streams[sid]));
         gridSize[sid] = (NN + blockSize - 1) / blockSize;
-        // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+        
         setup_kernel <<<gridSize[sid], blockSize,0,streams[sid]>>>(devStates[sid], 0,/*time(NULL)*/ NN,        
             devDirectionVectors64[sid], devScrambleConstants64[sid], devQStates[sid]);    
-        // CUDAstream_CHECK_LAST_ERROR;
+        //CUDAstream_CHECK_LAST_ERROR;
+        // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     // }
 }
 
@@ -255,7 +258,7 @@ void mc::init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
         float& iclk_p,float& ibg_ad_rate,float& ibg_dd_rate){    
     clk_p=iclk_p;bg_ad_rate=ibg_ad_rate;bg_dd_rate=ibg_dd_rate;    
     sz_tag=mask_ad.size();                    
-    // CUDA_CHECK_RETURN(cudaMallocHost((void **)&hchi2, sizeof(float)));
+    // CUDA_CHECK_RETURN(cudaHostAlloc((void **)&hchi2, sizeof(float)));
     CUDA_CHECK_RETURN(cudaMalloc((void **)&g_mask_ad, sizeof(unsigned char)*sz_tag));
     CUDA_CHECK_RETURN(cudaMemcpy(g_mask_ad, mask_ad.data(), sizeof(unsigned char)*sz_tag, 
         cudaMemcpyHostToDevice));
@@ -299,23 +302,27 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         // dim3 threads = dim3(dimension, 1);
         // int blocksCount = ceil(float(N)/dimension);
         // dim3 blocks  = dim3(blocksCount, 1);    
-        gridSize[sid] = (N*reSampleTimes + blockSize - 1) / blockSize;
-        cout<<gridSize[sid]<<" g "<<N*reSampleTimes<<" tN "<<blockSize<<" bS "<<mcE[sid]<<endl;
+        gridSize[sid] = (N + blockSize - 1) / blockSize;
+        if (debug)
+            cout<<gridSize[sid]<<" g "<<N*reSampleTimes<<" tN "<<blockSize<<" bS "<<mcE[sid]<<endl;
         
         CUDA_CHECK_RETURN(cudaFree((void*)mcE[sid]));
-        cout<<"mcE[sid]0:"<<mcE[sid]<<endl;
+        if (debug)
+            cout<<"mcE[sid]"<<sid<<":"<<mcE[sid]<<endl;
         CUDA_CHECK_RETURN(cudaFreeHost((void*)hmcE[sid]));
-        CUDA_CHECK_RETURN(cudaMalloc((void **)&(mcE[sid]), N *reSampleTimes* sizeof(retype)));     
-        cout<<"mcE[sid]1:"<<mcE[sid]<<endl;   
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype)));
+        CUDA_CHECK_RETURN(cudaMalloc((void **)&(mcE[sid]), N *reSampleTimes* sizeof(retype)));   
+        if (debug)  
+            cout<<"mcE[sid]"<<sid<<":"<<mcE[sid]<<endl;   
+        CUDA_CHECK_RETURN(cudaHostAlloc((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype)));
     }    
     CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
-    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return N;    
 }
 
 void mc::run_kernel(int N, int sid){     
-    cout<<"mcE[sid]2:"<<mcE[sid]<<endl;   
+    if (debug)
+        cout<<"mcE[sid]"<<sid<<":"<<mcE[sid]<<endl;   
     mc_kernel<<<gridSize[sid],blockSize,0,streams[sid]>>>(g_start,g_stop,            
         g_istart,g_istop,
         g_times_ms,
@@ -324,19 +331,22 @@ void mc::run_kernel(int N, int sid){
         clk_p,bg_ad_rate,bg_dd_rate,sz_tag,sz_burst ,
         gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],
         devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
-    CUDAstream_CHECK_LAST_ERROR;
+    // CUDAstream_CHECK_LAST_ERROR;
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
-    cout<<"sid:"<<sid<<endl;
-    cout<<"hmcE[sid]2:"<<hmcE[sid]<<endl;   
+    if (debug){
+        cout<<"sid:"<<sid<<endl;
+        cout<<"hmcE[sid]"<<sid<<":"<<hmcE[sid]<<endl;   
+    }
     CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * reSampleTimes*sizeof(retype), 
         cudaMemcpyDeviceToHost,streams[sid]));
 
-    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
-        // std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes);
+        std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes   );
+        auto maxPosition = max_element(std::begin(my_vector), std::end(my_vector));
         for (int ip=0;ip<10;ip++)
             printf("%2.4f \t",*(hmcE[sid]+ip));
-        cout<<endl;
+        cout<<endl<<*maxPosition<<","<<accumulate( my_vector.begin(), my_vector.end(), 0.0)/my_vector.size() <<endl;
         // savehdf5("r.hdf5", "/r",my_vector);
     }
 }
@@ -344,10 +354,12 @@ void mc::run_kernel(int N, int sid){
 mc::~mc(){
     free_data_gpu();    
     delete(matK);delete(matP);
-    for(int sid=0;sid<streamNum;sid++)
+    for(int sid=0;sid<streamNum;sid++){
+        cudaStreamSynchronize(streams[sid]);
         cudaStreamDestroy ( streams[sid]);
+    }
 
-    delete[](streams);
+    free(streams);
     delete[](s_n);
     delete[](begin_burst);
     delete[](end_burst);
@@ -373,7 +385,7 @@ mc::~mc(){
 }
 
 void mc::free_data_gpu(){            
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
     // CUDA_CHECK_RETURN(cudaFree(g_mask_ad));
     // CUDA_CHECK_RETURN(cudaFree(g_mask_dd));
     // CUDA_CHECK_RETURN(cudaFree(g_start));
@@ -385,6 +397,7 @@ void mc::free_data_gpu(){
     // CUDA_CHECK_RETURN(cudaFree(g_burst_duration));    
     
     for (int sid=0;sid<streamNum;sid++){
+        cudaStreamSynchronize(streams[sid]);
         CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
         CUDA_CHECK_RETURN(cudaFreeHost(hpv[sid]));
         CUDA_CHECK_RETURN(cudaFreeHost(hpp[sid]));
@@ -411,7 +424,7 @@ bool mc::set_nstates(int n,int sid){
     if (s_n[sid]!=n){
         s_n[sid]=n;
         r=true;
-        // cudaStreamSynchronize(streams[sid]);
+        cudaStreamSynchronize(streams[sid]);
         CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
         CUDA_CHECK_RETURN(cudaFreeHost(hpv[sid]));
         CUDA_CHECK_RETURN(cudaFreeHost(hpp[sid]));
@@ -420,15 +433,15 @@ bool mc::set_nstates(int n,int sid){
         CUDA_CHECK_RETURN(cudaFree(gpv[sid]));
         CUDA_CHECK_RETURN(cudaFree(gpp[sid]));
         CUDA_CHECK_RETURN(cudaFree(gpk[sid]));    
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpe[sid]), n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpv[sid]), n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpp[sid]), n*sizeof(float)));
-        CUDA_CHECK_RETURN(cudaMallocHost((void **)&(hpk[sid]), n*n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaHostAlloc((void **)&(hpe[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaHostAlloc((void **)&(hpv[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaHostAlloc((void **)&(hpp[sid]), n*sizeof(float)));
+        CUDA_CHECK_RETURN(cudaHostAlloc((void **)&(hpk[sid]), n*n*sizeof(float)));
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpe[sid]), n*sizeof(float)));
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpv[sid]), n*sizeof(float)));
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpp[sid]), n*sizeof(float)));
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpk[sid]), n*n*sizeof(float)));   
-        int_randstate(n*reSampleTimes,sid);
+        int_randstate(n,sid);
     }
     return r;
 }
