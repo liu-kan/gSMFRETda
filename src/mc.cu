@@ -39,6 +39,30 @@ __device__ void binTimeHist(arrF* hist, arrI64& x,
         }while(idxbin<binlen);
     }
 }
+/*
+input:x 时间序列, bin0/1开始和结束时间点，x0起始搜索idx
+output:hist 保存hist值，x0保存下次的起始位置
+*/
+template <typename T>
+__device__ void p2TimeHist(float* hist, arrI64& x,
+         T bin0, T bin1 , int64_t* x0){
+    *hist=0;
+    int datalen=x.cols();
+    for (int i=x0;i<datalen;i++){
+        if(x(i)==0)
+            continue;
+        if (x(i)<bin0)
+            continue;
+        else if(x(i)<bin1){
+            found=true;
+            *hist=(*hist)+1;
+        }
+        else{
+            break;
+            *x0=i;
+        }
+    }
+}
 __global__ void mc_kernel(int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
@@ -53,7 +77,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
     
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;    
     if (tidx<N){
-        int idx=tidx;///reSampleTimes;
+        int idx=tidx;//%reSampleTimes;
         arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
         arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
         arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
@@ -62,7 +86,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
         
         // printf("%d \n", mcE[tidx]);
         for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
-            // // int sampleTime=tidx%reSampleTimes;
+            // // int sampleTime=tidx/reSampleTimes;
             int si=drawDisIdx(s_n,gpp,devQStates+tidx);
             // cuList<int> sidx;
             // cuList<int64_t> bins;
@@ -70,7 +94,9 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
             // sidx.append(si);            
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
-            int count=0;
+            // float count=0;
+            int64_t bin0=start[idx];
+            int64_t bin1=start[idx];
             while (T[idx]>mcSpendTime){
                 int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
                 // sidx.append(sj);
@@ -78,13 +104,15 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                 // printf("%f\t",st);
                 mcSpendTime=mcSpendTime+st;
                 si=sj;                
-                // if(mcSpendTime>=T[idx]){
+                if(mcSpendTime>=T[idx]){
                 //     bins.append(stop[idx]);
-                // }
-                // else{
+                    bin1=stop[idx];
+                }
+                else{
                 //     bins.append(*(bins.at(0))+mcSpendTime/clk_p);
-                // }
-                count++;
+                    bin1=bin0+mcSpendTime/clk_p;
+                }
+                // count++;
             }            
             // arrF f_ia(bins.len-1);
             // binTimeHist(&f_ia,burst_ad,bins);
@@ -340,13 +368,14 @@ void mc::run_kernel(int N, int sid){
     CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * reSampleTimes*sizeof(retype), 
         cudaMemcpyDeviceToHost,streams[sid]));
 
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
         std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes   );
         auto maxPosition = max_element(std::begin(my_vector), std::end(my_vector));
         for (int ip=0;ip<10;ip++)
             printf("%2.4f \t",*(hmcE[sid]+ip));
-        cout<<endl<<*maxPosition<<","<<accumulate( my_vector.begin(), my_vector.end(), 0.0)/my_vector.size() <<endl;
+        cout<<endl<<sid<<"======"<<my_vector.size()<<"\n";
+        cout<<*maxPosition<<","<<accumulate( my_vector.begin(), my_vector.end(), 0.0)/my_vector.size() <<endl;
         // savehdf5("r.hdf5", "/r",my_vector);
     }
 }
