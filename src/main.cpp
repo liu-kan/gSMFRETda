@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
     //   if (th.joinable())
     //     th.join();
     // }
-  
+    pdamc.set_gpuid();
     // worker.run(0,pdamc.sz_burst);
     return 0;   
 }
