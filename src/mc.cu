@@ -48,13 +48,12 @@ __device__ void p2TimeHist(float* hist, arrI64& x,
          T bin0, T bin1 , int64_t* x0){
     *hist=0;
     int datalen=x.cols();
-    for (int i=x0;i<datalen;i++){
+    for (int i=*x0;i<datalen;i++){
         if(x(i)==0)
             continue;
         if (x(i)<bin0)
             continue;
         else if(x(i)<bin1){
-            found=true;
             *hist=(*hist)+1;
         }
         else{
@@ -94,7 +93,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
             // sidx.append(si);            
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
-            // float count=0;
+            float count=0;
             int64_t bin0=start[idx];
             int64_t bin1=start[idx];
             while (T[idx]>mcSpendTime){
@@ -112,7 +111,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                 //     bins.append(*(bins.at(0))+mcSpendTime/clk_p);
                     bin1=bin0+mcSpendTime/clk_p;
                 }
-                // count++;
+                count++;
             }            
             // arrF f_ia(bins.len-1);
             // binTimeHist(&f_ia,burst_ad,bins);
