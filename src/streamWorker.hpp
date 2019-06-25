@@ -7,12 +7,12 @@
 class streamWorker 
 {
 public:
-  streamWorker(mc* pdamc,string* url,std::vector<float> *d,int fretHistNum);
+  streamWorker(mc* pdamc,int streamNum,std::vector<float> *d,int fretHistNum);
   void run(int sid,int sz_burst);
 auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 private:
   mc* pdamc;
-  string* url;
+  int streamNum;
   std::vector<float> *SgDivSr;
   int fretHistNum;
 };
