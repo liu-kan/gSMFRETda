@@ -1,4 +1,4 @@
-#include "netWorker.hpp"
+#include "gpuWorker.hpp"
 #include <assert.h>
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
