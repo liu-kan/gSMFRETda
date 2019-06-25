@@ -9,8 +9,9 @@
 
 using namespace boost::histogram;
 streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,
-  int _fretHistNum){
+  int _fretHistNum){    
     pdamc=_pdamc;
+    pdamc->set_gpuid();
     url=_url;       
     SgDivSr=_d;
     fretHistNum=_fretHistNum;
@@ -27,8 +28,7 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
     return h;
 }
-void streamWorker::run(int sid,int sz_burst){
-    pdamc->set_gpuid();
+void streamWorker::run(int sid,int sz_burst){    
     int sock;
     int s_n;
     int ps_n;
