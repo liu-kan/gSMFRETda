@@ -1,4 +1,4 @@
-#ifndef net_thr_hpp
+#ifndef gpu_thr_hpp
 #include <string>
 class netWorker {
     public:
