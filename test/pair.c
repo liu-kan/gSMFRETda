@@ -102,3 +102,15 @@ main(const int argc, const char **argv)
         fprintf(stderr, "Usage: pair %s|%s <URL> <ARG> ...\n", NODE0, NODE1);
         return 1;
 }
+
+
+/*
+
+gcc pair.c -lnanomsg -o pair
+
+./pair node0 ipc:///tmp/pair.ipc ipc:///tmp/pair1.ipc & node0=$!
+./pair node1 ipc:///tmp/pair.ipc ipc:///tmp/pair1.ipc & node1=$!
+sleep 12
+kill $node0 $node1
+
+*/
