@@ -12,6 +12,10 @@ message p_n {
     int32 s_n = 1;
 }
 
+message p_sid {    
+    int32 sid = 1;
+}
+
 message p_cap {    
     string idx = 1;
     int32 cap = 2;    
