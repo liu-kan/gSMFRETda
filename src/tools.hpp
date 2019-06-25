@@ -3,7 +3,7 @@
 
 #include <string>
 void genuid(std::string* id);
-
+#define gpuipc "ipc:///tmp/gSMFRETda"
 
 #include <boost/histogram.hpp>
 
