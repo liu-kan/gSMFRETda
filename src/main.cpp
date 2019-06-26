@@ -7,6 +7,12 @@
 #include "mc.hpp"
 #include "streamWorker.hpp"
 #include <vector> 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
+std::mutex m,m1;
+std::condition_variable cv,cv1;
 
 using namespace std;
 cxxopts::ParseResult
