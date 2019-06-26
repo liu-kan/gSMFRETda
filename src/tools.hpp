@@ -4,6 +4,10 @@
 #include <string>
 void genuid(std::string* id);
 #define gpuipc "ipc:///tmp/gSMFRETda"
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 
 #include <boost/histogram.hpp>
 
