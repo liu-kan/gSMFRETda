@@ -8,14 +8,14 @@
 #include <iostream>
 
 using namespace boost::histogram;
-streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,
-  int _fretHistNum){    
-    pdamc=_pdamc;
-    pdamc->set_gpuid();
+streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _fretHistNum,
+  std::mutex *m, std::condition_variable *cv){    
+    pdamc=_pdamc;    
     url=_url;       
     SgDivSr=_d;
     fretHistNum=_fretHistNum;
-    
+    _m=m;
+    _cv=cv;    
 }
 // template <typename Tag, typename Storage>
 auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
@@ -29,7 +29,7 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     return h;
 }
 void streamWorker::run(int sid,int sz_burst){    
-    int sock;
+    thread_local int sock;    //local
     int s_n;
     int ps_n;
     sock = nn_socket (AF_SP, NN_REQ);
@@ -37,12 +37,12 @@ void streamWorker::run(int sid,int sz_burst){
     assert (nn_connect(sock, url->c_str()) >= 0);
     s_n=0;
     ps_n=0;
-    std::string gpuNodeId;
+    thread_local std::string gpuNodeId;
     genuid(&gpuNodeId);
     int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
-      gSMFRETda::pb::p_cap cap;
+      
       cap.set_cap(sz_burst);
       cap.set_idx(gpuNodeId);
       string scap;
@@ -54,7 +54,7 @@ void streamWorker::run(int sid,int sz_burst){
       char *rbuf = NULL;
       bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
       // printf("%s\n",rbuf);      
-      gSMFRETda::pb::p_n sn;
+      
       sn.ParseFromArray(rbuf,bytes);
       nn_freemsg (rbuf);
       s_n=sn.s_n();
@@ -65,7 +65,7 @@ void streamWorker::run(int sid,int sz_burst){
       nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
       std::cout<< "p"+gpuNodeId <<endl;
       rbuf = NULL;
-      gSMFRETda::pb::p_ga ga;
+      
       bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
       ga.ParseFromArray(rbuf,bytes); 
       ps_n=s_n*(s_n+1);
@@ -79,8 +79,8 @@ void streamWorker::run(int sid,int sz_burst){
       vector<float> mcE(pdamc->hmcE[sid], 
         pdamc->hmcE[sid] + N);//*pdamc->reSampleTimes
       auto mcHist=mkhist(&mcE,fretHistNum,0,1);
-      vector<float> vMcHist(fretHistNum);
-      vector<float> vOEHist(fretHistNum);
+      thread_local vector<float> vMcHist(fretHistNum);
+      thread_local vector<float> vOEHist(fretHistNum);
       int ihist=0;
       for (auto x : indexed(fretHist))
         vOEHist[ihist++]=*x;
@@ -97,7 +97,7 @@ void streamWorker::run(int sid,int sz_burst){
           effN--;      
       }
       chisqr=chisqr/(effN-s_n*(s_n+1));
-      gSMFRETda::pb::res chi2res;
+      
       chi2res.set_s_n(s_n);
       chi2res.set_idx(gpuNodeId);
       for (auto v : params)
