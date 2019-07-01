@@ -9,84 +9,98 @@
 #include <iostream>
 
 
-netWorker::netWorker(string* _url){
-    url=_url;
+gpuWorker::gpuWorker(mc* _pdamc,int _streamNum, std::vector<float>* _d,int _fretHistNum,
+        std::mutex *m, std::condition_variable *cv){
+    pdamc=_pdamc;
+    _m=m;
+    _cv=cv;
+    streamNum=_streamNum;
+    pdamc->set_gpuid();       
+    SgDivSr=_d;
+    fretHistNum=_fretHistNum;
 }
-void netWorker::run(int tid,int sz_burst){
-    int sock;
+void gpuWorker::run(int sz_burst){
+    thread_local int sock;    //local
     int s_n;
     int ps_n;
     sock = nn_socket (AF_SP, NN_REQ);
     assert (sock >= 0);
     assert (nn_connect(sock, url->c_str()) >= 0);
-    int gsock = nn_socket (AF_SP, NN_PAIR);
-    assert (gsock >= 0);    
-    string TIPC=gpuipc+std::to_string(tid)+".ipc";
-    assert (nn_connect(gsock, TIPC.c_str()) >= 0);    
     s_n=0;
     ps_n=0;
-    std::string gpuNodeId;
+    thread_local std::string gpuNodeId;
     genuid(&gpuNodeId);
     int countcalc=0;
-    int sid=-1,gaidx=-1;
+    auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
-        gSMFRETda::pb::p_cap cap;
-        cap.set_cap(sz_burst);
-        cap.set_idx(gpuNodeId);
-        string scap;
-        cap.SerializeToString(&scap);
-        scap="c"+scap;
-        int bytes = nn_send (sock, scap.c_str(), scap.length(), 0);
-        // free(sbuf);
+      gSMFRETda::pb::p_cap cap;
+      cap.set_cap(sz_burst);
+      cap.set_idx(gpuNodeId);
+      string scap;
+      cap.SerializeToString(&scap);
+      scap="c"+scap;
+      int bytes = nn_send (sock, scap.c_str(), scap.length(), 0);
+      // free(sbuf);
 
-        char *rbuf = NULL;
-        bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
-        // printf("%s\n",rbuf);      
-        gSMFRETda::pb::p_n sn;
-        sn.ParseFromArray(rbuf,bytes);
-        string ss_n="c"+rbuf;
-        bytes = nn_send (gsock, ss_n.c_str(), ss_n.length(), 0);
-        nn_freemsg (rbuf);
-        s_n=sn.s_n();
-        // printf("%d\n",sn.s_n());
-        rbuf = NULL;
-        bytes = nn_recv (gsock, &rbuf, NN_MSG, 0);  
-        // printf("%s\n",rbuf);      
-        gSMFRETda::pb::p_sid psid;
-        psid.ParseFromArray(rbuf,bytes);
-        nn_freemsg (rbuf);
-        sid=psid.sid();
-
-        nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
-        std::cout<< "p"+gpuNodeId <<std::endl;
-        rbuf = NULL;
-        gSMFRETda::pb::p_ga ga;
-        bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
-        ga.ParseFromArray(rbuf,bytes); 
-        nn_freemsg (rbuf);
-        gaidx=ga.idx();
-        ga.set_idx(sid);
-        string spg_a;
-        ga.SerializeToString(&spg_a);
-        spg_a="p"+spg_a;
-        nn_send (gsock, spg_a.c_str(), spg_a.length(), 0);
-        rbuf = NULL;      
-        bytes = nn_recv (gsock, &rbuf, NN_MSG, 0);  
-        nn_freemsg (rbuf);  
-        
-        gSMFRETda::pb::res chi2res;
-        chi2res.set_s_n(s_n);
-        chi2res.set_idx(gpuNodeId);
-        for (auto v : params)
-            chi2res.add_params(v);
-        chi2res.set_e(chisqr);
-        string sres;
-        chi2res.SerializeToString(&sres);
-        sres="r"+sres;
-        bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
-        rbuf = NULL;
-        bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
-        countcalc++;
+      char *rbuf = NULL;
+      bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+      // printf("%s\n",rbuf);      
+      gSMFRETda::pb::p_n sn;
+      sn.ParseFromArray(rbuf,bytes);
+      nn_freemsg (rbuf);
+      s_n=sn.s_n();
+      // printf("%d\n",sn.s_n());
+      pdamc->set_nstates(s_n,sid);
+      // std::string idxencoded = base64_encode(reinterpret_cast<const unsigned char*>(gpuNodeId.c_str()),
+      //    gpuNodeId.length());
+      nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
+      std::cout<< "p"+gpuNodeId <<endl;
+      rbuf = NULL;
+      gSMFRETda::pb::p_ga ga;
+      bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+      ga.ParseFromArray(rbuf,bytes); 
+      ps_n=s_n*(s_n+1);
+      vector<float> params(ps_n);
+      for(int pi=0;pi<ps_n;pi++)
+        params[pi]=ga.params(pi);
+      pdamc->set_params(s_n,sid,params);
+      nn_freemsg (rbuf);
+      int N=pdamc->setBurstBd(ga.start(),ga.stop(), sid);
+      pdamc->run_kernel(N,sid);
+      vector<float> mcE(pdamc->hmcE[sid], 
+        pdamc->hmcE[sid] + N);//*pdamc->reSampleTimes
+      auto mcHist=mkhist(&mcE,fretHistNum,0,1);
+      vector<float> vMcHist(fretHistNum);
+      vector<float> vOEHist(fretHistNum);
+      int ihist=0;
+      for (auto x : indexed(fretHist))
+        vOEHist[ihist++]=*x;
+      ihist=0;
+      for (auto x : indexed(mcHist))
+        vMcHist[ihist++]=*x;      
+      int effN=fretHistNum;           
+      float chisqr=0;
+      for(ihist=0;ihist<fretHistNum;ihist++){
+        if(vOEHist[ihist]>0)
+          chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist])),2)
+            /float(vOEHist[ihist]);
+        else
+          effN--;      
+      }
+      chisqr=chisqr/(effN-s_n*(s_n+1));
+      gSMFRETda::pb::res chi2res;
+      chi2res.set_s_n(s_n);
+      chi2res.set_idx(gpuNodeId);
+      for (auto v : params)
+        chi2res.add_params(v);
+      chi2res.set_e(chisqr);
+      string sres;
+      chi2res.SerializeToString(&sres);
+      sres="r"+sres;
+      bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
+      rbuf = NULL;
+      bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
+      countcalc++;
     }while(countcalc<3);
     // std::cout<<"end\n";
 }

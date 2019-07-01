@@ -10,9 +10,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-
-std::mutex m,m1;
-std::condition_variable cv,cv1;
+#include "protobuf/args.pb.h"
 
 using namespace std;
 cxxopts::ParseResult
@@ -51,7 +49,27 @@ parse(int argc, char* argv[])
   }
 }
 
-int main(int argc, char* argv[])
+void share_var_init(int streamNum,std::mutex *_m,std::condition_variable *_cv,gSMFRETda::pb::p_cap *cap,
+  gSMFRETda::pb::p_n *sn,gSMFRETda::pb::p_ga *ga,gSMFRETda::pb::res *chi2res){
+    std::mutex *_m=new std::mutex[streamNum];
+    std::condition_variable *_cv=new std::condition_variable[streamNum];    
+    gSMFRETda::pb::p_cap *cap=new gSMFRETda::pb::p_cap[streamNum]; 
+    gSMFRETda::pb::p_n *sn=new gSMFRETda::pb::p_n[streamNum]; 
+    gSMFRETda::pb::p_ga *ga=new gSMFRETda::pb::p_ga[streamNum]; 
+    gSMFRETda::pb::res *chi2res=new gSMFRETda::pb::res[streamNum]; 
+}
+
+void share_var_free(int streamNum,std::mutex *_m,std::condition_variable *_cv,gSMFRETda::pb::p_cap *cap,
+  gSMFRETda::pb::p_n *sn,gSMFRETda::pb::p_ga *ga,gSMFRETda::pb::res *chi2res){
+    delete[] _m ;
+    delete[] _cv;    
+    delete[] cap; 
+    delete[] sn ; 
+    delete[] ga ; 
+    delete[] chi2res; 
+}
+
+ main(int argc, char* argv[])
 {
     auto result = parse(argc, argv);
     string H5FILE_NAME=result["input"].as<string>();    
@@ -76,7 +94,10 @@ int main(int argc, char* argv[])
     mc pdamc(gpuid,streamNum,debugbool);
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
-    streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum);
+    std::mutex *_m;std::condition_variable *_cv;
+    gSMFRETda::pb::p_cap *cap;gSMFRETda::pb::p_n *sn;gSMFRETda::pb::p_ga *ga;gSMFRETda::pb::res *chi2res;
+    share_var_init(streamNum,_m,_cv,cap,sn,ga,chi2res);
+    streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv);
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
       threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
@@ -89,5 +110,6 @@ int main(int argc, char* argv[])
     // }
     pdamc.set_gpuid();
     // worker.run(0,pdamc.sz_burst);
+    share_var_free(streamNum,_m,_cv,cap,sn,ga,chi2res);
     return 0;   
 }
