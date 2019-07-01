@@ -1,10 +1,20 @@
 #ifndef gpu_thr_hpp
 #include <string>
-class netWorker {
+#include <condition_variable>
+#include <mutex>
+#include <thread> 
+#include "mc.hpp"
+class gpuWorker {
     public:
-        netWorker(string* url);
+        gpuWorker(mc* _pdamc,int streamNum,std::vector<float>* _d,int _fretHistNum,
+            std::mutex *m, std::condition_variable *cv);
         void run(int sid);        
     private:
-        string* url;
+        mc* pdamc;
+        int streamNum;
+        std::vector<float> *SgDivSr;
+        int fretHistNum;
+        std::mutex *_m;
+        std::condition_variable *_cv;
 }
 #endif
