@@ -30,8 +30,8 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
 }
 void streamWorker::run(int sid,int sz_burst){    
     thread_local int sock;    //local
-    int s_n;
-    int ps_n;
+    thread_local int s_n;
+    thread_local int ps_n;
     sock = nn_socket (AF_SP, NN_REQ);
     assert (sock >= 0);
     assert (nn_connect(sock, url->c_str()) >= 0);
@@ -39,14 +39,14 @@ void streamWorker::run(int sid,int sz_burst){
     ps_n=0;
     thread_local std::string gpuNodeId;
     genuid(&gpuNodeId);
-    int countcalc=0;
-    auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
+    thread_local int countcalc=0;
+    thread_local auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
-      
-      cap.set_cap(sz_burst);
-      cap.set_idx(gpuNodeId);
-      string scap;
-      cap.SerializeToString(&scap);
+      std::unique_lock<std::mutex> lk(_m[sid]);
+      cap[sid].set_cap(sz_burst);
+      cap[sid].set_idx(gpuNodeId);
+      thread_local string scap;
+      cap[sid].SerializeToString(&scap);
       scap="c"+scap;
       int bytes = nn_send (sock, scap.c_str(), scap.length(), 0);
       // free(sbuf);
