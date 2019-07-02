@@ -16,5 +16,6 @@ class gpuWorker {
         int fretHistNum;
         std::mutex *_m;
         std::condition_variable *_cv;
+        auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 }
 #endif

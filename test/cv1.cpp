@@ -24,7 +24,7 @@ void worker_thread()
     data += " after processing";
     ready=false;
     // 发送数据回 main()
-    sleep(3);
+    // sleep(3);
     processed = true;
     std::cout << "Worker thread signals data processing completed\n";
  
@@ -49,7 +49,7 @@ void worker_thread()
  
 int main()
 {
-    std::thread worker(worker_thread);
+    
  
     data = "Example data";
     // 发送数据到 worker 线程
@@ -63,6 +63,7 @@ int main()
         lk.unlock();
     }
     cv.notify_one();
+    std::thread worker(worker_thread);
     // 等候 worker
     {
         // std::unique_lock<std::mutex> lk(m);
