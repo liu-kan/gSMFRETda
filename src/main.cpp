@@ -49,28 +49,30 @@ parse(int argc, char* argv[])
   }
 }
 
-void share_var_init(int streamNum,std::mutex *_m,std::condition_variable *_cv,gSMFRETda::pb::p_cap *cap,
-  gSMFRETda::pb::p_n *sn,gSMFRETda::pb::p_ga *ga,gSMFRETda::pb::res *chi2res,
+void share_var_init(int streamNum,std::mutex *_m, std::condition_variable *_cv,
+  int *s_n, vector<float> *params, int *ga_start, int *ga_stop, float *chisqr,
   int *dataready){
     _m=new std::mutex[streamNum];
     _cv=new std::condition_variable[streamNum];    
-    cap=new gSMFRETda::pb::p_cap[streamNum]; 
-    sn=new gSMFRETda::pb::p_n[streamNum]; 
-    ga=new gSMFRETda::pb::p_ga[streamNum]; 
-    chi2res=new gSMFRETda::pb::res[streamNum]; 
+    s_n=new int[streamNum]; 
+    params=new vector<float>[streamNum](); 
+    ga_start=new int[streamNum]; 
+    ga_stop=new int[streamNum]; 
+    chisqr=new float[streamNum]; 
     dataready=new int[streamNum];
     std::fill_n(dataready, streamNum, 0);
 }
 
-void share_var_free(int streamNum,std::mutex *_m,std::condition_variable *_cv,gSMFRETda::pb::p_cap *cap,
-  gSMFRETda::pb::p_n *sn,gSMFRETda::pb::p_ga *ga,gSMFRETda::pb::res *chi2res,
+void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
+  int *s_n, vector<float> *params, int *ga_start, int *ga_stop, float *chisqr,
   int *dataready){
     delete[] _m ;
     delete[] _cv;    
-    delete[] cap; 
-    delete[] sn ; 
-    delete[] ga ; 
-    delete[] chi2res; 
+    delete[] s_n; 
+    delete[] params ; 
+    delete[] ga_start ; 
+    delete[] ga_stop ; 
+    delete[] chisqr; 
     delete[] dataready;
 }
 
@@ -100,9 +102,9 @@ void share_var_free(int streamNum,std::mutex *_m,std::condition_variable *_cv,gS
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     std::mutex *_m;std::condition_variable *_cv;
-    gSMFRETda::pb::p_cap *cap;gSMFRETda::pb::p_n *sn;gSMFRETda::pb::p_ga *ga;gSMFRETda::pb::res *chi2res;
+    int *s_n; vector<float> *params; int *ga_start; int *ga_stop; float *chisqr;
     int *dataready;
-    share_var_init(streamNum,_m,_cv,cap,sn,ga,chi2res,dataready);
+    share_var_init(streamNum,_m,_cv,s_n, params, ga_start, ga_stop, chisqr,dataready);
     streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv);
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
@@ -116,6 +118,6 @@ void share_var_free(int streamNum,std::mutex *_m,std::condition_variable *_cv,gS
     // }
     pdamc.set_gpuid();
     // worker.run(0,pdamc.sz_burst);
-    share_var_free(streamNum,_m,_cv,cap,sn,ga,chi2res,dataready);
+    share_var_free(streamNum,_m,_cv,s_n, params, ga_start, ga_stop, chisqr,dataready);
     return 0;   
 }
