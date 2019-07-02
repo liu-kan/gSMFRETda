@@ -50,7 +50,7 @@ parse(int argc, char* argv[])
 }
 
 void share_var_init(int streamNum,std::mutex *_m, std::condition_variable *_cv,
-  int *s_n, vector<float> *params, int *ga_start, int *ga_stop, float *chisqr,
+  int *s_n, vector<float> *params, int *ga_start, int *ga_stop,
   int *dataready){
     _m=new std::mutex[streamNum];
     _cv=new std::condition_variable[streamNum];    
@@ -58,13 +58,13 @@ void share_var_init(int streamNum,std::mutex *_m, std::condition_variable *_cv,
     params=new vector<float>[streamNum](); 
     ga_start=new int[streamNum]; 
     ga_stop=new int[streamNum]; 
-    chisqr=new float[streamNum]; 
+    
     dataready=new int[streamNum];
     std::fill_n(dataready, streamNum, 0);
 }
 
 void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
-  int *s_n, vector<float> *params, int *ga_start, int *ga_stop, float *chisqr,
+  int *s_n, vector<float> *params, int *ga_start, int *ga_stop, 
   int *dataready){
     delete[] _m ;
     delete[] _cv;    
@@ -72,7 +72,7 @@ void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
     delete[] params ; 
     delete[] ga_start ; 
     delete[] ga_stop ; 
-    delete[] chisqr; 
+    
     delete[] dataready;
 }
 
