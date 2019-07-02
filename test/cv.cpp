@@ -49,12 +49,13 @@ void worker_thread()
  
     // 通知前完成手动解锁，以避免等待线程才被唤醒就阻塞（细节见 notify_one ）
     lk.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     cv.notify_one();
 }
  
 int main()
 {
-    std::thread worker(worker_thread);
+    
  
     data = "Example data";
     // 发送数据到 worker 线程
@@ -65,11 +66,12 @@ int main()
         // lk.lock();
         ready = true;
         std::cout << "main() signals data ready for processing\n";
-        lk.unlock();
+        // lk.unlock();
     }
     cv.notify_one();
-
-    // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    
+    
+    
     // std::this_thread::yield(); 
     std::unique_lock<std::mutex> lk1(m1);
     {
@@ -80,6 +82,8 @@ int main()
     }
     
     cv1.notify_one();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::thread worker(worker_thread);
     // 等候 worker
     {
         std::unique_lock<std::mutex> lk(m);
