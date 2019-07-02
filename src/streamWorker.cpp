@@ -43,35 +43,41 @@ void streamWorker::run(int sid,int sz_burst){
     thread_local auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
       std::unique_lock<std::mutex> lk(_m[sid]);
-      cap[sid].set_cap(sz_burst);
-      cap[sid].set_idx(gpuNodeId);
-      thread_local string scap;
-      cap[sid].SerializeToString(&scap);
-      scap="c"+scap;
-      int bytes = nn_send (sock, scap.c_str(), scap.length(), 0);
-      // free(sbuf);
+      if(dataready[sid]==0{
+        cap[sid].set_cap(sz_burst);
+        cap[sid].set_idx(gpuNodeId);
+        thread_local string scap;
+        cap[sid].SerializeToString(&scap);
+        scap="c"+scap;
+        int bytes = nn_send (sock, scap.c_str(), scap.length(), 0);
+        // free(sbuf);
 
-      char *rbuf = NULL;
-      bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
-      // printf("%s\n",rbuf);      
-      
-      sn.ParseFromArray(rbuf,bytes);
-      nn_freemsg (rbuf);
-      s_n=sn.s_n();
-      // printf("%d\n",sn.s_n());
-      pdamc->set_nstates(s_n,sid);
-      // std::string idxencoded = base64_encode(reinterpret_cast<const unsigned char*>(gpuNodeId.c_str()),
-      //    gpuNodeId.length());
-      nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
-      std::cout<< "p"+gpuNodeId <<endl;
-      rbuf = NULL;
-      
-      bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
-      ga.ParseFromArray(rbuf,bytes); 
-      ps_n=s_n*(s_n+1);
-      vector<float> params(ps_n);
-      for(int pi=0;pi<ps_n;pi++)
-        params[pi]=ga.params(pi);
+        char *rbuf = NULL;
+        bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+        // printf("%s\n",rbuf);      
+        
+        sn.ParseFromArray(rbuf,bytes);
+        nn_freemsg (rbuf);
+        s_n=sn.s_n();
+        dataready[sid]=1;
+        // printf("%d\n",sn.s_n());
+        pdamc->set_nstates(s_n,sid);
+        // std::string idxencoded = base64_encode(reinterpret_cast<const unsigned char*>(gpuNodeId.c_str()),
+        //    gpuNodeId.length());
+        nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
+        std::cout<< "p"+gpuNodeId <<endl;
+        rbuf = NULL;
+        
+        bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+        ga.ParseFromArray(rbuf,bytes); 
+        ps_n=s_n*(s_n+1);
+        vector<float> params(ps_n);
+        for(int pi=0;pi<ps_n;pi++)
+          params[pi]=ga.params(pi);
+        dataready[sid]=2;
+        lk.unlock();
+        cv[sid].notify_one();        
+      }
       pdamc->set_params(s_n,sid,params);
       nn_freemsg (rbuf);
       int N=pdamc->setBurstBd(ga.start(),ga.stop(), sid);
