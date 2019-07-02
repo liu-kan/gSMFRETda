@@ -24,6 +24,7 @@ void worker_thread()
     data += " after processing";
     ready=false;
     // 发送数据回 main()
+    sleep(3);
     processed = true;
     std::cout << "Worker thread signals data processing completed\n";
  
