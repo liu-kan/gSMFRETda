@@ -366,7 +366,15 @@ void mc::run_kernel(int N, int sid){
     }
     CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid], mcE[sid],N * reSampleTimes*sizeof(retype), 
         cudaMemcpyDeviceToHost,streams[sid]));
-
+}
+bool mc::streamQuery(int sid){
+    if(sid<0||sid>=streamNum)
+        return false;
+    if(cudaStreamQuery(stream[sid])==cudaSuccess)
+        return true;
+    return false;
+}
+void mc::get_res(int sid){
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
         std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes   );

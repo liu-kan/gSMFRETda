@@ -11,6 +11,7 @@ void genuid(std::string* id);
 #include <boost/histogram.hpp>
 
 #include <vector>
+
 using namespace boost::histogram;
 using reg = axis::regular<>;
 namespace boost {
