@@ -76,7 +76,7 @@ void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
     delete[] dataready;
 }
 
- main(int argc, char* argv[])
+main(int argc, char* argv[])
 {
     auto result = parse(argc, argv);
     string H5FILE_NAME=result["input"].as<string>();    

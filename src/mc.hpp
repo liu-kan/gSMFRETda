@@ -63,6 +63,7 @@ class mc
         retype** hmcE;
         int *s_n;
         int sz_burst;        
+        bool streamQuery(int sid);
         int reSampleTimes;        
         bool set_nstates(int n,int sid);
         void set_gpuid();
@@ -71,6 +72,7 @@ class mc
         void free_data_gpu();
         void int_randstate(int N,int sid);
         void run_kernel(int N, int sid);
+        void get_res(int sid);
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
             vector<uint32_t>& istart,vector<uint32_t>& istop,
             vector<int64_t>& times_ms,
