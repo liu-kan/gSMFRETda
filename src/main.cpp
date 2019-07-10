@@ -51,28 +51,28 @@ parse(int argc, char* argv[])
 
 void share_var_init(int streamNum,std::mutex *_m, std::condition_variable *_cv,
   int *s_n, vector<float> *params, int *ga_start, int *ga_stop,
-  int *dataready){
+  int *dataready,int *N){
     _m=new std::mutex[streamNum];
     _cv=new std::condition_variable[streamNum];    
     s_n=new int[streamNum]; 
     params=new vector<float>[streamNum](); 
     ga_start=new int[streamNum]; 
     ga_stop=new int[streamNum]; 
-    
+    N==new int[streamNum];
     dataready=new int[streamNum];
     std::fill_n(dataready, streamNum, 0);
 }
 
 void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
   int *s_n, vector<float> *params, int *ga_start, int *ga_stop, 
-  int *dataready){
+  int *dataready,int *N){
     delete[] _m ;
     delete[] _cv;    
     delete[] s_n; 
     delete[] params ; 
     delete[] ga_start ; 
     delete[] ga_stop ; 
-    
+    delete[] N;
     delete[] dataready;
 }
 
@@ -103,9 +103,11 @@ main(int argc, char* argv[])
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     std::mutex *_m;std::condition_variable *_cv;
     int *s_n; vector<float> *params; int *ga_start; int *ga_stop; float *chisqr;
-    int *dataready;
-    share_var_init(streamNum,_m,_cv,s_n, params, ga_start, ga_stop, chisqr,dataready);
-    streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv);
+    int *dataready,*N;
+    share_var_init(streamNum,_m,_cv,
+      s_n, params, ga_start, ga_stop,dataready,N);
+    streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv,
+      dataready,s_n, params, ga_start, ga_stop,N);
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
       threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
@@ -118,6 +120,6 @@ main(int argc, char* argv[])
     // }
     pdamc.set_gpuid();
     // worker.run(0,pdamc.sz_burst);
-    share_var_free(streamNum,_m,_cv,s_n, params, ga_start, ga_stop, chisqr,dataready);
+    share_var_free(streamNum,_m,_cv,s_n, params, ga_start, ga_stop,dataready,N);
     return 0;   
 }
