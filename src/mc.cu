@@ -370,12 +370,12 @@ void mc::run_kernel(int N, int sid){
 bool mc::streamQuery(int sid){
     if(sid<0||sid>=streamNum)
         return false;
-    if(cudaStreamQuery(stream[sid])==cudaSuccess)
+    if(cudaStreamQuery(streams[sid])==cudaSuccess)
         return true;
     return false;
 }
-void mc::get_res(int sid){
-    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+void mc::get_res(int sid,int N){
+    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     if (debug){
         std::vector<retype> my_vector(hmcE[sid], hmcE[sid] + N*reSampleTimes   );
         auto maxPosition = max_element(std::begin(my_vector), std::end(my_vector));

@@ -9,13 +9,20 @@
 
 using namespace boost::histogram;
 streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _fretHistNum,
-  std::mutex *m, std::condition_variable *cv){    
+  std::mutex *m, std::condition_variable *cv,int *_dataready,int *_sn,
+  std::vector<float> *_params, int *_ga_start, int *_ga_stop,int *_N){    
     pdamc=_pdamc;    
     url=_url;       
     SgDivSr=_d;
     fretHistNum=_fretHistNum;
     _m=m;
     _cv=cv;    
+    dataready=_dataready;
+    s_n=_sn;
+    params=_params;
+    ga_start=_ga_start;
+    ga_stop=_ga_stop;
+    N=_N;
 }
 // template <typename Tag, typename Storage>
 auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
@@ -39,12 +46,13 @@ void streamWorker::run(int sid,int sz_burst){
     std::string gpuNodeId;
     genuid(&gpuNodeId);
     int countcalc=0;
-    // thread_local auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
+    auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     do {            
-      std::unique_lock<std::mutex> lk(_m[sid]);
+      std::unique_lock<std::mutex> lck(_m[sid]);
       char *rbuf = NULL;
-      if(dataready[sid]==0{
-        int bytes;
+      int bytes;
+      if(dataready[sid]==0){
+        
         // {
           gSMFRETda::pb::p_cap cap;
           cap.set_cap(sz_burst);
@@ -73,7 +81,7 @@ void streamWorker::run(int sid,int sz_burst){
           gSMFRETda::pb::p_ga ga;
           bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
           ga.ParseFromArray(rbuf,bytes); 
-          ps_n=s_n*(s_n+1);
+          ps_n=s_n[sid]*(s_n[sid]+1);
           params[sid].resize(ps_n);
           for(int pi=0;pi<ps_n;pi++)
             params[sid][pi]=ga.params(pi);
@@ -82,18 +90,16 @@ void streamWorker::run(int sid,int sz_burst){
           ga_start[sid]=ga.start(); ga_stop[sid]=ga.stop();
           dataready[sid]=2;
         // }
-        lk.unlock();
-        cv[sid].notify_one();        
+        lck.unlock();
+        _cv[sid].notify_one();        
       }
-      // pdamc->set_params(s_n,sid,params);
-      
-      int N=pdamc->setBurstBd(ga.start(),ga.stop(), sid);
-      pdamc->run_kernel(N,sid);
+      lck.lock();
+      _cv[sid].wait(lck,[this,sid]{return dataready[sid]==4;});
       vector<float> mcE(pdamc->hmcE[sid], 
-        pdamc->hmcE[sid] + N);//*pdamc->reSampleTimes
+        pdamc->hmcE[sid] + N[sid]);//*pdamc->reSampleTimes
       auto mcHist=mkhist(&mcE,fretHistNum,0,1);
-      thread_local vector<float> vMcHist(fretHistNum);
-      thread_local vector<float> vOEHist(fretHistNum);
+      vector<float> vMcHist(fretHistNum);
+      vector<float> vOEHist(fretHistNum);
       int ihist=0;
       for (auto x : indexed(fretHist))
         vOEHist[ihist++]=*x;
@@ -109,19 +115,22 @@ void streamWorker::run(int sid,int sz_burst){
         else
           effN--;      
       }
-      chisqr=chisqr/(effN-s_n*(s_n+1));
-      
-      chi2res.set_s_n(s_n);
+      chisqr=chisqr/(effN-s_n[sid]*(s_n[sid]+1));
+      gSMFRETda::pb::res chi2res;
+      chi2res.set_s_n(s_n[sid]);
       chi2res.set_idx(gpuNodeId);
-      for (auto v : params)
+      for (auto v : params[sid])
         chi2res.add_params(v);
       chi2res.set_e(chisqr);
       string sres;
       chi2res.SerializeToString(&sres);
       sres="r"+sres;
       bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
-      rbuf = NULL;
+      // rbuf = NULL;
       bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
+      nn_freemsg (rbuf);
+      dataready[sid]=0;
+      lck.unlock();
       countcalc++;
     }while(countcalc<3);
     // std::cout<<"end\n";
