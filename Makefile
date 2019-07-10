@@ -8,7 +8,7 @@ HEADER = -I3rdparty/HighFive/include -I3rdparty/cxxopts/include -I/opt/cuda/incl
 	-I3rdparty/eigen -I/usr/local/cuda-10.1/include
 #BOOSTHEADER = -I 3rdparty/boost/histogram/include -I 3rdparty/boost/core/include/ -I 3rdparty/boost/iterator/include/ -I 3rdparty/boost_1_69_0/
 BOOSTHEADER = -I 3rdparty/boost_1_70_0/
-LIBS = `pkg-config --libs hdf5`  -lrmm -L/opt/cuda/lib64 -L/usr/local/cuda-10.1/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf -pthread
+LIBS = `pkg-config --libs hdf5` -L/usr/local/lib -lrmm -L/opt/cuda/lib64 -L/usr/local/cuda-10.1/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf -pthread
 OUT_DIR=bin
 MKDIR_P = mkdir -p
 .PHONY: all
@@ -18,8 +18,8 @@ ${OUT_DIR}:
 	${MKDIR_P} ${OUT_DIR}
 readhdf: src/loadHdf5.cpp directories
 	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/readhdf src/loadHdf5.cpp $(LIBS) 
-main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o args.pb.o streamWorker.o tools.o
-	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o args.pb.o streamWorker.o tools.o $(LIBS) 
+main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o args.pb.o streamWorker.o tools.o gpuWorker.o
+	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o args.pb.o streamWorker.o gpuWorker.o tools.o $(LIBS) 
 ifndef debug
 	strip bin/gSMFRETda
 endif
@@ -48,3 +48,5 @@ clean:
 	rm *.o
 streamWorker.o: src/streamWorker.cpp src/streamWorker.hpp
 	$(CXX) $(CXXFLAGS) $(HEADER) $(BOOSTHEADER) -c src/streamWorker.cpp
+gpuWorker.o: src/gpuWorker.cpp src/gpuWorker.hpp
+	$(CXX) $(CXXFLAGS) $(HEADER) $(BOOSTHEADER) -c src/gpuWorker.cpp
