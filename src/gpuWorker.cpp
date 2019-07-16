@@ -45,8 +45,10 @@ void gpuWorker::run(int sz_burst){
       for(int sid=0;sid<streamNum;sid++){
         std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
         // if(!lck.try_lock_for(500ms))
-        if(!lck.try_lock())
+        if(!lck.try_lock()){
+          // std::this_thread::sleep_for(200ms);
           continue;
+        }
         if (dataready[sid]==3){
           if(pdamc->streamQuery(sid)){
             dataready[sid]=4;
