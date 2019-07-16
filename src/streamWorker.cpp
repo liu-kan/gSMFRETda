@@ -6,7 +6,8 @@
 #include "protobuf/args.pb.h"
 #include "tools.hpp"
 #include <iostream>
-
+#include <chrono>
+using namespace std::chrono_literals;
 using namespace boost::histogram;
 streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _fretHistNum,
   std::mutex *m, std::condition_variable *cv,int *_dataready,int *_sn,
@@ -93,45 +94,58 @@ void streamWorker::run(int sid,int sz_burst){
         lck.unlock();
         _cv[sid].notify_one();        
       }
-      lck.lock();
-      _cv[sid].wait(lck,[this,sid]{return dataready[sid]==4;});
-      vector<float> mcE(pdamc->hmcE[sid], 
-        pdamc->hmcE[sid] + N[sid]);//*pdamc->reSampleTimes
-      auto mcHist=mkhist(&mcE,fretHistNum,0,1);
-      vector<float> vMcHist(fretHistNum);
-      vector<float> vOEHist(fretHistNum);
-      int ihist=0;
-      for (auto x : indexed(fretHist))
-        vOEHist[ihist++]=*x;
-      ihist=0;
-      for (auto x : indexed(mcHist))
-        vMcHist[ihist++]=*x;      
-      int effN=fretHistNum;           
-      float chisqr=0;
-      for(ihist=0;ihist<fretHistNum;ihist++){
-        if(vOEHist[ihist]>0)
-          chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist])),2)
-            /float(vOEHist[ihist]);
-        else
-          effN--;      
+      // lck.lock();
+      bool calcR2=false;
+      while(!calcR2){
+        if(!lck.try_lock()){
+          std::this_thread::sleep_for(200ms);
+          continue;
+        }
+        else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
+          lck.unlock();
+          continue;
+        }
+        else{
+          calcR2=true;
+          vector<float> mcE(pdamc->hmcE[sid], 
+            pdamc->hmcE[sid] + N[sid]);//*pdamc->reSampleTimes
+          auto mcHist=mkhist(&mcE,fretHistNum,0,1);
+          vector<float> vMcHist(fretHistNum);
+          vector<float> vOEHist(fretHistNum);
+          int ihist=0;
+          for (auto x : indexed(fretHist))
+            vOEHist[ihist++]=*x;
+          ihist=0;
+          for (auto x : indexed(mcHist))
+            vMcHist[ihist++]=*x;      
+          int effN=fretHistNum;           
+          float chisqr=0;
+          for(ihist=0;ihist<fretHistNum;ihist++){
+            if(vOEHist[ihist]>0)
+              chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist])),2)
+                /float(vOEHist[ihist]);
+            else
+              effN--;      
+          }
+          chisqr=chisqr/(effN-s_n[sid]*(s_n[sid]+1));
+          gSMFRETda::pb::res chi2res;
+          chi2res.set_s_n(s_n[sid]);
+          chi2res.set_idx(gpuNodeId);
+          for (auto v : params[sid])
+            chi2res.add_params(v);
+          chi2res.set_e(chisqr);
+          string sres;
+          chi2res.SerializeToString(&sres);
+          sres="r"+sres;
+          bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
+          // rbuf = NULL;
+          bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
+          nn_freemsg (rbuf);
+          dataready[sid]=0;
+          lck.unlock();
+          countcalc++;
+        }
       }
-      chisqr=chisqr/(effN-s_n[sid]*(s_n[sid]+1));
-      gSMFRETda::pb::res chi2res;
-      chi2res.set_s_n(s_n[sid]);
-      chi2res.set_idx(gpuNodeId);
-      for (auto v : params[sid])
-        chi2res.add_params(v);
-      chi2res.set_e(chisqr);
-      string sres;
-      chi2res.SerializeToString(&sres);
-      sres="r"+sres;
-      bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
-      // rbuf = NULL;
-      bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
-      nn_freemsg (rbuf);
-      dataready[sid]=0;
-      lck.unlock();
-      countcalc++;
     }while(countcalc<3);
     // std::cout<<"end\n";
 }
