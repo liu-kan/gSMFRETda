@@ -45,6 +45,7 @@ void gpuWorker::run(int sz_burst){
       for(int sid=0;sid<streamNum;sid++){
         std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
         // if(!lck.try_lock_for(500ms))
+        std::cout<<"gpu try lock\n";
         if(!lck.try_lock()){
           // std::this_thread::sleep_for(200ms);
           continue;
@@ -81,6 +82,6 @@ void gpuWorker::run(int sz_burst){
         }  
       }
       countcalc++;
-    }while(countcalc<3);
+    }while(countcalc>=0);
     // std::cout<<"end\n";
 }
