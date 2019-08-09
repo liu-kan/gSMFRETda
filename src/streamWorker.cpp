@@ -36,20 +36,30 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
     return h;
 }
-void streamWorker::run(int sid,int sz_burst){    
+void streamWorker::run(int sid,int sz_burst){  
+    std::cout<<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
     int sock;    //local
     // thread_local int s_n;
     int ps_n;
+    std::cout<<"net th#"<<sid<<" start creating sock \n";
     sock = nn_socket (AF_SP, NN_REQ);
+    std::cout<<"net th#"<<sid<<" sock created:"<<sock<<"\n";
     assert (sock >= 0);
-    assert (nn_connect(sock, url->c_str()) >= 0);
-    
+    int nneo=nn_connect(sock, url->c_str());
+    std::cout<<"net th#"<<sid<<" conneting:"<<nneo<<"\n";
+    assert (nneo>= 0);
+    std::cout<<"net th#"<<sid<<" conneted\n";
     std::string gpuNodeId;
     genuid(&gpuNodeId);
+    std::cout<<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
     int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
-    do {            
-      std::unique_lock<std::mutex> lck(_m[sid]);
+    std::cout<<"frethist done\n";
+    do {        
+      std::cout<<"net th#"<<sid<<" try lock\n";    
+      std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
+      lck.lock();
+      std::cout<<"net th#"<<sid<<" locked\n";   
       char *rbuf = NULL;
       int bytes;
       if(dataready[sid]==0){
@@ -91,7 +101,8 @@ void streamWorker::run(int sid,int sz_burst){
           ga_start[sid]=ga.start(); ga_stop[sid]=ga.stop();
           dataready[sid]=2;
         // }
-        lck.unlock();
+        if(lck.owns_lock())
+          lck.unlock();
         _cv[sid].notify_one();        
       }
       // lck.lock();
@@ -102,7 +113,8 @@ void streamWorker::run(int sid,int sz_burst){
           continue;
         }
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
-          lck.unlock();
+          if(lck.owns_lock())
+            lck.unlock();
           continue;
         }
         else{
@@ -142,7 +154,8 @@ void streamWorker::run(int sid,int sz_burst){
           bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
           nn_freemsg (rbuf);
           dataready[sid]=0;
-          lck.unlock();
+          if(lck.owns_lock())
+            lck.unlock();
           countcalc++;
         }
       }

@@ -2,16 +2,17 @@
 #include <cstdint>
 #include "cxxopts.hpp"
 #include "loadHdf5.hpp"
-#include <thread> 
 #include "eigenhelper.hpp"
 #include "mc.hpp"
 #include "streamWorker.hpp"
+#include "gpuWorker.hpp"
 #include <vector> 
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include "protobuf/args.pb.h"
-
+#include <chrono>
+using namespace std::chrono_literals;
 using namespace std;
 cxxopts::ParseResult
 parse(int argc, char* argv[])
@@ -49,25 +50,25 @@ parse(int argc, char* argv[])
   }
 }
 
-void share_var_init(int streamNum,std::mutex *_m, std::condition_variable *_cv,
-  int *s_n, vector<float> *params, int *ga_start, int *ga_stop,
-  int *dataready,int *N){
-    _m=new std::mutex[streamNum];
-    _cv=new std::condition_variable[streamNum];    
-    s_n=new int[streamNum]; 
-    params=new vector<float>[streamNum](); 
-    ga_start=new int[streamNum]; 
-    ga_stop=new int[streamNum]; 
-    N==new int[streamNum];
-    dataready=new int[streamNum];
-    std::fill_n(dataready, streamNum, 0);
+void share_var_init(int streamNum,std::mutex **_m, std::condition_variable **_cv,
+  int **s_n, vector<float> **params, int **ga_start, int **ga_stop,
+  int **dataready,int **N){
+    *_m=new std::mutex[streamNum]();
+    *_cv=new std::condition_variable[streamNum]();    
+    *s_n=new int[streamNum](); 
+    *params=new vector<float>[streamNum](); 
+    *ga_start=new int[streamNum](); 
+    *ga_stop=new int[streamNum](); 
+    *N=new int[streamNum];
+    *dataready=new int[streamNum]();
+    std::fill_n(*dataready, streamNum, 0);
 }
 
 void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
   int *s_n, vector<float> *params, int *ga_start, int *ga_stop, 
   int *dataready,int *N){
-    delete[] _m ;
-    delete[] _cv;    
+    // delete[] _m ;
+    // delete[] _cv;    
     delete[] s_n; 
     delete[] params ; 
     delete[] ga_start ; 
@@ -102,23 +103,36 @@ main(int argc, char* argv[])
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     std::mutex *_m;std::condition_variable *_cv;
+    // std::vector<std::unique_ptr<std::mutex>> _m
+    // std::vector<std::mutex> _ms(streamNum);
+    // std::vector<std::condition_variable> _cvs(streamNum);
     int *s_n; vector<float> *params; int *ga_start; int *ga_stop; float *chisqr;
     int *dataready,*N;
-    share_var_init(streamNum,_m,_cv,
-      s_n, params, ga_start, ga_stop,dataready,N);
+    share_var_init(streamNum,&_m,&_cv,
+      &s_n, &params, &ga_start, &ga_stop,&dataready,&N);
     streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv,
       dataready,s_n, params, ga_start, ga_stop,N);
+    gpuWorker gpuworker(&pdamc,streamNum,&SgDivSr,fretHistNum,_m,_cv,
+      dataready,s_n, params, ga_start, ga_stop,N);
+    std::cout<<"workers created\n";
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
       threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
     }
+    std::cout<<"net threads looped\n";
+    std::this_thread::sleep_for(10s);
+    std::thread thGpu(&gpuWorker::run,&gpuworker,pdamc.sz_burst);
+    std::cout<<"gpu thread looped\n";
     for (auto& th : threads) th.join();
+    std::cout<<"net threads joined\n";
+    thGpu.join();
+    
    	// for (std::thread & th : threads)
     // {
     //   if (th.joinable())
     //     th.join();
     // }
-    pdamc.set_gpuid();
+    // pdamc.set_gpuid();
     // worker.run(0,pdamc.sz_burst);
     share_var_free(streamNum,_m,_cv,s_n, params, ga_start, ga_stop,dataready,N);
     return 0;   
