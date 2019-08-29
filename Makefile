@@ -19,7 +19,7 @@ ${OUT_DIR}:
 readhdf: src/loadHdf5.cpp directories
 	$(CXX) $(CXXFLAGS) $(HEADER) -o bin/readhdf src/loadHdf5.cpp $(LIBS) 
 main: src/main.cpp directories loadHdf5.o mc.o eigenhelper.o args.pb.o streamWorker.o tools.o gpuWorker.o
-	$(CXX) $(CXXFLAGS) $(HEADER) $(LIBS) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o args.pb.o streamWorker.o gpuWorker.o tools.o 
+	$(CXX) $(CXXFLAGS) -o bin/gSMFRETda src/main.cpp mc.o eigenhelper.o loadHdf5.o args.pb.o streamWorker.o gpuWorker.o tools.o $(HEADER) $(LIBS)
 ifndef debug
 	strip bin/gSMFRETda
 endif
