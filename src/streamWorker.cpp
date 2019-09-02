@@ -63,7 +63,7 @@ void streamWorker::run(int sid,int sz_burst){
       char *rbuf = NULL;
       int bytes;
       if(dataready[sid]==0){
-        
+          std::cout<<"dataready 0\n";
         // {
           gSMFRETda::pb::p_cap cap;
           cap.set_cap(sz_burst);
@@ -115,6 +115,7 @@ void streamWorker::run(int sid,int sz_burst){
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
           if(lck.owns_lock())
             lck.unlock();
+          std::cout<<"dataready !=4\n";
           continue;
         }
         else{
