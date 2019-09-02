@@ -110,6 +110,7 @@ main(int argc, char* argv[])
     int *dataready,*N;
     share_var_init(streamNum,&_m,&_cv,
       &s_n, &params, &ga_start, &ga_stop,&dataready,&N);
+    // std::cout<<"dataready[2]:"<<dataready[2]<<std::endl;
     streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv,
       dataready,s_n, params, ga_start, ga_stop,N);
     gpuWorker gpuworker(&pdamc,streamNum,&SgDivSr,fretHistNum,_m,_cv,

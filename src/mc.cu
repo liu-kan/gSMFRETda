@@ -497,7 +497,7 @@ bool mc::set_params(int n,int sid,vector<float>& args){
     bool r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
-    cout<<"k:"<<*matK<<endl;
+    // cout<<"k:"<<*matK<<endl;
     // memcpy(hpe[sid], peargs, sizeof(float)*n);
     // memcpy(hpv[sid], pvargs, sizeof(float)*n);
     // memcpy(hpk[sid], matK->data(), sizeof(float)*n*n);
