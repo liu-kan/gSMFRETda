@@ -93,7 +93,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
             // sidx.append(si);            
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
-            float count=0;
+            int count=0;
             int64_t bin0=start[idx];
             int64_t bin1=start[idx];
             while (T[idx]>mcSpendTime){
@@ -112,7 +112,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                     bin1=bin0+mcSpendTime/clk_p;
                 }
                 count++;
-            }            
+            }      
             // arrF f_ia(bins.len-1);
             // binTimeHist(&f_ia,burst_ad,bins);
             // arrF f_id(bins.len-1);
@@ -146,7 +146,7 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                     // mcE[tidx]+=ai;
             //     }
             //     mcE[tidx]/=F;
-            mcE[N*sampleTime+tidx]=count;
+            // mcE 的计算是原子的
             // }
             // sidx.freeList();
             // bins.freeList();
