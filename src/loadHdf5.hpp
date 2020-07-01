@@ -1,5 +1,4 @@
-#ifndef loadhdf5_HPP_INCLUDED
-#define loadhdf5_HPP_INCLUDED
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -15,4 +14,3 @@ bool loadhdf5(string H5FILE_NAME, vector<int64_t>& start,vector<int64_t>& stop,
     float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
 bool savehdf5(string FILE_NAME, string DATASET_NAME, vector<retype>& r);
 
-#endif

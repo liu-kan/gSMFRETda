@@ -5,7 +5,7 @@ else
 endif
 CXXFLAGS =	$(CFLAGS)
 HEADER = -I3rdparty/HighFive/include -I3rdparty/cxxopts/include -I/opt/cuda/include \
-	-I3rdparty/eigen -I/usr/local/cuda-10.1/include
+	-I3rdparty/eigen -I/usr/local/cuda-10.1/include -I/usr/local/include
 #BOOSTHEADER = -I 3rdparty/boost/histogram/include -I 3rdparty/boost/core/include/ -I 3rdparty/boost/iterator/include/ -I 3rdparty/boost_1_69_0/
 BOOSTHEADER = -I 3rdparty/boost_1_70_0/
 LIBS =  -lpthread `pkg-config --libs hdf5` -L/usr/local/lib -lrmm -L/opt/cuda/lib64 -L/usr/local/cuda-10.1/lib64 -lhdf5 -lcudart  -lcurand -lnanomsg -lprotobuf

@@ -1,5 +1,5 @@
-#ifndef genrand_INCLUDED
-#define genrand_INCLUDED
+#pragma once
+
 #include <Eigen/Eigen>
 
 #define VECTOR_SIZE 64
@@ -97,4 +97,3 @@ __device__ bool draw_P_B_Tr(float *bc,float *totPhoton,int timebin,float* timesp
     return r;
 }
 
-#endif

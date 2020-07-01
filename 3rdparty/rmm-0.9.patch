@@ -1,0 +1,13 @@
+--- CMakeLists.txt	2020-07-01 04:21:46.844269738 +0000
++++ CMakeLists.txt.n	2020-07-01 04:22:25.837154007 +0000
+@@ -91,8 +91,8 @@
+ 
+ ###################################################################################################
+ # - include paths ---------------------------------------------------------------------------------
+-
+-include_directories("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}"
++find_package(CUDA)
++include_directories("${CUDA_INCLUDE_DIRS}"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/src"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cnmem/include")
