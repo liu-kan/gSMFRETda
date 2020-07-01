@@ -1,6 +1,4 @@
-#ifndef tools_HPP_INCLUDED
-#define tools_HPP_INCLUDED
-
+#pragma once
 #include <string>
 void genuid(std::string* id);
 #include <thread>
@@ -49,4 +47,3 @@ auto make_s(dynamic_tag, S&& s, Axes&&... axes) {
 } // namespace histogram
 } // namespace boost
 
-#endif

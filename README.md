@@ -21,12 +21,12 @@ git annex get . # retrieve everything under the current directory
 ```
 
 ## Building prerequest
-* CUDA version 10 
+* CUDA version >= 10 
 * libhdf5-dev 1.10 and newer 
 
 ## Build the code
 ```bash
-sudo apt install libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev 
+sudo apt install libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev
 cd gSMFRETda
 make main -j8
 ```

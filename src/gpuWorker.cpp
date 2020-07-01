@@ -48,24 +48,33 @@ void gpuWorker::run(int sz_burst){
         // std::cout<<"gpu try lock\n";
         if(!lck.try_lock()){
           // std::this_thread::sleep_for(200ms);
+          std::cout <<"no locked\n";
           continue;
         }
         if (dataready[sid]==3){
+          std::cout<<dataready[sid]<<" gpu dataready ==3\n";
           if(pdamc->streamQuery(sid)){
             dataready[sid]=4;
             lck.unlock();
             _cv[sid].notify_one();
             continue;
+          }
+          else{
+            lck.unlock();
+            continue;
           }          
         }else if(dataready[sid]==4||dataready[sid]==0){
+          std::cout<<dataready[sid]<<" gpu dataready ==4 or 0\n";
           lck.unlock();
           continue;          
         }
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return (dataready[sid]==1|| 
             dataready[sid]==2);})){
+          std::cout<<dataready[sid]<<" gpu dataready !=1 or 2\n";
           lck.unlock();
           continue;
         }
+        std::cout<<dataready[sid]<<" gpu dataready ==1 or 2\n";
         pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
         N[sid]=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
@@ -82,6 +91,6 @@ void gpuWorker::run(int sz_burst){
           continue;
         }  
       }      
-    }while(countcalc<3*2);
+    }while(countcalc<999);
     std::cout<<"end\n";
 }

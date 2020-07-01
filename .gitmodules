@@ -1,9 +1,0 @@
-[submodule "3rdparty/HighFive"]
-	path = 3rdparty/HighFive
-	url = https://github.com/BlueBrain/HighFive.git
-[submodule "3rdparty/cxxopts"]
-	path = 3rdparty/cxxopts
-	url = https://github.com/jarro2783/cxxopts.git
-[submodule "3rdparty/eigen"]
-	path = 3rdparty/eigen
-	url = https://github.com/eigenteam/eigen-git-mirror.git

@@ -1,5 +1,5 @@
-#ifndef eigenhelper_HPP_INCLUDED
-#define eigenhelper_HPP_INCLUDED
+#pragma once
+
 #include <Eigen/Core>
 #include <Eigen/Eigen>
 
@@ -19,4 +19,3 @@ typedef Eigen::Map<arrFF> matXfMapper;
 
 bool genMatK(arrFF** matK,int n, RowVectorXf& args);
 bool genMatP(arrF** matP,arrFF* matK);
-#endif

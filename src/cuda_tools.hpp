@@ -1,5 +1,4 @@
-#ifndef cuda_tools_HPP_INCLUDED
-#define cuda_tools_HPP_INCLUDED
+#pragma once
 
 #include <cuda_runtime.h>
 #include <cuda.h>
@@ -34,6 +33,3 @@ static void CheckCudaErrorAux (const char *file, unsigned line, const char *stat
 #define CURAND_CALL(x) do { if((x) != CURAND_STATUS_SUCCESS) { \
     printf("Error at %s:%d\n",__FILE__,__LINE__); \
     return EXIT_FAILURE;}} while(0)
-
-
-#endif

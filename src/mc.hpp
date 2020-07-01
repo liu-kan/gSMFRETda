@@ -1,5 +1,5 @@
-#ifndef mc_HPP_INCLUDED
-#define mc_HPP_INCLUDED
+#pragma once
+
 #include <vector>
 #include <cstdint>
 #include <queue>
@@ -84,4 +84,3 @@ class mc
         bool set_params(int n,int sid,vector<float>& args);        
 };
 
-#endif

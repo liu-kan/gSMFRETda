@@ -121,7 +121,7 @@ main(int argc, char* argv[])
       threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
     }
     std::cout<<"net threads looped\n";
-    std::this_thread::sleep_for(10s);
+    std::this_thread::sleep_for(2s);
     std::thread thGpu(&gpuWorker::run,&gpuworker,pdamc.sz_burst);
     std::cout<<"gpu thread looped\n";
     for (auto& th : threads) th.join();
