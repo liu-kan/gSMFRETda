@@ -52,9 +52,10 @@ void streamWorker::run(int sid,int sz_burst){
     std::string gpuNodeId;
     genuid(&gpuNodeId);
     std::cout<<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
-    int countcalc=0;
+    // int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     std::cout<<"frethist done\n";
+    bool ending=false;
     do {        
       std::cout<<"net th#"<<sid<<" try lock\n";    
       std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
@@ -115,10 +116,11 @@ void streamWorker::run(int sid,int sz_burst){
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
           if(lck.owns_lock())
             lck.unlock();
-          std::cout<<"dataready !=4\n";
+             std::cout<<dataready[sid]<<" dataready !=4\n";
           continue;
         }
         else{
+          std::cout<<dataready[sid]<<" dataready ==4\n";
           calcR2=true;
           vector<float> mcE(pdamc->hmcE[sid], 
             pdamc->hmcE[sid] + N[sid]);//*pdamc->reSampleTimes
@@ -157,9 +159,9 @@ void streamWorker::run(int sid,int sz_burst){
           dataready[sid]=0;
           if(lck.owns_lock())
             lck.unlock();
-          countcalc++;
+          // countcalc++;
         }
       }
-    }while(countcalc<3);
+    }while(!ending);
     // std::cout<<"end\n";
 }

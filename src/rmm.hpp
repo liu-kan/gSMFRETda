@@ -1,5 +1,5 @@
-#ifndef rmm_cuh_INCLUDED
-#define rmm_cuh_INCLUDED
+#pragma once
+
 #include <cuda_runtime_api.h>
 #include <cstring>
 #include <rmm/rmm.h>
@@ -31,8 +31,11 @@ cudaError_t _rmmAlloc(void **ptr, size_t sz, cudaStream_t stream) {
 
 cudaError_t _rmmReAlloc(void **ptr, size_t sz, cudaStream_t stream) {
     rmmError_t res = RMM_REALLOC(ptr, sz, stream);
+    // rmmError_t res = RMM_FREE(ptr, stream);
     rmmSucceeded(res);
     if (res != RMM_SUCCESS) return cudaErrorMemoryAllocation;
+    // RMM_ALLOC(ptr, sz, stream);
+    // if (res != RMM_SUCCESS) return cudaErrorMemoryAllocation;
     return cudaSuccess;
 }
 
@@ -76,5 +79,3 @@ void setAllocator(const std::string alloc) {
 }
 
 
-
-#endif

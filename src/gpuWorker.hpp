@@ -1,5 +1,4 @@
-#ifndef gpuhandle_thr_hpp
-#define gpuhandle_thr_hpp
+#pragma once
 
 #include <string>
 #include <condition_variable>
@@ -26,4 +25,3 @@ class gpuWorker {
         int *N;int *ga_start; int *ga_stop;
         // auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 };
-#endif

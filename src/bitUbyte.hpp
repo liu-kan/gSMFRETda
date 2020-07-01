@@ -1,5 +1,4 @@
-#ifndef bitUbtye_HPP_INCLUDED
-#define bitUbtye_HPP_INCLUDED
+#pragma once
 
 #include <vector>
 
@@ -121,6 +120,3 @@ int getbits(std::vector<T>& boolarr,std::vector<unsigned char>& bytearr,std::siz
         return 0;
     }        
 }
-
-
-#endif

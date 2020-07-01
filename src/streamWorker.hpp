@@ -1,5 +1,4 @@
-#ifndef stream_thr_hpp
-#define stream_thr_hpp
+#pragma once
 
 #include "mc.hpp"
 #include <string>
@@ -28,4 +27,3 @@ private:
   int *N;int *ga_start; int *ga_stop;
 };
 
-#endif

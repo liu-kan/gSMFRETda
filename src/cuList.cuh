@@ -1,5 +1,5 @@
-#ifndef culist_INCLUDED
-#define culist_INCLUDED
+#pragma once
+
 #ifdef __CUDACC__
 #define CU_CALL_MEMBER __host__ __device__
 #else
@@ -100,5 +100,3 @@ public:
             return NULL;
     };
 };
-
-#endif
