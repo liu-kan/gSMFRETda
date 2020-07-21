@@ -10,7 +10,7 @@ class gpuWorker {
     public:
         gpuWorker(mc* _pdamc,int streamNum,std::vector<float>* _d,int _fretHistNum,
             std::mutex *m, std::condition_variable *cv,int *dataready,int *sn,
-    std::vector<float> *params, int *ga_start, int *ga_stop,int *N);
+    std::vector<float> *params, int *ga_start, int *ga_stop,int *N,unsigned char debugbool);
         void run(int sid);        
     private:
         mc* pdamc;
@@ -23,5 +23,6 @@ class gpuWorker {
         int *s_n;
         std::vector<float> *params;
         int *N;int *ga_start; int *ga_stop;
+        unsigned char debug;
         // auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 };

@@ -19,7 +19,6 @@
 
 
 
-
 int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
 {
     int nSD;                        // Socket descriptor

@@ -1,6 +1,5 @@
 #include <iostream>
 #include <cstdint>
-#include "cxxopts.hpp"
 #include "loadHdf5.hpp"
 #include "eigenhelper.hpp"
 #include "mc.hpp"
@@ -14,41 +13,8 @@
 #include <chrono>
 using namespace std::chrono_literals;
 using namespace std;
-cxxopts::ParseResult
-parse(int argc, char* argv[])
-{
-  try
-  {
-    cxxopts::Options options(argv[0], " - Compute smFRET PDA by GPU");
-    options
-      .allow_unrecognised_options()
-      .add_options()
-      ("u,url", "params server url tcp://ip:port", cxxopts::value<std::string>()->default_value("tcp://127.0.0.1:7777"))
-      ("i,input", "Input HDF5", cxxopts::value<string>())
-      ("g,gpuid", "The index of the GPU will be used", cxxopts::value<string>()->default_value("0"))
-      ("s,snum", "Stream Number", cxxopts::value<string>()->default_value("16"))
-      ("f,fret_hist_num", "fret hist Number", cxxopts::value<string>()->default_value("200"))
-      ("d,debug", "debug the gpu kernel 0 or 1", cxxopts::value<string>()->default_value("0"))
-      ("h,help", "Print help")      
-    ;
-    auto result = options.parse(argc, argv);    
-		if (result.count("help"))
-		{
-			std::cout << options.help({""}) << std::endl;
-			exit(0);
-		}
-    else if (result.count("input")<1)
-    {
-        cout << "Input file of HDF5 arg -i/--input must be assigned " << endl;
-        exit(1);
-    }    
-    return result;
-  } catch (const cxxopts::OptionException& e)
-  {
-    cout << "error parsing options: " << e.what() << endl;
-    exit(1);
-  }
-}
+#include "tools.hpp"
+#include "gengetopt/cmdline.h"
 
 void share_var_init(int streamNum,std::mutex **_m, std::condition_variable **_cv,
   int **s_n, vector<float> **params, int **ga_start, int **ga_stop,
@@ -77,16 +43,36 @@ void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
     delete[] dataready;
 }
 
-main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
-    auto result = parse(argc, argv);
-    string H5FILE_NAME=result["input"].as<string>();    
-    string url=result["url"].as<string>();    
-    int streamNum=std::stoi(result["snum"].as<string>());    
-    int fretHistNum=std::stoi(result["fret_hist_num"].as<string>());    
-    int debugmc=std::stoi(result["debug"].as<string>());
-    bool debugbool=(debugmc==0?false:true);
-    int gpuid=std::stoi(result["gpuid"].as<string>());    
+    // auto result = parse(argc, argv);
+    gengetopt_args_info args_info;
+    if (cmdline_parser (argc, argv, &args_info) != 0)
+      exit(1) ;    
+    if(args_info.inputs_num<1 && !args_info.input_given ){
+      std::cout<<"You need either appoint -i or add hdf5 filename in the end of cmdline!"<<std::endl;
+      exit(1);
+    }
+    string H5FILE_NAME;
+    if (args_info.input_given)
+      H5FILE_NAME=args_info.input_arg ;    
+    else{
+      H5FILE_NAME=args_info.inputs[0];
+    }
+    std::cout<<"Using "<<H5FILE_NAME<<std::endl;
+    string url=args_info.url_arg ;    
+    int streamNum=args_info.snum_arg;    
+    int fretHistNum=args_info.fret_hist_num_arg;    
+    unsigned char debuglevel=0;
+    if(args_info.debug_flag)
+      debuglevel=~0;
+    if(args_info.debugcpu_flag)
+      debuglevel|=debugLevel::cpu;
+    if(args_info.debuggpu_flag)
+      debuglevel|=debugLevel::gpu;
+    if(args_info.debugnet_flag)
+      debuglevel|=debugLevel::net;            
+    int gpuid=args_info.gpuid_arg;    
     vector<uint32_t> istart;vector<uint32_t> istop;    
     vector<int64_t> stop;vector<int64_t> start;
     vector<int64_t> times_ms;
@@ -99,7 +85,7 @@ main(int argc, char* argv[])
     assert (T_burst_duration.size() == SgDivSr.size());
     assert (T_burst_duration.size() == istart.size());
     cout<<T_burst_duration.size()<<endl;
-    mc pdamc(gpuid,streamNum,debugbool);
+    mc pdamc(gpuid,streamNum,debuglevel);
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     std::mutex *_m;std::condition_variable *_cv;
@@ -112,9 +98,9 @@ main(int argc, char* argv[])
       &s_n, &params, &ga_start, &ga_stop,&dataready,&N);
     // std::cout<<"dataready[2]:"<<dataready[2]<<std::endl;
     streamWorker worker(&pdamc,&url,&SgDivSr,fretHistNum,_m,_cv,
-      dataready,s_n, params, ga_start, ga_stop,N);
+      dataready,s_n, params, ga_start, ga_stop,N,debuglevel);
     gpuWorker gpuworker(&pdamc,streamNum,&SgDivSr,fretHistNum,_m,_cv,
-      dataready,s_n, params, ga_start, ga_stop,N);
+      dataready,s_n, params, ga_start, ga_stop,N,debuglevel);
     std::cout<<"workers created\n";
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
@@ -124,10 +110,11 @@ main(int argc, char* argv[])
     std::this_thread::sleep_for(2s);
     std::thread thGpu(&gpuWorker::run,&gpuworker,pdamc.sz_burst);
     std::cout<<"gpu thread looped\n";
-    for (auto& th : threads) th.join();
-    std::cout<<"net threads joined\n";
+
     thGpu.join();
-    
+    std::cout<<"gpu thread joined\n";
+    for (auto& th : threads) th.join();
+    std::cout<<"net threads joined\n";    
    	// for (std::thread & th : threads)
     // {
     //   if (th.joinable())

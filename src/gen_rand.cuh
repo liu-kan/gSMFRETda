@@ -36,13 +36,13 @@ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     *state=s;
     return n-1;
 }
-__device__ float drawTau(float k,curandStateScrambledSobol64* state,float precision=1e-5){
+__device__ float drawTau(float k,curandStateScrambledSobol64* state,float precision=1e-4){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
     *state=s;
     float r=logf(1-pv)/(-k);
     if (r<precision)
-        r=precision;
+        r+=precision;
     return r; //+1e-5 is min precision
 }
 __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* state){

@@ -11,7 +11,7 @@ using namespace std::chrono_literals;
 using namespace boost::histogram;
 streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _fretHistNum,
   std::mutex *m, std::condition_variable *cv,int *_dataready,int *_sn,
-  std::vector<float> *_params, int *_ga_start, int *_ga_stop,int *_N){    
+  std::vector<float> *_params, int *_ga_start, int *_ga_stop,int *_N,unsigned char debugl=0){    
     pdamc=_pdamc;    
     url=_url;       
     SgDivSr=_d;
@@ -24,6 +24,7 @@ streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _f
     ga_start=_ga_start;
     ga_stop=_ga_stop;
     N=_N;
+    debug=debugl;
 }
 // template <typename Tag, typename Storage>
 auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
@@ -37,34 +38,34 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     return h;
 }
 void streamWorker::run(int sid,int sz_burst){  
-    std::cout<<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
+    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
     int sock;    //local
     // thread_local int s_n;
     int ps_n;
-    std::cout<<"net th#"<<sid<<" start creating sock \n";
+    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start creating sock \n";
     sock = nn_socket (AF_SP, NN_REQ);
-    std::cout<<"net th#"<<sid<<" sock created:"<<sock<<"\n";
+    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" sock created:"<<sock<<"\n";
     assert (sock >= 0);
     int nneo=nn_connect(sock, url->c_str());
-    std::cout<<"net th#"<<sid<<" conneting:"<<nneo<<"\n";
+    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneting:"<<nneo<<"\n";
     assert (nneo>= 0);
-    std::cout<<"net th#"<<sid<<" conneted\n";
+    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneted\n";
     std::string gpuNodeId;
     genuid(&gpuNodeId);
-    std::cout<<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
+    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
     // int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
-    std::cout<<"frethist done\n";
+    AtomicWriter(debug,debugLevel::cpu) <<"frethist done\n";
     bool ending=false;
     do {        
-      std::cout<<"net th#"<<sid<<" try lock\n";    
+      AtomicWriter(debug,debugLevel::net) <<"net th# "<<sid<<" try lock\n";    
       std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
       lck.lock();
-      std::cout<<"net th#"<<sid<<" locked\n";   
+      AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" locked\n";   
       char *rbuf = NULL;
       int bytes;
       if(dataready[sid]==0){
-          std::cout<<"dataready 0\n";
+          AtomicWriter(debug,debugLevel::net) <<"dataready 0\n";
         // {
           gSMFRETda::pb::p_cap cap;
           cap.set_cap(sz_burst);
@@ -88,7 +89,7 @@ void streamWorker::run(int sid,int sz_burst){
         // std::string idxencoded = base64_encode(reinterpret_cast<const unsigned char*>(gpuNodeId.c_str()),
         //    gpuNodeId.length());
           nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
-          std::cout<< "p"+gpuNodeId <<endl;
+          AtomicWriter(debug,debugLevel::cpu) << "p"+gpuNodeId <<'\n';
           
           gSMFRETda::pb::p_ga ga;
           bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
@@ -116,14 +117,14 @@ void streamWorker::run(int sid,int sz_burst){
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
           if(lck.owns_lock())
             lck.unlock();
-             std::cout<<dataready[sid]<<" dataready !=4\n";
+             AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready !=4\n";
           continue;
         }
         else{
-          std::cout<<dataready[sid]<<" dataready ==4\n";
+          AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready ==4\n";
           calcR2=true;
           vector<float> mcE(pdamc->hmcE[sid], 
-            pdamc->hmcE[sid] + N[sid]);//*pdamc->reSampleTimes
+            pdamc->hmcE[sid] + N[sid]*pdamc->reSampleTimes);//
           auto mcHist=mkhist(&mcE,fretHistNum,0,1);
           vector<float> vMcHist(fretHistNum);
           vector<float> vOEHist(fretHistNum);
@@ -143,6 +144,7 @@ void streamWorker::run(int sid,int sz_burst){
               effN--;      
           }
           chisqr=chisqr/(effN-s_n[sid]*(s_n[sid]+1));
+          // chisqr=(effN-s_n[sid]*(s_n[sid]+1));
           gSMFRETda::pb::res chi2res;
           chi2res.set_s_n(s_n[sid]);
           chi2res.set_idx(gpuNodeId);
@@ -163,5 +165,5 @@ void streamWorker::run(int sid,int sz_burst){
         }
       }
     }while(!ending);
-    // std::cout<<"end\n";
+    // AtomicWriter(debug) <<"end\n";
 }

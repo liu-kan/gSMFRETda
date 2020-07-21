@@ -8,7 +8,7 @@ using namespace std;
 #include <curand_kernel.h>
 #include "cuda_tools.hpp"
 #include "loadHdf5.hpp"
-#define DEBUGMC true
+#define DEBUGMC 0
 // #include "Poco/Mutex.h"
 
 typedef struct {
@@ -54,7 +54,7 @@ class mc
                          // maximum occupancy for a full device launch 
         int *gridSize;   // The actual grid size needed, based on input size   
         retype** mcE;
-        bool debug;
+        unsigned char debug;
         std::queue<int> streamFIFO;
         int getStream();
         void givebackStream(int i); 
@@ -80,7 +80,7 @@ class mc
             vector<float>& T_burst_duration,vector<float>& SgDivSr,
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
-        mc(int devid,int _streamNum=16,bool debug=DEBUGMC);
+        mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC);
         bool set_params(int n,int sid,vector<float>& args);        
 };
 
