@@ -26,7 +26,10 @@ git annex get . # retrieve everything under the current directory
 
 ## Build the code
 ```bash
-sudo apt install libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev
-cd gSMFRETda
-make main -j8
+sudo apt install libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt
+mkdir gSMFRETda/build
+cd gSMFRETda/build
+cmake ..
+make -j8
+sudo ldconfig
 ```
