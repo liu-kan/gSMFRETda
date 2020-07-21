@@ -10,7 +10,7 @@ class streamWorker
 public:
   streamWorker(mc* pdamc,string* _url,std::vector<float> *d,int fretHistNum,
     std::mutex *m, std::condition_variable *cv,int *dataready,int *sn,
-    std::vector<float> *params, int *ga_start, int *ga_stop,int *N);
+    std::vector<float> *params, int *ga_start, int *ga_stop,int *N,unsigned char debugbool);
   void run(int sid,int sz_burst);
   auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 private:
@@ -24,6 +24,7 @@ private:
   int *dataready;
   int *s_n;
   std::vector<float> *params;
+  unsigned char debug;
   int *N;int *ga_start; int *ga_stop;
 };
 

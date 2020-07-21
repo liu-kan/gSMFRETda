@@ -12,7 +12,7 @@ using namespace std::chrono_literals;
 
 gpuWorker::gpuWorker(mc* _pdamc,int _streamNum, std::vector<float>* _d,int _fretHistNum,
         std::mutex *m, std::condition_variable *cv,int *_dataready,int *_sn,
-  std::vector<float> *_params, int *_ga_start, int *_ga_stop,int *_N){
+  std::vector<float> *_params, int *_ga_start, int *_ga_stop,int *_N,unsigned char debugl=0){
     pdamc=_pdamc;
     _m=m;
     _cv=cv;
@@ -26,6 +26,7 @@ gpuWorker::gpuWorker(mc* _pdamc,int _streamNum, std::vector<float>* _d,int _fret
     ga_start=_ga_start;
     ga_stop=_ga_stop;
     N=_N;
+    debug=debugl;
 }
 // template <typename Tag, typename Storage>
 // auto gpuWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
@@ -45,14 +46,14 @@ void gpuWorker::run(int sz_burst){
       for(int sid=0;sid<streamNum;sid++){
         std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
         // if(!lck.try_lock_for(500ms))
-        // std::cout<<"gpu try lock\n";
+        AtomicWriter(debug,debugLevel::gpu) <<"gpu try lock\n";
         if(!lck.try_lock()){
           // std::this_thread::sleep_for(200ms);
-          std::cout <<"no locked\n";
+          AtomicWriter(debug,debugLevel::gpu)  <<"no locked\n";
           continue;
         }
         if (dataready[sid]==3){
-          std::cout<<dataready[sid]<<" gpu dataready ==3\n";
+          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==3\n";
           if(pdamc->streamQuery(sid)){
             dataready[sid]=4;
             lck.unlock();
@@ -64,17 +65,17 @@ void gpuWorker::run(int sz_burst){
             continue;
           }          
         }else if(dataready[sid]==4||dataready[sid]==0){
-          std::cout<<dataready[sid]<<" gpu dataready ==4 or 0\n";
+          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==4 or 0\n";
           lck.unlock();
           continue;          
         }
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return (dataready[sid]==1|| 
             dataready[sid]==2);})){
-          std::cout<<dataready[sid]<<" gpu dataready !=1 or 2\n";
+          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready !=1 or 2\n";
           lck.unlock();
           continue;
         }
-        std::cout<<dataready[sid]<<" gpu dataready ==1 or 2\n";
+        AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==1 or 2\n";
         pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
         N[sid]=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
@@ -82,6 +83,7 @@ void gpuWorker::run(int sz_burst){
         dataready[sid]=3;
         if(pdamc->streamQuery(sid)){
           countcalc++;
+          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu calac ready\n";
           dataready[sid]=4;
           lck.unlock();
           _cv[sid].notify_one();
@@ -91,6 +93,6 @@ void gpuWorker::run(int sz_burst){
           continue;
         }  
       }      
-    }while(countcalc<999);
-    std::cout<<"end\n";
+    }while(countcalc<1);
+    AtomicWriter(debug,debugLevel::gpu) <<"end\n";
 }

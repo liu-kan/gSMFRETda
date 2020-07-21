@@ -7,7 +7,7 @@
 #include <numeric>
 #include "binom.cuh"
 #include "gen_rand.cuh"
-#include "cuList.cuh"
+// #include "cuList.cuh"
 #include "rmm.hpp"
 void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *data) {
     if (status) {
@@ -18,50 +18,50 @@ void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *d
 #define CUDAstream_CHECK_LAST_ERROR   cudaStreamAddCallback(streams[sid], myStreamCallback, nullptr, 0)
 
 //__forceinline__ 
-template <typename T>
-__device__ void binTimeHist(arrF* hist, arrI64& x,
-         cuList<T> bins ){
-    int binlen=bins.len;
-    hist->resize(1,binlen-1);
-    hist->setZero();
-    int datalen=x.cols();
-    for (int i=0;i<datalen;i++){
-        if(x(i)==0)
-            continue;
-        int idxbin=1;
-        do{
-            T v=*(bins.at(idxbin));
-            if (x(i)<v){
-                ((*hist)(idxbin-1))+=1;
-                break;
-            }
-            idxbin++;
-        }while(idxbin<binlen);
-    }
-}
+// template <typename T>
+// __device__ void binTimeHist(arrF* hist, arrI64& x,
+//          cuList<T> bins ){
+//     int binlen=bins.len;
+//     hist->resize(1,binlen-1);
+//     hist->setZero();
+//     int datalen=x.cols();
+//     for (int i=0;i<datalen;i++){
+//         if(x(i)==0)
+//             continue;
+//         int idxbin=1;
+//         do{
+//             T v=*(bins.at(idxbin));
+//             if (x(i)<v){
+//                 ((*hist)(idxbin-1))+=1;
+//                 break;
+//             }
+//             idxbin++;
+//         }while(idxbin<binlen);
+//     }
+// }
 /*
 input:x 时间序列, bin0/1开始和结束时间点，x0起始搜索idx
 output:hist 保存hist值，x0保存下次的起始位置
 */
-template <typename T>
-__device__ void p2TimeHist(float* hist, arrI64& x,
-         T bin0, T bin1 , int64_t* x0){
-    *hist=0;
-    int datalen=x.cols();
-    for (int i=*x0;i<datalen;i++){
-        if(x(i)==0)
-            continue;
-        if (x(i)<bin0)
-            continue;
-        else if(x(i)<bin1){
-            *hist=(*hist)+1;
-        }
-        else{
-            break;
-            *x0=i;
-        }
-    }
-}
+// template <typename T>
+// __device__ void p2TimeHist(float* hist, arrI64& x,
+//          T bin0, T bin1 , int64_t* x0){
+//     *hist=0;
+//     int datalen=x.cols();
+//     for (int i=*x0;i<datalen;i++){
+//         if(x(i)==0)
+//             continue;
+//         if (x(i)<bin0)
+//             continue;
+//         else if(x(i)<bin1){
+//             *hist=(*hist)+1;
+//         }
+//         else{
+//             break;
+//             *x0=i;
+//         }
+//     }
+// }
 __global__ void mc_kernel(int64_t* start,int64_t* stop,
     uint32_t* istart,uint32_t* istop,
     int64_t* times_ms,
@@ -73,18 +73,26 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
     rk_state *devStates, retype *mcE,int reSampleTimes,
     float gamma=0.34,float beta=1.42,float DexDirAem=0.08, 
     float Dch2Ach=0.07,float r0=52){
-    
+    int NN=N*reSampleTimes;
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;    
-    if (tidx<N){
-        int idx=tidx;//%reSampleTimes;
-        arrUcharMapper mask_adA(mask_ad+istart[idx],istop[idx]-istart[idx]);
-        arrUcharMapper mask_ddA(mask_dd+istart[idx],istop[idx]-istart[idx]);
-        arrI64Mapper times_msA(times_ms+istart[idx],istop[idx]-istart[idx]);        
+    if (tidx<NN){
+        //idx is burst id
+        // int idx=tidx;//%reSampleTimes;
+        // TODO 理清 tidx idx 各个mem变量
+        //int idx = __fdiv_rd(tidx,reSampleTimes);
+        // int sampleTime=tidx%reSampleTimes;
+        // If n is a power of 2, ( i / n ) is equivalent to ( i ≫ log2 n ) and ( i % n ) is equivalent to ( i & n - 1 ).
+        int idx=tidx>>((int)log2(reSampleTimes));
+        int sampleTime=tidx&reSampleTimes-1;
+        int phCount=istop[idx]-istart[idx];
+        arrUcharMapper mask_adA(mask_ad+istart[idx],phCount);
+        arrUcharMapper mask_ddA(mask_dd+istart[idx],phCount);
+        arrI64Mapper times_msA(times_ms+istart[idx],phCount);        
         arrI64 burst_dd=mask_ddA.cast<int64_t>()*times_msA;
         arrI64 burst_ad=mask_adA.cast<int64_t>()*times_msA;
-        
-        // printf("%d \n", mcE[tidx]);
-        for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){
+        float F=0;
+        // for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++)
+        {
             // // int sampleTime=tidx/reSampleTimes;
             int si=drawDisIdx(s_n,gpp,devQStates+tidx);
             // cuList<int> sidx;
@@ -94,69 +102,82 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
             float mcSpendTime=0;
             matXfMapper matK(gpk,s_n,s_n);
             int count=0;
-            int64_t bin0=start[idx];
-            int64_t bin1=start[idx];
-            while (T[idx]>mcSpendTime){
-                int sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
+            int64_t bin0clk_t=start[idx];
+            int64_t bin1clk_t=start[idx];
+            int sj=0;            
+            while (T[idx]>mcSpendTime){                
+                sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
                 // sidx.append(sj);
                 float st=drawTau(matK(si,sj),devQStates+tidx);
                 // printf("%f\t",st);
                 mcSpendTime=mcSpendTime+st;
-                si=sj;                
+                // si=sj;                
                 if(mcSpendTime>=T[idx]){
                 //     bins.append(stop[idx]);
-                    bin1=stop[idx];
+                    bin1clk_t=stop[idx];
                 }
                 else{
                 //     bins.append(*(bins.at(0))+mcSpendTime/clk_p);
-                    bin1=bin0+mcSpendTime/clk_p;
+                    bin1clk_t=bin0clk_t+mcSpendTime/clk_p;
+                }
+                // [bin0clk_t bin1clk_t) is the clk timing range,
+                // Then try to get the ad and dd count in this range.
+                bool sdd=false,sad=false,bdd=false,bad=false;
+                int f_id=0,f_ia=0;
+                int64_t ddx,adx;
+                for(int iinb=0;iinb<phCount;iinb++){
+                    ddx=burst_dd(iinb);adx=burst_ad(iinb);
+                    if(ddx!=0&&ddx<bin0clk_t)
+                        sdd=true;
+                    if(adx!=0&&adx<bin0clk_t)
+                        sad=true;
+                    if(ddx!=0&&ddx>bin1clk_t)
+                        bdd=true;
+                    if(adx!=0&&adx>bin1clk_t)
+                        bad=true;                        
+                    if(sad&&sdd)
+                        continue;
+                    if(bdd && bad)
+                        continue;
+                    if(!sad && !bad)
+                        f_ia++;
+                    if(!sdd && !bdd)
+                        f_id++;
+                }
+                float f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
+                float f_i=0;
+                if (bg_dd_rate<1e-4){
+                    f_i=floorf(f_if+0.5);
+                }
+                else{
+                    float t_diff=(bin1clk_t-bin0clk_t)*clk_p;
+                    float rf_ia=(1-DexDirAem)*f_ia;
+                    float bg_a;
+                    draw_P_B_Tr(&bg_a,&rf_ia,1,&t_diff,bg_ad_rate ,devQStates+tidx);
+                    float rf_id=(gamma-Dch2Ach)*f_id;
+                    float bg_d;
+                    draw_P_B_Tr(&bg_d,&rf_id,1,&t_diff,bg_dd_rate ,devQStates+tidx);   
+                    f_i=floorf(f_if - bg_d - bg_a+0.5);             
+                }
+                F+=f_if;
+                // if(f_if>0)
+                {
+                    float de=drawE(gpe[si],r0,gpv[si],devQStates+tidx);
+                    long ai=drawA_fi_e(devStates+tidx, f_i, de) ;
+                    // mcE[idx*reSampleTimes+sampleTime]+=ai;
+                    mcE[tidx]+=ai;
                 }
                 count++;
-            }      
-            // arrF f_ia(bins.len-1);
-            // binTimeHist(&f_ia,burst_ad,bins);
-            // arrF f_id(bins.len-1);
-            // binTimeHist(&f_id,burst_dd,bins);
-            // arrF f_i(bins.len-1);
-            // arrF f_if(bins.len-1);
-            // f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
-            if (bg_dd_rate<1e-4){
-                // f_i=(f_if+0.5).floor();
-            }
-            else{
-                // arrF t_diff(bins.len-1);
-                // bins.diff(&t_diff);
-                // t_diff=t_diff*clk_p;
-                // arrF rf_ia(bins.len-1);
-                // rf_ia=(1-DexDirAem)*f_ia;
-                // arrF bg_a(bins.len-1);
-                // draw_P_B_Tr(bg_a.data(),rf_ia.data(),bins.len-1,t_diff.data(),bg_ad_rate ,devQStates+tidx);
-                // arrF rf_id(bins.len-1);
-                // rf_id=(gamma-Dch2Ach)*f_id;
-                // arrF bg_d(bins.len-1);
-                // draw_P_B_Tr(bg_d.data(),rf_id.data(),bins.len-1,t_diff.data(),bg_dd_rate ,devQStates+tidx);   
-                // f_i=(f_if - bg_d - bg_a+0.5).floor();             
-            }
-            // float F=f_if.sum();
-            // if(F>0){
-            //     for (int s_trans=0;s_trans<bins.len-1;s_trans++){
-                    // float de=drawE(gpe[*(sidx.at(s_trans))],r0,gpv[*(sidx.at(s_trans))],devQStates+tidx);
-                    // long ai=drawA_fi_e(devStates+tidx, f_i(s_trans), de) ;
-                    // mcE[idx*reSampleTimes+sampleTime]+=ai;
-                    // mcE[tidx]+=ai;
-            //     }
-            //     mcE[tidx]/=F;
-            // mcE 的计算是原子的
-            // }
-            // sidx.freeList();
-            // bins.freeList();
+                si=sj;
+            }            
         }
+        mcE[tidx]/=(F*reSampleTimes);
     }    
 }
 void mc::set_gpuid(){
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
 }
-mc::mc(int id,int _streamNum, bool de){    
+mc::mc(int id,int _streamNum, unsigned char de){    
     debug=de;
     streamNum=_streamNum;
     streams=(cudaStream_t*)malloc (sizeof(cudaStream_t)*streamNum);
@@ -209,12 +230,12 @@ mc::mc(int id,int _streamNum, bool de){
     std::memset(devDirectionVectors64, 0, sizeof(unsigned long long int*)*streamNum);
     std::memset(hostScrambleConstants64, 0, sizeof(unsigned long long int*)*streamNum);
     std::memset(devScrambleConstants64, 0, sizeof(unsigned long long int*)*streamNum);    
-    reSampleTimes=5;
+    reSampleTimes=4;
     cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSize, mc_kernel, 0, 0);     
     blockSize=256;
 }
 void mc::set_reSampleTimes(int t){
-    reSampleTimes=t;
+    reSampleTimes=pow(2,(int)log2(t));
 }
 int mc::getStream(){
     int r=-1;
@@ -232,7 +253,7 @@ void mc::givebackStream(int i){
 void mc::int_randstate(int N,int sid){
     int NN=N;
     if (N==-1){
-        NN=sz_burst;//*reSampleTimes;
+        NN=sz_burst*reSampleTimes;
     }    
     // for (int sid=0;sid<streamNum;sid++){
         // CUDA_CHECK_RETURN(cudaFree ( devStates[sid]));
@@ -344,7 +365,7 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
     }    
     CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
     // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
-    return N;    
+    return N;
 }
 
 void mc::run_kernel(int N, int sid){     
@@ -481,7 +502,7 @@ bool mc::set_nstates(int n,int sid){
         CUDA_CHECK_RETURN(_rmmReAlloc((void **)&(gpv[sid]), n*sizeof(float),streams[sid]));
         CUDA_CHECK_RETURN(_rmmReAlloc((void **)&(gpp[sid]), n*sizeof(float),streams[sid]));
         CUDA_CHECK_RETURN(_rmmReAlloc((void **)&(gpk[sid]), n*n*sizeof(float),streams[sid]));   
-        int_randstate(n,sid);
+        int_randstate(n*reSampleTimes,sid);
     }
     return r;
 }
