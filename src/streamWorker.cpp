@@ -155,9 +155,15 @@ void streamWorker::run(int sid,int sz_burst){
           chi2res.SerializeToString(&sres);
           sres="r"+sres;
           bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
-          // rbuf = NULL;
-          bytes = nn_recv (sock, &rbuf, NN_MSG, 0); 
+          rbuf = NULL;
+          gSMFRETda::pb::p_sid gas;
+          bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+          gas.ParseFromArray(rbuf,bytes); 
+          if(gas.sid()==-1)
+            ending=true;
           nn_freemsg (rbuf);
+          rbuf=NULL;
+
           dataready[sid]=0;
           if(lck.owns_lock())
             lck.unlock();
@@ -165,5 +171,7 @@ void streamWorker::run(int sid,int sz_burst){
         }
       }
     }while(!ending);
-    // AtomicWriter(debug) <<"end\n";
+    // notice gpu sid ended
+    pdamc->workerNum--;
+
 }

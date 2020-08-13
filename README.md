@@ -26,10 +26,19 @@ git annex get . # retrieve everything under the current directory
 
 ## Build the code
 ```bash
-sudo apt install libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt
+sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt
 mkdir gSMFRETda/build
 cd gSMFRETda/build
 cmake ..
 make -j8
 sudo ldconfig
 ```
+If you get error like "No CMAKE_CUDA_COMPILER could be found", try
+```bash
+export CUDA_HOME=/usr/local/cuda # Your cuda install path
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64:$CUDA_HOME/extras/CUPTI/lib64
+export PATH=$PATH:$CUDA_HOME/bin
+```
+
+## Notice
+If you encounter cuda memory access issues, check if your GPU has enough memory first!

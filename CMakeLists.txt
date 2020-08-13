@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+#find_package(CUDAToolkit)
 project(gSMFRETda CUDA CXX C)
 set(CMAKE_CXX_STANDARD 14)
 
-#SET(CMAKE_BUILD_TYPE "Debug”)
-SET(CMAKE_BUILD_TYPE "Release")
+SET(CMAKE_BUILD_TYPE "Debug")
+#SET(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 
 set(boost_VERSION_MAJOR "1" CACHE STRING "boost's MAJOR version number")
 set(boost_VERSION_MINOR "70" CACHE STRING "boost's MINOR version number")
 set(boost_VERSION_PATCH "0" CACHE STRING "boost's PATCH version number")
-set(rmm_VERSION_MAJOR "0" CACHE STRING "rmm's MAJOR version number")
-set(rmm_VERSION_MINOR "9" CACHE STRING "rmm's MINOR version number")
+#set(rmm_VERSION_MAJOR "0" CACHE STRING "rmm's MAJOR version number")
+#set(rmm_VERSION_MINOR "9" CACHE STRING "rmm's MINOR version number")
 
 set(boost_fname "${boost_VERSION_MAJOR}_${boost_VERSION_MINOR}_${boost_VERSION_PATCH}")
 set(boost_ndir "${boost_VERSION_MAJOR}.${boost_VERSION_MINOR}.${boost_VERSION_PATCH}")
@@ -52,20 +54,20 @@ ExternalProject_Add(HighFive
   UPDATE_DISCONNECTED true
 )
 
-ExternalProject_Add(rmm  
-  GIT_REPOSITORY https://git.liukan.org/liuk/rmm.git
-  GIT_PROGRESS 1
-  GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
-  PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
-  PREFIX ${CMAKE_BINARY_DIR}/third/rmm
-  CMAKE_ARGS -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF
-  INSTALL_COMMAND sudo make install
-  USES_TERMINAL_INSTALL true
-  UPDATE_DISCONNECTED true
-)
+#ExternalProject_Add(rmm  
+#  GIT_REPOSITORY https://git.liukan.org/liuk/rmm.git
+#  GIT_PROGRESS 1
+#  GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
+#  PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
+#  PREFIX ${CMAKE_BINARY_DIR}/third/rmm
+#  CMAKE_ARGS -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF
+#  INSTALL_COMMAND sudo make install
+#  USES_TERMINAL_INSTALL true
+#  UPDATE_DISCONNECTED true
+#)
 
 add_dependencies(third HighFive)
-add_dependencies(third rmm)
+#add_dependencies(third rmm)
 
 add_custom_command(TARGET third
                    PRE_BUILD
@@ -115,14 +117,15 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/mc.cu
     src/mc.hpp
-    src/rmm.hpp
     src/streamWorker.cpp
     src/streamWorker.hpp
     src/tools.cpp
     src/tools.hpp
     )
-
+    #src/rmm.hpp
+    
 add_dependencies(${PROJECT_NAME} third)
 
-target_link_libraries(${PROJECT_NAME} -lrmm -lpthread -lnanomsg -lprotobuf -lnanomsg
-     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} )
+target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lprotobuf -lnanomsg
+     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ) 
+#-lrmm

@@ -26,5 +26,4 @@ message res {
     float e = 2;
     string idx = 3;
     repeated float params = 4 [packed=true];
-    
 }
