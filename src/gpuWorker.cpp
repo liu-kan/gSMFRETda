@@ -79,6 +79,7 @@ void gpuWorker::run(int sz_burst){
         pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
         N[sid]=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
+        pdamc->int_randstate(N[sid],sid);
         pdamc->run_kernel(N[sid],sid);
         dataready[sid]=3;
         if(pdamc->streamQuery(sid)){
@@ -93,6 +94,6 @@ void gpuWorker::run(int sz_burst){
           continue;
         }  
       }      
-    }while(countcalc<1);
-    AtomicWriter(debug,debugLevel::gpu) <<"end\n";
+    }while(pdamc->workerNum.load()>0);
+    AtomicWriter(debug,debugLevel::gpu) <<"gpu loop end\n";
 }

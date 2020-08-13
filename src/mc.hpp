@@ -1,5 +1,5 @@
 #pragma once
-
+#include <atomic>
 #include <vector>
 #include <cstdint>
 #include <queue>
@@ -48,7 +48,7 @@ class mc
         unsigned long long int** devScrambleConstants64;
         
         cudaStream_t* streams;
-        int streamNum;
+        int streamNum;    
         int blockSize;   // The launch configurator returned block size 
         int minGridSize; // The minimum grid size needed to achieve the 
                          // maximum occupancy for a full device launch 
@@ -60,6 +60,7 @@ class mc
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
     public:        
+        atomic_int workerNum;
         retype** hmcE;
         int *s_n;
         int sz_burst;        
