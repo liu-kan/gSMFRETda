@@ -110,11 +110,13 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(2s);
     std::thread thGpu(&gpuWorker::run,&gpuworker,pdamc.sz_burst);
     std::cout<<"gpu thread looped\n";
-
-    thGpu.join();
-    std::cout<<"gpu thread joined\n";
-    for (auto& th : threads) th.join();
+    for (auto& th : threads) {
+      std::cout<<"Joining pid: "<<th.get_id()<<std::endl;
+      th.join();
+    }
     std::cout<<"net threads joined\n";    
+    thGpu.join();
+    std::cout<<"gpu thread joined\n";    
    	// for (std::thread & th : threads)
     // {
     //   if (th.joinable())
