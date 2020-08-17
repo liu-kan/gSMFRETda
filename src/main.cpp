@@ -9,12 +9,12 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include "protobuf/args.pb.h"
+#include "3rdparty/protobuf/args.pb.h"
 #include <chrono>
 using namespace std::chrono_literals;
 using namespace std;
 #include "tools.hpp"
-#include "gengetopt/cmdline.h"
+#include "3rdparty/gengetopt/cmdline.h"
 
 void share_var_init(int streamNum,std::mutex **_m, std::condition_variable **_cv,
   int **s_n, vector<float> **params, int **ga_start, int **ga_stop,
@@ -49,6 +49,10 @@ int main(int argc, char* argv[])
     gengetopt_args_info args_info;
     if (cmdline_parser (argc, argv, &args_info) != 0)
       exit(1) ;    
+    if ( args_info.gpuinfo_flag ){
+      showGPUsInfo();
+      exit(1);
+    }
     if(args_info.inputs_num<1 && !args_info.input_given ){
       std::cout<<"You need either appoint -i or add hdf5 filename in the end of cmdline!"<<std::endl;
       exit(1);

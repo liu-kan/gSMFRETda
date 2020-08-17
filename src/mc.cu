@@ -15,6 +15,24 @@ void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *d
     }
   }
   
+void showGPUsInfo(){
+    int nDevices;
+    cudaGetDeviceCount(&nDevices);
+    for (int i = 0; i < nDevices; i++) {
+      cudaDeviceProp prop;
+      cudaGetDeviceProperties(&prop, i);
+      printf("Device Number: %d\n", i);
+      printf("  Device name: %s\n", prop.name);
+      printf("  Memory Clock Rate (KHz): %d\n",
+             prop.memoryClockRate);
+      printf("  Memory Bus Width (bits): %d\n",
+             prop.memoryBusWidth);
+      printf("  Peak Memory Bandwidth (GB/s): %f\n",
+             2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+      printf("  GPU global memory = %lu GBytes\n",
+             (prop.totalGlobalMem>>30)+1);
+    }
+}
 #define CUDAstream_CHECK_LAST_ERROR   cudaStreamAddCallback(streams[sid], myStreamCallback, nullptr, 0)
 
 //__forceinline__ 
@@ -188,9 +206,9 @@ mc::mc(int id,int _streamNum, unsigned char de){
         std::cout<<"gpu id set error!"<<std::endl;
         return;
     }
-    for (int i = 0; i < nDevices; i++) {
+    // for (int i = 0; i < nDevices; i++) {
       cudaDeviceProp prop;
-      cudaGetDeviceProperties(&prop, i);
+      cudaGetDeviceProperties(&prop, devid);
       printf("Device Number: %d\n", devid);
       printf("  Device name: %s\n", prop.name);
       printf("  Memory Clock Rate (KHz): %d\n",
@@ -201,7 +219,7 @@ mc::mc(int id,int _streamNum, unsigned char de){
              2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
       printf("  GPU global memory = %lu GBytes\n",
              (prop.totalGlobalMem>>30)+1);
-    }
+    // }
     set_gpuid();
     // setAllocator("rmmDefaultPool");
     streams=(cudaStream_t*)malloc (sizeof(cudaStream_t)*streamNum);

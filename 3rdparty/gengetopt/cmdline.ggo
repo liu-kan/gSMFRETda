@@ -14,3 +14,4 @@ option  "debug"          D "Turn on all debug info"             flag        off
 option  "debugcpu"       C "CPU debug info"                     flag        off
 option  "debuggpu"       G "GPU debug info"                     flag        off
 option  "debugnet"       N "Network debug info"                 flag        off
+option  "gpuinfo"        q "Show GPUs' info"                    flag        off

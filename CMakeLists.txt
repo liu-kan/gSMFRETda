@@ -1,7 +1,11 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 #find_package(CUDAToolkit)
 project(gSMFRETda CUDA CXX C)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 SET(CMAKE_BUILD_TYPE "Debug")
 #SET(CMAKE_BUILD_TYPE "Release")
@@ -43,39 +47,60 @@ FetchContent_Populate(
   GIT_PROGRESS 1  
 )
 
-ExternalProject_Add(HighFive  
-  GIT_REPOSITORY https://git.liukan.org/liuk/HighFive.git
-  GIT_SHALLOW 1
-  GIT_PROGRESS 1
-  CMAKE_ARGS -DHIGHFIVE_EXAMPLES=OFF -DHIGHFIVE_UNIT_TESTS=OFF
-  PREFIX ${CMAKE_BINARY_DIR}/third/HighFive
-  INSTALL_COMMAND sudo make install
-  USES_TERMINAL_INSTALL true
-  UPDATE_DISCONNECTED true
+find_package(HighFive)
+if(NOT HighFive_FOUND)
+  message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
+    ExternalProject_Add(HighFive  
+      GIT_REPOSITORY https://git.liukan.org/liuk/HighFive.git
+      GIT_SHALLOW 1
+      GIT_PROGRESS 1
+      CMAKE_ARGS -DHIGHFIVE_EXAMPLES=OFF -DHIGHFIVE_UNIT_TESTS=OFF
+      PREFIX ${CMAKE_BINARY_DIR}/third/HighFive
+      INSTALL_COMMAND sudo make install
+      USES_TERMINAL_INSTALL true
+      UPDATE_DISCONNECTED true
+    )
+    #ExternalProject_Add(rmm  
+    #  GIT_REPOSITORY https://git.liukan.org/liuk/rmm.git
+    #  GIT_PROGRESS 1
+    #  GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
+    #  PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
+    #  PREFIX ${CMAKE_BINARY_DIR}/third/rmm
+    #  CMAKE_ARGS -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF
+    #  INSTALL_COMMAND sudo make install
+    #  USES_TERMINAL_INSTALL true
+    #  UPDATE_DISCONNECTED true
+    #)
+    add_dependencies(third HighFive)
+    #add_dependencies(third rmm)
+    add_custom_command(TARGET third
+                      COMMAND pwd
+                      PRE_BUILD
+    )
+endif()
+
+#src/3rdparty/protobuf/args.pb.cc src/3rdparty/protobuf/args.pb.h
+
+find_package(Protobuf REQUIRED)
+include_directories(${Protobuf_INCLUDE_DIRS})
+#include_directories(${CMAKE_CURRENT_BINARY_DIR})
+#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS 3rdparty/protobuf/args.proto)
+#protobuf_generate_python(PROTO_PY 3rdparty/protobuf/args.proto)
+#target_link_libraries(bar ${Protobuf_LIBRARIES})
+#message(STATUS "PROTO_PY" ${PROTO_PY})
+
+execute_process(
+    COMMAND protoc --cpp_out=src 3rdparty/protobuf/args.proto
+    COMMAND protoc --python_out=serv_py 3rdparty/protobuf/args.proto
+    COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-#ExternalProject_Add(rmm  
-#  GIT_REPOSITORY https://git.liukan.org/liuk/rmm.git
-#  GIT_PROGRESS 1
-#  GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
-#  PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
-#  PREFIX ${CMAKE_BINARY_DIR}/third/rmm
-#  CMAKE_ARGS -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF
-#  INSTALL_COMMAND sudo make install
-#  USES_TERMINAL_INSTALL true
-#  UPDATE_DISCONNECTED true
-#)
+#file(COPY ${CMAKE_SOURCE_DIR}/src/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/src)
+file(COPY ${CMAKE_SOURCE_DIR}/serv_py/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/serv_py)
+#file(REMOVE_RECURSE ${CMAKE_SOURCE_DIR}/src/3rdparty)
+file(REMOVE_RECURSE ${CMAKE_SOURCE_DIR}/serv_py/3rdparty)
 
-add_dependencies(third HighFive)
-#add_dependencies(third rmm)
-
-add_custom_command(TARGET third
-                   PRE_BUILD
-                  COMMAND protoc --cpp_out=src 3rdparty/protobuf/args.proto
-                  COMMAND protoc --python_out=serv_py 3rdparty/protobuf/args.proto
-                  COMMAND gengetopt < 3rdparty/gengetopt/cmdline.ggo --file-name=src/gengetopt/cmdline
-                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
 find_package(CUDA REQUIRED)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
 find_package(HDF5 REQUIRED)
@@ -95,15 +120,11 @@ include_directories(${CMAKE_BINARY_DIR}/third/boost)
 link_directories(${nanomsg_LIBDIR})
 link_directories(${CUDA_TOOLKIT_ROOT_DIR}/compat)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 add_executable(${PROJECT_NAME}
-    src/protobuf/args.pb.cc
-    src/protobuf/args.pb.h
-    src/gengetopt/cmdline.c
-    src/gengetopt/cmdline.h
+    src/3rdparty/protobuf/args.pb.cc
+    src/3rdparty/protobuf/args.pb.h
+    src/3rdparty/gengetopt/cmdline.c
+    src/3rdparty/gengetopt/cmdline.h
     src/binom.cuh
     src/bitUbyte.hpp
     src/cuda_tools.hpp
@@ -123,9 +144,12 @@ add_executable(${PROJECT_NAME}
     src/tools.hpp
     )
     #src/rmm.hpp
-    
-add_dependencies(${PROJECT_NAME} third)
 
 target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lprotobuf -lnanomsg
-     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ) 
+     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ${Protobuf_LIBRARIES}) 
 #-lrmm
+if (HighFive_FOUND)
+  target_link_libraries(${PROJECT_NAME} HighFive)
+else()
+  add_dependencies(${PROJECT_NAME} third)
+endif()
