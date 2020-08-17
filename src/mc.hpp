@@ -23,7 +23,7 @@ typedef struct {
     int nsave, m;
     double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
 } rk_state;
-
+void showGPUsInfo();
 class mc
 {
     protected:

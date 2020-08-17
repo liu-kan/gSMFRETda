@@ -3,7 +3,7 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
 #include <nanomsg/tcp.h>
-#include "protobuf/args.pb.h"
+#include "3rdparty/protobuf/args.pb.h"
 #include "tools.hpp"
 #include <iostream>
 #include <chrono>
