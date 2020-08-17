@@ -41,4 +41,8 @@ export PATH=$PATH:$CUDA_HOME/bin
 ```
 
 ## Notice
-If you encounter cuda memory access issues, check if your GPU has enough memory first!
+If you encounter cuda memory access issues, check if your GPU has enough memory first! 
+If your cmake version is less than 3.11, try add line in /etc/apt/sources.list like.
+```bash
+deb [arch=amd64] https://apt.kitware.com/ubuntu/ bionic main
+```
