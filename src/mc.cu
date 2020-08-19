@@ -200,7 +200,6 @@ mc::mc(int id,int _streamNum, unsigned char de){
     streamNum=_streamNum;
     workerNum.store( streamNum);
     devid=id;
-    int nDevices;
     cudaGetDeviceCount(&nDevices);
     if (devid>=nDevices||devid<0){
         std::cout<<"gpu id set error!"<<std::endl;
@@ -225,6 +224,7 @@ mc::mc(int id,int _streamNum, unsigned char de){
     streams=(cudaStream_t*)malloc (sizeof(cudaStream_t)*streamNum);
     for(int sid=0;sid<_streamNum;sid++){
         CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( &(streams[sid]),cudaStreamNonBlocking) );
+        // CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( &(streams[sid]),cudaStreamDefault) );
         streamFIFO.push(sid);
     }
     matK=NULL;matP=NULL;        
@@ -309,7 +309,7 @@ void mc::int_randstate(int N,int sid){
         NN * VECTOR_SIZE * sizeof(long long int)));       
         CUDA_CHECK_RETURN(cudaMalloc((void **)&(devScrambleConstants64[sid]), 
         NN * sizeof(long long int) ));
-        
+        //free(hostVectors64[sid]);
         curandStatus_t curandResult =curandGetDirectionVectors64( &(hostVectors64[sid]), 
             CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6);
         if (curandResult != CURAND_STATUS_SUCCESS)
@@ -318,6 +318,7 @@ void mc::int_randstate(int N,int sid){
             msg += curandResult;
             throw std::runtime_error(msg);
         }    
+        //free(hostScrambleConstants64[sid]);
         curandResult=curandGetScrambleConstants64( &(hostScrambleConstants64[sid])); 
         if (curandResult != CURAND_STATUS_SUCCESS)
         {
@@ -406,7 +407,10 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
         CUDA_CHECK_RETURN(cudaFreeHost((void*)hmcE[sid]));
         CUDA_CHECK_RETURN(cudaHostAlloc((void **)&(hmcE[sid]), N *reSampleTimes* sizeof(retype),cudaHostAllocDefault));
     }    
-    CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
+    if(nDevices>1)
+        CUDA_CHECK_RETURN(cudaMemset(mcE[sid], 0, N *reSampleTimes* sizeof(retype)));
+    else
+        CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes* sizeof(retype),streams[sid]));
     // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return N;
 }

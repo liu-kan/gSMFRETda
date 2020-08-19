@@ -59,6 +59,7 @@ class mc
         int getStream();
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
+        int nDevices;
     public:        
         atomic_int workerNum;
         retype** hmcE;
