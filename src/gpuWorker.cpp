@@ -78,8 +78,11 @@ void gpuWorker::run(int sz_burst){
         AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==1 or 2\n";
         pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
-        N[sid]=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
-        pdamc->int_randstate(N[sid],sid);
+        int N_sid=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
+        if (N_sid!=N[sid]){
+          N[sid]=N_sid;
+          pdamc->int_randstate(N[sid],sid);
+        }
         pdamc->run_kernel(N[sid],sid);
         dataready[sid]=3;
         if(pdamc->streamQuery(sid)){
