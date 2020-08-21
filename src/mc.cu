@@ -1,6 +1,7 @@
 #include "mc.hpp"
 #include "cuda_tools.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <time.h>
 #define VECTOR_SIZE 64
 #include <algorithm> 
@@ -15,23 +16,36 @@ void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *d
     }
   }
   
-void showGPUsInfo(){
-    int nDevices;
-    cudaGetDeviceCount(&nDevices);
-    for (int i = 0; i < nDevices; i++) {
-      cudaDeviceProp prop;
-      cudaGetDeviceProperties(&prop, i);
-      printf("Device Number: %d\n", i);
-      printf("  Device name: %s\n", prop.name);
-      printf("  Memory Clock Rate (KHz): %d\n",
-             prop.memoryClockRate);
-      printf("  Memory Bus Width (bits): %d\n",
-             prop.memoryBusWidth);
-      printf("  Peak Memory Bandwidth (GB/s): %f\n",
-             2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
-      printf("  GPU global memory = %lu GBytes\n",
-             (prop.totalGlobalMem>>30)+1);
+int showGPUsInfo(int dn){
+    int nDevices,n_Devices;
+    printf("dn=%d",dn);
+    cudaGetDeviceCount(&nDevices);    
+    if (dn>=0){
+        n_Devices=dn+1;
     }
+    else
+        n_Devices=n_Devices;
+    if (dn<nDevices){
+        for (int i = dn; i < n_Devices; i++) {
+        cudaDeviceProp prop;
+        cudaGetDeviceProperties(&prop, i);
+        printf("Device Number: %d\n", i);
+        printf("  Device UUID: ");
+        for(int i=0;i<sizeof(prop.uuid);i++){
+            printf("%02X",prop.uuid.bytes[i]);
+        }
+        printf("\n  Device name: %s\n", prop.name);
+        printf("  Memory Clock Rate (KHz): %d\n",
+                prop.memoryClockRate);
+        printf("  Memory Bus Width (bits): %d\n",
+                prop.memoryBusWidth);
+        printf("  Peak Memory Bandwidth (GB/s): %f\n",
+                2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+        printf("  GPU global memory = %lu GBytes\n",
+                (prop.totalGlobalMem>>30)+1);
+        }
+    }
+    return nDevices;
 }
 #define CUDAstream_CHECK_LAST_ERROR   cudaStreamAddCallback(streams[sid], myStreamCallback, nullptr, 0)
 
@@ -201,24 +215,11 @@ mc::mc(int id,int _streamNum, unsigned char de){
     workerNum.store( streamNum);
     devid=id;
     cudaGetDeviceCount(&nDevices);
+    nDevices=showGPUsInfo(devid);
     if (devid>=nDevices||devid<0){
         std::cout<<"gpu id set error!"<<std::endl;
         return;
     }
-    // for (int i = 0; i < nDevices; i++) {
-      cudaDeviceProp prop;
-      cudaGetDeviceProperties(&prop, devid);
-      printf("Device Number: %d\n", devid);
-      printf("  Device name: %s\n", prop.name);
-      printf("  Memory Clock Rate (KHz): %d\n",
-             prop.memoryClockRate);
-      printf("  Memory Bus Width (bits): %d\n",
-             prop.memoryBusWidth);
-      printf("  Peak Memory Bandwidth (GB/s): %f\n",
-             2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
-      printf("  GPU global memory = %lu GBytes\n",
-             (prop.totalGlobalMem>>30)+1);
-    // }
     set_gpuid();
     // setAllocator("rmmDefaultPool");
     streams=(cudaStream_t*)malloc (sizeof(cudaStream_t)*streamNum);
@@ -299,6 +300,7 @@ void mc::int_randstate(int N,int sid){
     }
     // for (int sid=0;sid<streamNum;sid++){
     // std::cout << sid << "free dS\n";
+    // cudaFree ( devStates[sid]) returned an illegal memory access was encountered(700) at /home/liuk/data/proj/gSMFRETda/src/mc.cu:303
         CUDA_CHECK_RETURN(cudaFree ( devStates[sid]));
         CUDA_CHECK_RETURN(cudaFree ( devQStates[sid]));    
         CUDA_CHECK_RETURN(cudaMalloc ( (void **)&(devStates[sid]), NN*sizeof (rk_state ) ));
@@ -583,6 +585,6 @@ bool mc::set_params(int n,int sid,vector<float>& args){
         cudaMemcpyHostToDevice,streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid],matP->data(), sizeof(float)*n,
         cudaMemcpyHostToDevice,streams[sid]));    
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+//    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return r;
 }
