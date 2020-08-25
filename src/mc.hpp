@@ -10,7 +10,9 @@ using namespace std;
 #include "loadHdf5.hpp"
 #define DEBUGMC 0
 // #include "Poco/Mutex.h"
+#include "helper_cuda.h"
 
+#include "mrImp.hpp"
 typedef struct {
     unsigned int xor128[4];
     double gauss;
@@ -23,11 +25,11 @@ typedef struct {
     int nsave, m;
     double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
 } rk_state;
-int showGPUsInfo(int dn=-1);
+int showGPUsInfo(int dn=-1,char *gpuuid=NULL);
 class mc
 {
     protected:
-        int devid;
+        mrImp *mr;
         long sz_tag;
         unsigned char *g_mask_ad,*g_mask_dd;
         // float *gchi2,*hchi2;
@@ -60,7 +62,9 @@ class mc
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
         int nDevices;
-    public:        
+    public:      
+        int devid;  
+        char gpuuuid[33];
         atomic_int workerNum;
         retype** hmcE;
         int *s_n;
@@ -82,7 +86,7 @@ class mc
             vector<float>& T_burst_duration,vector<float>& SgDivSr,
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
-        mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC);
+        mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC,std::uintmax_t hdf5size=0);
         bool set_params(int n,int sid,vector<float>& args);        
 };
 

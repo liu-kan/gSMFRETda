@@ -6,7 +6,7 @@
 using namespace std;
 
 typedef float retype;
-bool loadhdf5(string H5FILE_NAME, vector<int64_t>& start,vector<int64_t>& stop,
+std::uintmax_t loadhdf5(string H5FILE_NAME, vector<int64_t>& start,vector<int64_t>& stop,
     vector<uint32_t>& istart,vector<uint32_t>& istop,
     vector<int64_t>& times_ms,
     vector<unsigned char>& mask_ad,vector<unsigned char>& mask_dd,
