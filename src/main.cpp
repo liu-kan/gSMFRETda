@@ -83,13 +83,13 @@ int main(int argc, char* argv[])
     vector<unsigned char> mask_ad;vector<unsigned char> mask_dd;
     vector<float> T_burst_duration;vector<float> SgDivSr;
     float clk_p,bg_ad_rate,bg_dd_rate;
-    loadhdf5(H5FILE_NAME,start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
+    std::uintmax_t hdf5size=loadhdf5(H5FILE_NAME,start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     assert (mask_ad.size() == times_ms.size());
     assert (T_burst_duration.size() == SgDivSr.size());
     assert (T_burst_duration.size() == istart.size());
     cout<<T_burst_duration.size()<<endl;
-    mc pdamc(gpuid,streamNum,debuglevel);
+    mc pdamc(gpuid,streamNum,debuglevel,hdf5size);
     pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
          SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
     std::mutex *_m;std::condition_variable *_cv;
