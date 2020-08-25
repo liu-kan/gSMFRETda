@@ -1,16 +1,21 @@
 #include <stdio.h>
 #include <string.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
+// #include <net/if.h>
+// #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <unistd.h>
+#ifdef __unix__
+    #include <unistd.h>
+#elif _WIN32
+    #include <process.h>
+    #define getpid _getpid()
+#endif
 #include "tools.hpp"
 #include <iostream>
 #include <sstream> 
 #include <thread> 
-
-
+#include <iomanip>
+#include <cstddef>
 #include <cassert>
 #include <cstdio>
 #include <ctime>
@@ -18,7 +23,7 @@
 #include <random>
 
 
-
+/*
 int getC6MacAddress(unsigned char *cMacAddr,char *pIface,int ifIdx=0)
 {
     int nSD;                        // Socket descriptor
@@ -132,7 +137,7 @@ void genuid(std::string* id){
     int ethNum=getC6MacAddress(dMacAddr,NULL);
     std::string smac;
     for(int i=0;i<ethNum;i++){
-        // printf("HWaddr %2X:%2x:%2x:%2x:%2x:%2X\n",
+        // printf("HWaddr %hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n",
         //        dMacAddr[0], dMacAddr[1], dMacAddr[2],
         //        dMacAddr[3], dMacAddr[4], dMacAddr[5]);
         getC6MacAddress(dMacAddr,NULL,i);
@@ -145,7 +150,28 @@ void genuid(std::string* id){
     *id=smac+pid;
     // std::cout<<id->size()<<std::endl;
 }
+*/
 
+void genuid(std::string* id,int gid, int sid,char *gpuuid){
+    std::string pid=std::to_string(getpid());
+    auto tid = std::this_thread::get_id();
+    std::stringstream ss,sss;
+    std::byte guid;
+    // char cGPUuuid[33];
+    for(int i=0;i<16;i++){
+        // guid=0;
+        std::memcpy(&guid, gpuuid+i, 1);
+        sss<< std::setfill ('0') << std::setw(1*2) 
+       << std::hex << std::to_integer<int>(guid);
+        // snprintf(cGPUuuid+i*2,2,"%hhx",gpuuid[i]);
+        // printf("%hhx-%d ",gpuuid[i],i);
+    }
+    // cGPUuuid[32]=0;
+    // std::cout<<sss.str()<<std::endl;
+    ss <<sss.str() <<'-' << pid <<"-"<< tid <<"-"<<std::to_string(gid)<<"-"<<std::to_string(sid);
+    *id=ss.str();
+    // std::cout<<id->size()<<std::endl;
+}
 
 std::unique_ptr<double[]> random_array(unsigned n, int type) {
   std::unique_ptr<double[]> r(new double[n]);
@@ -198,7 +224,7 @@ auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
 
 int _main(){    
     std::string id;
-    genuid(&id);
+    genuid(&id,0,0,NULL);
     std::cout<<id<<std::endl;
 
     const unsigned nfill = 2000;

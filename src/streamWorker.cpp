@@ -51,7 +51,7 @@ void streamWorker::run(int sid,int sz_burst){
     assert (nneo>= 0);
     AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneted\n";
     std::string gpuNodeId;
-    genuid(&gpuNodeId);
+    genuid(&gpuNodeId,pdamc->devid, sid,pdamc->gpuuuid);
     AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
     // int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);

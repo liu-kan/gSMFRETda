@@ -16,23 +16,27 @@ void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *d
     }
   }
   
-int showGPUsInfo(int dn){
-    int nDevices,n_Devices;
-    printf("dn=%d",dn);
-    cudaGetDeviceCount(&nDevices);    
+int showGPUsInfo(int dn,char *gpuuid){
+    int nDevices,i,n_Devices;
+    cudaGetDeviceCount(&nDevices);
     if (dn>=0){
         n_Devices=dn+1;
+        i=dn;
     }
-    else
-        n_Devices=n_Devices;
+    else{
+        i=0;
+        n_Devices=nDevices;
+    }
     if (dn<nDevices){
-        for (int i = dn; i < n_Devices; i++) {
+        for (; i < n_Devices; i++) {
         cudaDeviceProp prop;
         cudaGetDeviceProperties(&prop, i);
         printf("Device Number: %d\n", i);
         printf("  Device UUID: ");
-        for(int i=0;i<sizeof(prop.uuid);i++){
-            printf("%02X",prop.uuid.bytes[i]);
+        if(gpuuid)
+            memcpy(gpuuid,&(prop.uuid.bytes[0]),16);
+        for(int i=0;i<16;i++){
+            printf("%hhx",prop.uuid.bytes[i]);
         }
         printf("\n  Device name: %s\n", prop.name);
         printf("  Memory Clock Rate (KHz): %d\n",
@@ -209,13 +213,14 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
 void mc::set_gpuid(){
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
 }
-mc::mc(int id,int _streamNum, unsigned char de){    
+mc::mc(int id,int _streamNum, unsigned char de,std::uintmax_t hdf5size){    
     debug=de;
+    mr=new mrImp(hdf5size,0.85);
     streamNum=_streamNum;
     workerNum.store( streamNum);
     devid=id;
     cudaGetDeviceCount(&nDevices);
-    nDevices=showGPUsInfo(devid);
+    nDevices=showGPUsInfo(devid,gpuuuid);
     if (devid>=nDevices||devid<0){
         std::cout<<"gpu id set error!"<<std::endl;
         return;
@@ -464,6 +469,7 @@ void mc::get_res(int sid,int N){
 mc::~mc(){
     free_data_gpu();    
     delete(matK);delete(matP);
+    delete(mr);
     for(int sid=0;sid<streamNum;sid++){
         cudaStreamSynchronize(streams[sid]);
         cudaStreamDestroy ( streams[sid]);
@@ -528,7 +534,6 @@ void mc::free_data_gpu(){
 bool mc::set_nstates(int n,int sid){
     bool r=false;
     if (s_n[sid]!=n){
-        s_n[sid]=n;
         r=true;
         cudaStreamSynchronize(streams[sid]);
         // CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
@@ -557,6 +562,7 @@ bool mc::set_nstates(int n,int sid){
         // CUDA_CHECK_RETURN(_rmmReAlloc((void **)&(gpv[sid]), n*sizeof(float),streams[sid]));
         // CUDA_CHECK_RETURN(_rmmReAlloc((void **)&(gpp[sid]), n*sizeof(float),streams[sid]));
         // CUDA_CHECK_RETURN(_rmmReAlloc((void **)&(gpk[sid]), n*n*sizeof(float),streams[sid]));   
+        s_n[sid]=n;
     }
     return r;
 }

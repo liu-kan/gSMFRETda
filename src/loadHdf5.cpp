@@ -8,14 +8,24 @@
 
 #include "loadHdf5.hpp"
 // #include "bitUbyte.hpp"
+#include <filesystem>
+namespace fs = std::filesystem;
 
-bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<int64_t>& stop,
+std::uintmax_t loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<int64_t>& stop,
     std::vector<uint32_t>& istart,std::vector<uint32_t>& istop,
     std::vector<int64_t>& times_ms,
     std::vector<unsigned char>& mask_ad,std::vector<unsigned char>& mask_dd,
     std::vector<float>& T_burst_duration,std::vector<float>& SgDivSr,
     float& clk_p,float& bg_ad_rate,float& bg_dd_rate)
 {
+    std::uintmax_t fsize=0;
+    fs::path fpath = H5FILE_NAME;
+    try {
+        fsize=fs::file_size(fpath);
+    } catch(fs::filesystem_error& e) {
+        std::cout << e.what() << '\n';
+        return 0;
+    }  
     using namespace HighFive;    
     // std::vector<unsigned char> mask_ad_i;std::vector<unsigned char> mask_dd_i;
     try {
@@ -60,7 +70,7 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
         dataset.read(bg_dd_rate);
     } catch (Exception& err) {
         std::cerr << err.what() << std::endl;
-        return false;
+        fsize=0;
     }    
     // // int64_t size=mask_ad_i.size();
     // // for (int i=0;i<size;i++){
@@ -80,7 +90,7 @@ bool loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<i
     // //     std::cout<<"bytebits["<<x+ii<<"] "<<static_cast<bool>(i)<<std::endl;        
     // //     ii++;
     // // }
-    return true; // successfully terminated
+    return fsize; // successfully terminated
 }
 
 

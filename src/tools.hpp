@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-void genuid(std::string* id);
+void genuid(std::string* id,int gid,int sid,char *gpuuid);
 #include <thread>
 #include <mutex>
 #include <condition_variable>
