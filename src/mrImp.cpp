@@ -3,6 +3,7 @@
 mrImp::mrImp(std::size_t init_size,float maxe,bool sync){
     _sync=sync;
     auto const max_pool = static_cast<std::size_t>(rmm::mr::detail::available_device_memory());
+    std::cout<<"init_size: "<<init_size<<" max_pool: "<<max_pool<<std::endl;
     std::size_t initpool=0;
     float _maxe=maxe;
     if(init_size>=max_pool){
@@ -27,12 +28,12 @@ mrImp::~mrImp(){
     // mr->release();
     delete(mr);
 }
-void* mrImp::malloc(std::size_t size,cudaStream_t stream){
+void* mrImp::malloc(std::size_t size,cudaStream_t stream ){
     return mr->allocate(size, stream);
     if(_sync)
         checkCudaErrors(cudaStreamSynchronize(stream));
 }
-void mrImp::free(void *p,std::size_t size,cudaStream_t stream){
+void mrImp::free(void *p,std::size_t size,cudaStream_t stream ){
     mr->deallocate(p,size, stream);
     if(_sync)
         checkCudaErrors(cudaStreamSynchronize(stream));

@@ -48,7 +48,7 @@ class mc
         unsigned long long int** hostScrambleConstants64;
         unsigned long long int** devDirectionVectors64;
         unsigned long long int** devScrambleConstants64;
-        
+        int* oldN;
         cudaStream_t* streams;
         int streamNum;    
         int blockSize;   // The launch configurator returned block size 
@@ -76,7 +76,7 @@ class mc
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
         void free_data_gpu();
-        void int_randstate(int N,int sid);
+        void init_randstate(int N,int sid);
         void run_kernel(int N, int sid);
         void get_res(int sid, int N);
         void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
