@@ -24,6 +24,7 @@ git annex get . # retrieve everything under the current directory
 * CUDA version >= 10 
 * libhdf5-dev 1.10 and newer 
 * CMake >= 3.11
+
 I'm trying to let the program can be compiled both by Linux and Windows natively. If you compile it in Windows, compile with VS 2019. Of course, you can just compile in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) supported.
 
 ## Build the code

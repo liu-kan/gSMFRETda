@@ -80,8 +80,8 @@ void gpuWorker::run(int sz_burst){
         pdamc->set_params(s_n[sid],sid,params[sid]);
         int N_sid=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
         if (N_sid!=N[sid]){
+          pdamc->init_randstate(N_sid,sid);/*N_sid new N*/
           N[sid]=N_sid;
-          pdamc->int_randstate(N[sid],sid);
         }
         pdamc->run_kernel(N[sid],sid);
         dataready[sid]=3;
