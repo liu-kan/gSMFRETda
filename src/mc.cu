@@ -8,6 +8,7 @@
 #include <numeric>
 #include "binom.cuh"
 #include "gen_rand.cuh"
+#include <cuda_profiler_api.h>
 // #include "cuList.cuh"
 // #include "rmm.hpp"
 void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *data) {
@@ -16,9 +17,9 @@ void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *d
     }
   }
   
-int showGPUsInfo(int dn,char *gpuuid){
+int showGPUsInfo(int dn,char *gpuuid,int *streamCount){
     int nDevices,i,n_Devices;
-    cudaGetDeviceCount(&nDevices);
+    checkCudaErrors(cudaGetDeviceCount(&nDevices));
     if (dn>=0){
         n_Devices=dn+1;
         i=dn;
@@ -30,7 +31,7 @@ int showGPUsInfo(int dn,char *gpuuid){
     if (dn<nDevices){
         for (; i < n_Devices; i++) {
         cudaDeviceProp prop;
-        cudaGetDeviceProperties(&prop, i);
+        checkCudaErrors(cudaGetDeviceProperties(&prop, i));
         printf("Device Number: %d\n", i);
         printf("  Device UUID: ");
         if(gpuuid)
@@ -38,6 +39,18 @@ int showGPUsInfo(int dn,char *gpuuid){
         for(int i=0;i<16;i++){
             printf("%hhx",prop.uuid.bytes[i]);
         }
+        printf(
+            "\n  Concurrent copy and kernel execution:          %s with %d copy "
+            "engine(s)\n",
+            (prop.deviceOverlap ? "Yes" : "No"), prop.asyncEngineCount);
+        if(streamCount){
+            if(!prop.deviceOverlap)
+                *streamCount=1;
+            else
+                *streamCount=prop.asyncEngineCount*2-1;
+            
+        }
+        /*
         printf("\n  Device name: %s\n", prop.name);
         printf("  Memory Clock Rate (KHz): %d\n",
                 prop.memoryClockRate);
@@ -45,6 +58,7 @@ int showGPUsInfo(int dn,char *gpuuid){
                 prop.memoryBusWidth);
         printf("  Peak Memory Bandwidth (GB/s): %f\n",
                 2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+        */
         printf("  GPU global memory = %lu GBytes\n",
                 (prop.totalGlobalMem>>30)+1);
         }
@@ -212,15 +226,30 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
 }
 void mc::set_gpuid(){
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
+    if (profiler){
+        std::cout<<"cudaProfilerStart"<<std::endl;
+        checkCudaErrors( cudaProfilerStart());
+    }
+
 }
-mc::mc(int id,int _streamNum, unsigned char de,std::uintmax_t hdf5size){    
+mc::mc(int id,int _streamNum, unsigned char de,std::uintmax_t hdf5size,bool _profiler){    
     debug=de;
+    profiler=_profiler;
     mr=new mrImp(hdf5size,0.85);
-    streamNum=_streamNum;
-    workerNum.store( streamNum);
+    p_streamNum=new int(1);
     devid=id;
     cudaGetDeviceCount(&nDevices);
-    nDevices=showGPUsInfo(devid,gpuuuid);
+    if (_streamNum==0){
+        nDevices=showGPUsInfo(devid,gpuuuid,p_streamNum);
+        // streamNum=(*p_streamNum);
+        memcpy(&streamNum, p_streamNum, sizeof(int));
+        printf("streamCount is automatically determined as %d\n",streamNum);
+    }
+    else{
+        nDevices=showGPUsInfo(devid,gpuuuid);
+        streamNum=_streamNum;
+    }
+    workerNum.store( streamNum);
     if (devid>=nDevices||devid<0){
         std::cout<<"gpu id set error!"<<std::endl;
         return;
@@ -228,7 +257,7 @@ mc::mc(int id,int _streamNum, unsigned char de,std::uintmax_t hdf5size){
     set_gpuid();
     // setAllocator("rmmDefaultPool");
     streams=(cudaStream_t*)malloc (sizeof(cudaStream_t)*streamNum);
-    for(int sid=0;sid<_streamNum;sid++){
+    for(int sid=0;sid<streamNum;sid++){
         CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( &(streams[sid]),cudaStreamNonBlocking) );
         // CUDA_CHECK_RETURN(cudaStreamCreateWithFlags ( &(streams[sid]),cudaStreamDefault) );
         streamFIFO.push(sid);
@@ -495,8 +524,8 @@ mc::~mc(){
     delete(matK);delete(matP);
     delete(mr);
     for(int sid=0;sid<streamNum;sid++){
-        cudaStreamSynchronize(streams[sid]);
-        cudaStreamDestroy ( streams[sid]);
+        checkCudaErrors(cudaStreamSynchronize(streams[sid]));
+        checkCudaErrors(cudaStreamDestroy ( streams[sid]));
     }
 
     free(streams);
@@ -521,13 +550,19 @@ mc::~mc(){
     free(hostVectors64);
     free(hostScrambleConstants64);
     free(devDirectionVectors64);
-    free(devScrambleConstants64);        
+    free(devScrambleConstants64);       
+    if(profiler){
+        checkCudaErrors(cudaProfilerStop());
+        std::cout<<"cudaProfilerStop"<<std::endl;
+    }
+    delete(p_streamNum);
     cudaDeviceReset();
  
 }
 
 void mc::free_data_gpu(){            
     // cudaDeviceSynchronize();
+    /*
     CUDA_CHECK_RETURN(cudaFree(g_mask_ad));
     CUDA_CHECK_RETURN(cudaFree(g_mask_dd));
     CUDA_CHECK_RETURN(cudaFree(g_start));
@@ -537,6 +572,16 @@ void mc::free_data_gpu(){
     CUDA_CHECK_RETURN(cudaFree(g_times_ms));
     CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
     CUDA_CHECK_RETURN(cudaFree(g_burst_duration));    
+    */
+    mr->free(g_mask_ad,sizeof(unsigned char)*sz_tag);
+    mr->free(g_mask_dd,sizeof(unsigned char)*sz_tag);
+    mr->free(g_start,sizeof(int64_t)*sz_burst);    
+    mr->free(g_stop,sizeof(int64_t)*sz_burst);    
+    mr->free(g_istart,sizeof(uint32_t)*sz_burst);    
+    mr->free(g_istop,sizeof(uint32_t)*sz_burst);    
+    mr->free(g_times_ms,sizeof(int64_t)*sz_tag);    
+    mr->free(g_burst_duration,sizeof(float)*sz_burst);    
+    mr->free(g_SgDivSr,sizeof(float)*sz_burst);    
     
     for (int sid=0;sid<streamNum;sid++){
         // cudaStreamSynchronize(streams[sid]);
@@ -625,7 +670,8 @@ bool mc::set_params(int n,int sid,vector<float>& args){
     // memcpy(hpe[sid], peargs, sizeof(float)*n);
     // memcpy(hpv[sid], pvargs, sizeof(float)*n);
     // memcpy(hpk[sid], matK->data(), sizeof(float)*n*n);
-    // memcpy(hpp[sid], matP->data(), sizeof(float)*n);    
+    // memcpy(hpp[sid], matP->data(), sizeof(float)*n);
+    //todo
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpe[sid],peargs,sizeof(float)*n,
         cudaMemcpyHostToDevice,streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpv[sid],pvargs, sizeof(float)*n,
@@ -634,6 +680,6 @@ bool mc::set_params(int n,int sid,vector<float>& args){
         cudaMemcpyHostToDevice,streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid],matP->data(), sizeof(float)*n,
         cudaMemcpyHostToDevice,streams[sid]));    
-//    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+    CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return r;
 }
