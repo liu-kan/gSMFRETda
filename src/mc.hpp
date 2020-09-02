@@ -25,7 +25,7 @@ typedef struct {
     int nsave, m;
     double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
 } rk_state;
-int showGPUsInfo(int dn=-1,char *gpuuid=NULL);
+int showGPUsInfo(int dn=-1,char *gpuuid=NULL,int *asyncEngineCount=NULL);
 class mc
 {
     protected:
@@ -48,7 +48,7 @@ class mc
         unsigned long long int** hostScrambleConstants64;
         unsigned long long int** devDirectionVectors64;
         unsigned long long int** devScrambleConstants64;
-        int* oldN;
+        int *oldN ,*p_streamNum;
         cudaStream_t* streams;
         int streamNum;    
         int blockSize;   // The launch configurator returned block size 
@@ -62,6 +62,7 @@ class mc
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
         int nDevices;
+        bool profiler;
     public:      
         int devid;  
         char gpuuuid[33];
@@ -86,7 +87,7 @@ class mc
             vector<float>& T_burst_duration,vector<float>& SgDivSr,
             float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
         ~mc();
-        mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC,std::uintmax_t hdf5size=0);
+        mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC,std::uintmax_t hdf5size=0,bool profiler=false);
         bool set_params(int n,int sid,vector<float>& args);        
 };
 
