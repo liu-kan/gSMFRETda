@@ -7,9 +7,10 @@ set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-#SET(CMAKE_BUILD_TYPE "Debug")
-#SET(CMAKE_BUILD_TYPE "Release")
 set(DEFAULT_BUILD_TYPE "Release")
+if(DEBUG)
+  set(DEFAULT_BUILD_TYPE "Debug")
+endif()
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' since none specified.")
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
@@ -17,6 +18,13 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
+set(link_stdc__fs "")
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
+  message( FATAL_ERROR "g++ need >=8, CMake will exit." )
+elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+  set(link_stdc__fs "-lstdc++fs")
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -157,9 +165,9 @@ add_executable(${PROJECT_NAME}
     )
     #src/rmm.hpp
 
-target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lprotobuf -lnanomsg
+target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lprotobuf -lnanomsg ${link_stdc__fs}
      ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ${Protobuf_LIBRARIES}) 
-#-lrmm
+#-lrmm  -lstdc++fs
 if (HighFive_FOUND)
   target_link_libraries(${PROJECT_NAME} HighFive)
 else()
