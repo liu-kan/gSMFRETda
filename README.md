@@ -66,11 +66,7 @@ export CUDA_HOME=/usr/local/cuda # Your cuda install path
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64:$CUDA_HOME/extras/CUPTI/lib64
 export PATH=$PATH:$CUDA_HOME/bin
 ```
-before cmake.
+before cmake. Or add them into ~/.bashrc
 
 ## Notice
-If you encounter cuda memory access issues, check if your GPU has enough memory first! 
-If your cmake version is less than 3.11, try add line in /etc/apt/sources.list like.
-```bash
-deb [arch=amd64] https://apt.kitware.com/ubuntu/ bionic main
-```
+<!-- If you encounter cuda memory access issues, check if your GPU has enough memory first!  -->

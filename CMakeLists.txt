@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
-#find_package(CUDAToolkit)
+#find_package(CUDAToolkit REQUIRED)
+
 project(gSMFRETda CUDA CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 14)
@@ -7,9 +8,11 @@ set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(DEFAULT_BUILD_TYPE "Release")
-if(DEBUG)
-  set(DEFAULT_BUILD_TYPE "Debug")
+#set(Debug OFF CACHE BOOL "Shot debug flag")
+set(DEFAULT_BUILD_TYPE "MinSizeRel")
+if(Debug)
+  set(CMAKE_BUILD_TYPE "Debug")
+  message(STATUS "Debug is setted!")
 endif()
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' since none specified.")
@@ -20,12 +23,37 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-set(link_stdc__fs "")
-if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
-  message( FATAL_ERROR "g++ need >=8, CMake will exit." )
-elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-  set(link_stdc__fs "-lstdc++fs")
+find_package(Boost 1.65.0 COMPONENTS filesystem)
+find_package(CUDA REQUIRED)
+#set(CMAKE_CUDA_ARCH 3 5.2 6.1 7 7.5)
+#set(CMAKE_CUDA_CODE 3 5.2 6.1 7 7.5)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \
+      -gencode=arch=compute_52,code=sm_52 \
+      -gencode=arch=compute_61,code=sm_61 \
+      -gencode=arch=compute_70,code=sm_70 \
+      -gencode=arch=compute_75,code=sm_75 \
+      -gencode=arch=compute_75,code=compute_75")
+      # -gencode arch=compute_75,code=sm_75 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_52,code=sm_52   -gencode arch=compute_70,code=sm_70 --maxrregcount=128
+else ()
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "--expt-relaxed-constexpr --ptxas-options=-v -Xptxas -dlcm=cg \
+      -gencode=arch=compute_52,code=sm_52 \
+      -gencode=arch=compute_61,code=sm_61 \
+      -gencode=arch=compute_70,code=sm_70 \
+      -gencode=arch=compute_75,code=sm_75 \
+      -gencode=arch=compute_75,code=compute_75")
+       # -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61  -gencode arch=compute_70,code=sm_70 --maxrregcount=128 
 endif()
+
+
+
+#set(link_stdc__fs "")
+#if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
+#  message( FATAL_ERROR "g++ need >=8, CMake will exit." )
+#elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+#  message( STATUS "g++ 8.x, add -lstdc++fs" )
+#  set(link_stdc__fs "-lstdc++fs")
+#endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
@@ -58,10 +86,11 @@ FetchContent_Populate(
 )
 FetchContent_Populate(
   eigen
-  GIT_REPOSITORY  https://git.liukan.org/liuk/eigen.git
+  #GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
+  GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/eigen
   GIT_SHALLOW 1
-  #GIT_TAG        origin/3.3
+  GIT_TAG        3.3
   GIT_PROGRESS 1  
 )
 
@@ -69,7 +98,7 @@ find_package(HighFive)
 if(NOT HighFive_FOUND)
   message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
     ExternalProject_Add(HighFive  
-      GIT_REPOSITORY https://git.liukan.org/liuk/HighFive.git
+      GIT_REPOSITORY https://git.liukan.org/mirrors/HighFive.git
       GIT_SHALLOW 1
       GIT_PROGRESS 1
       CMAKE_ARGS -DHIGHFIVE_EXAMPLES=OFF -DHIGHFIVE_UNIT_TESTS=OFF
@@ -79,12 +108,12 @@ if(NOT HighFive_FOUND)
       UPDATE_DISCONNECTED true
     )
     #ExternalProject_Add(rmm  
-    #  GIT_REPOSITORY https://git.liukan.org/liuk/rmm.git
+    #  GIT_REPOSITORY https://git.liukan.org/mirrors/rmm.git
     #  GIT_PROGRESS 1
     #  GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
     #  PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
     #  PREFIX ${CMAKE_BINARY_DIR}/third/rmm
-    #  CMAKE_ARGS -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF
+    #  CMAKE_ARGS -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
     #  INSTALL_COMMAND sudo make install
     #  USES_TERMINAL_INSTALL true
     #  UPDATE_DISCONNECTED true
@@ -99,16 +128,12 @@ endif()
 
 #src/3rdparty/protobuf/args.pb.cc src/3rdparty/protobuf/args.pb.h
 
-find_package(Protobuf REQUIRED)
-include_directories(${Protobuf_INCLUDE_DIRS})
-#include_directories(${CMAKE_CURRENT_BINARY_DIR})
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS 3rdparty/protobuf/args.proto)
-#protobuf_generate_python(PROTO_PY 3rdparty/protobuf/args.proto)
-#target_link_libraries(bar ${Protobuf_LIBRARIES})
-#message(STATUS "PROTO_PY" ${PROTO_PY})
+#find_package(Protobuf REQUIRED)
+#include_directories(${Protobuf_INCLUDE_DIRS})
+add_subdirectory(3rdparty)
 
 execute_process(
-    COMMAND protoc --cpp_out=src 3rdparty/protobuf/args.proto
+    #COMMAND protoc --cpp_out=src 3rdparty/protobuf/args.proto
     COMMAND protoc --python_out=serv_py 3rdparty/protobuf/args.proto
     COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -116,11 +141,9 @@ execute_process(
 
 #file(COPY ${CMAKE_SOURCE_DIR}/src/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/src)
 file(COPY ${CMAKE_SOURCE_DIR}/serv_py/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/serv_py)
-#file(REMOVE_RECURSE ${CMAKE_SOURCE_DIR}/src/3rdparty)
 file(REMOVE_RECURSE ${CMAKE_SOURCE_DIR}/serv_py/3rdparty)
+file(COPY ${CMAKE_SOURCE_DIR}/serv_py DESTINATION ${CMAKE_BINARY_DIR})
 
-find_package(CUDA REQUIRED)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
 find_package(HDF5 REQUIRED)
 find_package(NANOMSG QUIET)
 
@@ -128,19 +151,19 @@ include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${HDF5_INCLUDE_DIRS})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/protobuf)
 include_directories(/usr/local/include)
 include_directories(${CMAKE_BINARY_DIR}/third/eigen)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${nanomsg_INCDIR})
 include_directories(${CMAKE_BINARY_DIR}/third/boost)
+include_directories(${Boost_INCLUDE_DIRS})
 
 link_directories(${nanomsg_LIBDIR})
 link_directories(${CUDA_TOOLKIT_ROOT_DIR}/compat)
 
 add_executable(${PROJECT_NAME}
-    src/3rdparty/protobuf/args.pb.cc
-    src/3rdparty/protobuf/args.pb.h
+    #src/3rdparty/protobuf/args.pb.cc
+    #src/3rdparty/protobuf/args.pb.h
     src/3rdparty/gengetopt/cmdline.c
     src/3rdparty/gengetopt/cmdline.h
     src/binom.cuh
@@ -164,10 +187,11 @@ add_executable(${PROJECT_NAME}
     src/mrImp.hpp    
     )
     #src/rmm.hpp
+target_link_libraries(${PROJECT_NAME} proto)
 
-target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lprotobuf -lnanomsg ${link_stdc__fs}
-     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ${Protobuf_LIBRARIES}) 
-#-lrmm  -lstdc++fs
+target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lboost_filesystem 
+     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ${Boost_LIBRARIES}) 
+#${link_stdc__fs}
 if (HighFive_FOUND)
   target_link_libraries(${PROJECT_NAME} HighFive)
 else()

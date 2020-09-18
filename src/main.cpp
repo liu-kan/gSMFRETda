@@ -9,7 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include "3rdparty/protobuf/args.pb.h"
+#include "args.pb.h"
 #include <chrono>
 using namespace std::chrono_literals;
 using namespace std;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
     if(args_info.debugnet_flag)
       debuglevel|=debugLevel::net;            
     int gpuid=args_info.gpuid_arg;    
-    vector<uint32_t> istart;vector<uint32_t> istop;    
+    vector<int64_t> istart;vector<int64_t> istop;    
     vector<int64_t> stop;vector<int64_t> start;
     vector<int64_t> times_ms;
     vector<unsigned char> mask_ad;vector<unsigned char> mask_dd;
@@ -88,12 +88,18 @@ int main(int argc, char* argv[])
     std::cout<<H5FILE_NAME<<" loaded."<<std::endl;
     assert (mask_ad.size() == times_ms.size());
     assert (T_burst_duration.size() == SgDivSr.size());
-    assert (T_burst_duration.size() == istart.size());
+    assert (start.size() == istart.size());
     cout<<T_burst_duration.size()<<endl;
-    
+    std::vector<int> phCount(start.size());
+    int64_t *burst_ad, *burst_dd;
+    burst_data(istart,istop,times_ms,mask_ad,mask_dd, 
+                phCount,&burst_ad, &burst_dd);
     mc pdamc(gpuid,streamNum,debuglevel,hdf5size,args_info.profiler_flag);
-    pdamc.init_data_gpu(start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
-         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
+    streamNum=pdamc.streamNum;
+    pdamc.init_data_gpu(istart,start,stop,
+        phCount,times_ms.size(),burst_ad, burst_dd,
+        T_burst_duration,SgDivSr,
+        clk_p,bg_ad_rate,bg_dd_rate);
     std::mutex *_m;std::condition_variable *_cv;
     // std::vector<std::unique_ptr<std::mutex>> _m
     // std::vector<std::mutex> _ms(streamNum);
@@ -130,6 +136,8 @@ int main(int argc, char* argv[])
     // }
     // pdamc.set_gpuid();
     // worker.run(0,pdamc.sz_burst);
+    delete[](burst_ad);
+    delete[](burst_dd);    
     share_var_free(streamNum,_m,_cv,s_n, params, ga_start, ga_stop,dataready,N);
     return 0;   
 }
