@@ -31,12 +31,14 @@ class mc
     protected:
         mrImp *mr;
         long sz_tag;
-        unsigned char *g_mask_ad,*g_mask_dd;
+        // unsigned char *g_mask_ad,*g_mask_dd;
         // float *gchi2,*hchi2;
         float **hpe,**hpk,**hpp,**hpv;
         float **gpe,**gpk,**gpp,**gpv;        
-        int64_t *g_start,*g_stop,*g_times_ms;
-        uint32_t *g_istart,*g_istop;   
+        int64_t *g_start,*g_stop;//,*g_times_ms;
+        int* g_phCount;
+        int64_t *g_burst_ad,  *g_burst_dd;
+        int64_t *g_istart,*g_istop;  // ? 32 or 64
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         arrFF *matK;
         arrF* matP;                
@@ -44,13 +46,12 @@ class mc
         int *end_burst;
         rk_state** devStates;
         curandStateScrambledSobol64** devQStates;
-        curandDirectionVectors64_t** hostVectors64;
-        unsigned long long int** hostScrambleConstants64;
+        curandDirectionVectors64_t* hostVectors64;
+        unsigned long long int* hostScrambleConstants64;
         unsigned long long int** devDirectionVectors64;
         unsigned long long int** devScrambleConstants64;
-        int *oldN ,*p_streamNum;
+        int *oldN;
         cudaStream_t* streams;
-        int streamNum;    
         int blockSize;   // The launch configurator returned block size 
         int minGridSize; // The minimum grid size needed to achieve the 
                          // maximum occupancy for a full device launch 
@@ -64,6 +65,7 @@ class mc
         int nDevices;
         bool profiler;
     public:      
+        int streamNum;  
         int devid;  
         char gpuuuid[33];
         atomic_int workerNum;
@@ -80,12 +82,10 @@ class mc
         void init_randstate(int N,int sid);
         void run_kernel(int N, int sid);
         void get_res(int sid, int N);
-        void init_data_gpu(vector<int64_t>& start,vector<int64_t>& stop,
-            vector<uint32_t>& istart,vector<uint32_t>& istop,
-            vector<int64_t>& times_ms,
-            vector<unsigned char>& mask_ad,vector<unsigned char>& mask_dd,
-            vector<float>& T_burst_duration,vector<float>& SgDivSr,
-            float& clk_p,float& bg_ad_rate,float& bg_dd_rate);
+        void init_data_gpu(vector<int64_t>& istart,vector<int64_t>& start,vector<int64_t>& stop,
+                        std::vector<int>& phCount,long _sz_tag,int64_t *burst_ad, int64_t *burst_dd,
+                        vector<float>& T_burst_duration,vector<float>& SgDivSr,
+                        float& iclk_p,float& ibg_ad_rate,float& ibg_dd_rate);
         ~mc();
         mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC,std::uintmax_t hdf5size=0,bool profiler=false);
         bool set_params(int n,int sid,vector<float>& args);        

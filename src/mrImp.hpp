@@ -13,7 +13,7 @@ class mrImp
         Pool *mr;
         bool _sync;
     public:
-        mrImp(std::size_t init_size,float maxe,bool sync=true);
+        mrImp(std::size_t init_size,float maxe,bool sync=false);
         void* malloc(std::size_t size,cudaStream_t stream=cudaStreamDefault);
         void free(void *p,std::size_t size,cudaStream_t stream=cudaStreamDefault);
         ~mrImp();

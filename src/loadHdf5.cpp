@@ -5,27 +5,29 @@
 #include <highfive/H5File.hpp>
 #include <highfive/H5DataSet.hpp>
 #include <highfive/H5DataSpace.hpp>
-
+// #include <numeric>
 #include "loadHdf5.hpp"
 // #include "bitUbyte.hpp"
-#include <filesystem>
-namespace fs = std::filesystem;
+#include <boost/filesystem.hpp>
+using namespace boost::filesystem;
+#include "eigenhelper.hpp"
+
 
 std::uintmax_t loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std::vector<int64_t>& stop,
-    std::vector<uint32_t>& istart,std::vector<uint32_t>& istop,
+    std::vector<int64_t>& istart,std::vector<int64_t>& istop,
     std::vector<int64_t>& times_ms,
     std::vector<unsigned char>& mask_ad,std::vector<unsigned char>& mask_dd,
     std::vector<float>& T_burst_duration,std::vector<float>& SgDivSr,
     float& clk_p,float& bg_ad_rate,float& bg_dd_rate)
 {
     std::uintmax_t fsize=0;
-    fs::path fpath = H5FILE_NAME;
-    try {
-        fsize=fs::file_size(fpath);
-    } catch(fs::filesystem_error& e) {
-        std::cout << e.what() << '\n';
-        return 0;
-    }  
+    path fpath(H5FILE_NAME);
+    // try {
+        fsize=file_size(fpath);
+    // } catch(const filesystem_error& e) {
+    //     std::cout << e.what() << '\n';
+    //     return 0;
+    // }  
     using namespace HighFive;    
     // std::vector<unsigned char> mask_ad_i;std::vector<unsigned char> mask_dd_i;
     try {
@@ -93,7 +95,32 @@ std::uintmax_t loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std
     return fsize; // successfully terminated
 }
 
-
+void burst_data(vector<int64_t>& istart,vector<int64_t>& istop,vector<int64_t>& times_ms, vector<unsigned char>& mask_ad,vector<unsigned char>& mask_dd, 
+                std::vector<int>& phCount,int64_t **burst_ad, int64_t **burst_dd)
+{
+    int sz_burst=istart.size();
+    if (phCount.size()!=sz_burst)
+        phCount.resize(sz_burst);
+    for(int idx=0;idx<sz_burst;idx++){    
+        phCount[idx]=istop[idx]-istart[idx]+1; 
+    }
+    // uint64_t count=std::accumulate(phCount.begin(), phCount.end(), 0);
+    // assert (count == times_ms.size());
+    // std::cout<<"count: "<<count<<" times_ms.size: "<<times_ms.size()<<std::endl;
+    *burst_ad=new int64_t[times_ms.size()];
+    *burst_dd=new int64_t[times_ms.size()];
+    // uint64_t offset=0;
+    for(int idx=0;idx<sz_burst;idx++){
+        arrUcharMapper mask_adA(mask_ad.data()+istart[idx],phCount[idx]); 
+        arrUcharMapper mask_ddA(mask_dd.data()+istart[idx],phCount[idx]);
+        arrI64Mapper times_msA(times_ms.data()+istart[idx],phCount[idx]);
+        arrI64 eburst_ad=mask_adA.cast<int64_t>()*times_msA;     
+        arrI64 eburst_dd=mask_ddA.cast<int64_t>()*times_msA; 
+        memcpy((*burst_ad)+istart[idx],eburst_ad.data(),sizeof(int64_t)*phCount[idx]);
+        memcpy((*burst_dd)+istart[idx],eburst_dd.data(),sizeof(int64_t)*phCount[idx]);
+        // offset+=phCount[idx];
+    }
+}
 
 bool savehdf5(string FILE_NAME, string DATASET_NAME, vector<retype>& r){   
     using namespace HighFive;

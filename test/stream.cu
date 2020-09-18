@@ -1,5 +1,5 @@
 #include "helper_cuda.h"
-
+#include <curand_kernel.h>
 #include <rmm/detail/error.hpp>
 #include <rmm/device_buffer.hpp>
 #include <rmm/mr/device/cuda_memory_resource.hpp>
@@ -25,7 +25,7 @@ __global__ void kernel( int *a, int *b, int *c )
          int idx2 = (idx + 2) % 256; 
          float as = (a[idx] + a[idx1] + a[idx2]) / 3.0f; 
          float bs = (b[idx] + b[idx1] + b[idx2]) / 3.0f; 
-        //  printf("a=%d\n",a[idx]);
+        //printf("a=%d\n",a[idx]);
          c[idx] = (as + bs) / 2;
     }
 }
@@ -51,8 +51,9 @@ int main( void ) {
         int *host_a, *host_b, *host_c; 
         int *dev_a0, *dev_b0, *dev_c0; 
         int *dev_a1, *dev_b1, *dev_c1; 
-        auto const max_pool =
-        static_cast<std::size_t>(rmm::mr::detail::available_device_memory());
+        std::size_t free{}, total{};
+        std::tie(free, total) = rmm::mr::detail::available_device_memory();
+        auto const max_pool = static_cast<std::size_t>(free) ;
         Pool *mr=new Pool{rmm::mr::get_current_device_resource(),static_cast<std::size_t>(max_pool*0.75),
           static_cast<std::size_t>(max_pool*0.9)};
 
@@ -60,7 +61,7 @@ int main( void ) {
         // allocate the memory on the GPU 
         // checkCudaErrors( cudaMalloc( (void**)&dev_a0, N * sizeof(int) ) );
         // rmm::mr::device_memory_resource* mr = rmm::mr::get_current_device_resource();
-        dev_a0= mr->allocate(N * sizeof(int), stream0);
+        dev_a0= (int*)mr->allocate(N * sizeof(int), stream1);
 
         // rmm::device_buffer buff(N * sizeof(int), stream0);
         checkCudaErrors(cudaStreamSynchronize(stream0));
@@ -80,7 +81,7 @@ for (int i=0; i<FULL_DATA_SIZE; i++) {
 // now loop over full data, in bite-sized chunks 
 for (int i=0; i<FULL_DATA_SIZE; i+= N*2) { // copy the locked memory to the device, async 
     checkCudaErrors( cudaMemcpyAsync( dev_a0, host_a+i, N * sizeof(int),
-    cudaMemcpyHostToDevice, stream0 ) );
+    cudaMemcpyHostToDevice, stream1 ) );
     checkCudaErrors( cudaMemcpyAsync( dev_b0, host_b+i, N * sizeof(int),
     cudaMemcpyHostToDevice, stream0 ) );
     kernel<<<N/256,256,0,stream0>>>( dev_a0, dev_b0, dev_c0 );
@@ -116,5 +117,10 @@ delete(mr);
 checkCudaErrors( cudaFree( dev_b0 ) ); checkCudaErrors( cudaFree( dev_c0 ) ); 
 checkCudaErrors( cudaFree( dev_a1 ) ); checkCudaErrors( cudaFree( dev_b1 ) ); checkCudaErrors( cudaFree( dev_c1 ) );
  checkCudaErrors( cudaStreamDestroy( stream0 ) ); checkCudaErrors( cudaStreamDestroy( stream1 ) );
+
+
+
+std::cout<<"sizeof(curandDirectionVectors64_t):"<<sizeof(curandDirectionVectors64_t)<<std::endl;
+std::cout<<"sizeof(curandDirectionVectors64_t)/sizeof(unsigned long long):"<<sizeof(curandDirectionVectors64_t)/sizeof(unsigned long long)<<std::endl;
 return 0;
 }
