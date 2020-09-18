@@ -4,7 +4,7 @@
 #include <nanomsg/reqrep.h>
 #include <nanomsg/pair.h>
 #include <nanomsg/tcp.h>
-#include "3rdparty/protobuf/args.pb.h"
+#include "args.pb.h"
 #include "tools.hpp"
 #include <iostream>
 #include <chrono>

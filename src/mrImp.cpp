@@ -2,7 +2,9 @@
 #include "helper_cuda.h"
 mrImp::mrImp(std::size_t init_size,float maxe,bool sync){
     _sync=sync;
-    auto const max_pool = static_cast<std::size_t>(rmm::mr::detail::available_device_memory());
+    std::size_t free{}, total{};
+    std::tie(free, total) = rmm::mr::detail::available_device_memory();
+    auto const max_pool = static_cast<std::size_t>(free) ;
     std::cout<<"init_size: "<<init_size<<" max_pool: "<<max_pool<<std::endl;
     std::size_t initpool=0;
     float _maxe=maxe;
