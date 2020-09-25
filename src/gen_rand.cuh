@@ -16,9 +16,12 @@ __global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
             sobolScrambleConstants[idx], 
             1234, 
             &stateQ[idx]);
-        unsigned long long llseed=curand(stateQ+idx);    
+        unsigned long long llseed=curand(stateQ+idx);  
+        // printf("llseed = %llu\n",llseed);  
         rk_seed(llseed,state+idx);
     }
+    // else
+    // printf("idx = %d, N=%d \n",idx,N); 
 } 
 
 __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
@@ -26,6 +29,7 @@ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     float pv=curand_uniform(&s);
     float a=0;
     int i=0;    
+    // printf("pv= %f\n",pv);
     for (;i<n;i++){
         a+=p[i];
         if (a>pv){
@@ -36,14 +40,16 @@ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     *state=s;
     return n-1;
 }
-__device__ float drawTau(float k,curandStateScrambledSobol64* state,float precision=1e-4){
+__device__ float drawTau(float k,curandStateScrambledSobol64* state,int randN=10, float precision=1e-6){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
     *state=s;
     float r=logf(1-pv)/(-k);
-    if (r<precision)
-        r+=precision;
-    return r; //+1e-5 is min precision
+    if (r<precision && randN>0){
+        float rd=curand_uniform(&s);
+        r+=ceilf(randN*rd)*precision;
+    }
+    return r; //precision is max precision
 }
 __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
@@ -52,7 +58,8 @@ __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* sta
     return 1/(1+powf(rd/r0,6));
 }
 // typedef Eigen::Map<Eigen::MatrixXf> matFlMapper;
-__device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSobol64* state){
+__device__ int drawJ_Si2Sj(float *P_i2j, float *matK,int n_sates,int i,curandStateScrambledSobol64* state){
+    //TODO Change algorithm, change malloc to cudaMalloc
     /*    
     P_i2j=copy.deepcopy(matP)
     P_i2j[i]=0
@@ -61,21 +68,24 @@ __device__ int drawJ_Si2Sj(float *matP,int n_sates,int i,curandStateScrambledSob
     return j
     */
     //预先生成不同初始状态之间的转换矩阵
-    float *P_i2j=(float *)malloc(sizeof(float)*n_sates);
-    memcpy(P_i2j,matP,sizeof(float)*n_sates);   
-    // matFlMapper P_i2jM(P_i2j,n_sates,1);
-    // P_i2jM(i,0)=0.0;
-    // P_i2jM=P_i2jM/P_i2jM.sum();
+    // float *P_i2j=(float *)malloc(sizeof(float)*n_sates);
+    memcpy(P_i2j,matK+i*n_sates,sizeof(float)*n_sates);   //Eigen::ColMajor
     P_i2j[i]=0.0;
+    for( int ii=0;ii<n_sates-1;ii++){
+        if(ii>=i)
+            P_i2j[ii]=P_i2j[ii+1];
+    }
     float sum=0.0;
-    for( int ii=0;ii<n_sates;ii++){
+    for( int ii=0;ii<n_sates-1;ii++){
         sum+=P_i2j[ii];
     }
-    for( int ii=0;ii<n_sates;ii++){
+    for( int ii=0;ii<n_sates-1;ii++){
         P_i2j[ii]=P_i2j[ii]/sum;
     }
-    int j = drawDisIdx(n_sates,P_i2j,state);
-    free(P_i2j);
+    int j = drawDisIdx(n_sates-1,P_i2j,state);
+    if (j>=i)
+        ++j;
+    // free(P_i2j);
     return j;
 }
 

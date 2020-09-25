@@ -13,6 +13,7 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <cuda_runtime_api.h>
+#include "tools.hpp"
 
 
 void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status, void *data) {
@@ -62,8 +63,8 @@ int showGPUsInfo(int dn,char *gpuuid,int *streamCount){
                 *streamCount=prop.asyncEngineCount*2;
             
         }
+        printf("  Device name: %s\n", prop.name);
         /*
-        printf("\n  Device name: %s\n", prop.name);
         printf("  Memory Clock Rate (KHz): %d\n",
                 prop.memoryClockRate);
         printf("  Memory Bus Width (bits): %d\n",
@@ -128,9 +129,9 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
     int64_t *g_burst_ad, int64_t *g_burst_dd,int64_t *g_istart, int *g_phCount,
     float* T,/*float* SgDivSr,*/
     float clk_p,float bg_ad_rate,float bg_dd_rate,
-    float* gpe,float* gpv,float* gpk,float* gpp,
+    float* gpe,float* gpv,float* gpk,float* gpp,float *P_i2j,
     int N,int s_n,curandStateScrambledSobol64 *devQStates,
-    rk_state *devStates, retype *mcE,int reSampleTimes,
+    rk_state *devStates, retype *mcE,int reSampleTimes,unsigned char debug=0,
     float gamma=0.34,float beta=1.42,float DexDirAem=0.08, 
     float Dch2Ach=0.07,float r0=52){
     int NN=N*reSampleTimes;
@@ -148,29 +149,22 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
         int64_t *burst_ad=g_burst_ad+g_istart[idx];
         int64_t *burst_dd=g_burst_dd+g_istart[idx];
         float F=0;
-        // for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++)
-        {
+        // for (int sampleTime=0;sampleTime<reSampleTimes;sampleTime++){       
             // // int sampleTime=tidx/reSampleTimes;
-            int si=drawDisIdx(s_n,gpp,devQStates+tidx);
-            // cuList<int> sidx;
-            // cuList<int64_t> bins;
-            // bins.append(start[idx]);
-            // sidx.append(si);            
+            int si=drawDisIdx(s_n,gpp,devQStates+tidx);          
             float mcSpendTime=0;
-            matXfMapper matK(gpk,s_n,s_n);
+            matXfMapper matKmp(gpk,s_n,s_n);
             int count=0;
             int64_t bin0clk_t=start[idx];
             int64_t bin1clk_t=start[idx];
-            int sj=0;        
-            
+            int sj=0,binIdxStart=0;
             while (T[idx]>mcSpendTime){                
-                sj=drawJ_Si2Sj(gpp,s_n,si,devQStates+tidx);                
-                // sidx.append(sj);
-                // if(tidx==2){
-                //     printf("s_n=%d,si=%d\n",s_n,si);
-                // }    
-                float st=drawTau(matK(si,sj),devQStates+tidx);
-                // printf("%f\t",st);
+                sj=drawJ_Si2Sj(P_i2j+tidx*s_n,gpk,s_n,si,devQStates+tidx);                
+                // if(si==0 && sj==2&& tidx<100)
+                //     printf("s_n=%d,sj=%d,gpp=%f, %f, %f, tidx=%d\n",s_n,sj,gpp[0],gpp[1],gpp[2],tidx);  
+                float st=drawTau(matKmp(si,sj),devQStates+tidx,0);
+                // if(si==0 && sj==2&& tidx<100)
+                //     printf("drawTau=%f\n",st);
                 mcSpendTime=mcSpendTime+st;
                 // si=sj;                
                 if(mcSpendTime>=T[idx]){
@@ -186,54 +180,62 @@ __global__ void mc_kernel(int64_t* start,int64_t* stop,
                 bool sdd=false,sad=false,bdd=false,bad=false;
                 int f_id=0,f_ia=0;
                 int64_t ddx,adx;
-                for(int iinb=0;iinb<phCount;iinb++){
+                long ai=0;
+                for(int iinb=binIdxStart;iinb<phCount;iinb++){
                     ddx=burst_dd[iinb];adx=burst_ad[iinb];
+                    // if(debug)
                     // if(idx==200)
                     //     printf("ddx= %ld, adx= %ld\n",ddx,adx);
-                    if(ddx>0&&ddx<bin0clk_t)
+                    
+                    if(ddx>=bin1clk_t || adx>=bin1clk_t||iinb==phCount-1){
+                        binIdxStart=iinb;
+                        // calac F
+                        float f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
+                        float f_i=0;
+                        F+=f_if;
+                        if (bg_dd_rate<1e-4){
+                            f_i=floorf(f_if+0.5);
+                        }
+                        else{
+                            float t_diff=(bin1clk_t-bin0clk_t)*clk_p;
+                            float rf_ia=(1-DexDirAem)*f_ia;
+                            float bg_a;
+                            draw_P_B_Tr(&bg_a,&rf_ia,1,&t_diff,bg_ad_rate ,devQStates+tidx);
+                            float rf_id=(gamma-Dch2Ach)*f_id;
+                            float bg_d;
+                            draw_P_B_Tr(&bg_d,&rf_id,1,&t_diff,bg_dd_rate ,devQStates+tidx);   
+                            f_i=floorf(f_if - bg_d - bg_a+0.5);             
+                        }
+                        float de=drawE(gpe[si],r0,gpv[si],devQStates+tidx);
+                        ai=drawA_fi_e(devStates+tidx, f_i, de);
+                        break;
+                    }
+                    if(ddx>0)
                         sdd=true;
-                    if(adx>0&&adx<bin0clk_t)
-                        sad=true;
-                    if(ddx>bin1clk_t)
-                        bdd=true;
-                    if(adx>bin1clk_t)
-                        bad=true;                        
+                    if(adx>0)
+                        sad=true;                      
                     if(sad&&sdd)
-                        continue;
-                    if(bdd && bad)
                         continue;
                     if(sad && !bad)
                         f_ia++;
                     if(sdd && !bdd)
                         f_id++;
                 }
-                float f_if=(gamma-Dch2Ach)*f_id + (1-DexDirAem)*f_ia;
-                float f_i=0;
-                if (bg_dd_rate<1e-4){
-                    f_i=floorf(f_if+0.5);
-                }
-                else{
-                    float t_diff=(bin1clk_t-bin0clk_t)*clk_p;
-                    float rf_ia=(1-DexDirAem)*f_ia;
-                    float bg_a;
-                    draw_P_B_Tr(&bg_a,&rf_ia,1,&t_diff,bg_ad_rate ,devQStates+tidx);
-                    float rf_id=(gamma-Dch2Ach)*f_id;
-                    float bg_d;
-                    draw_P_B_Tr(&bg_d,&rf_id,1,&t_diff,bg_dd_rate ,devQStates+tidx);   
-                    f_i=floorf(f_if - bg_d - bg_a+0.5);             
-                }
-                F+=f_if;
-                // if(f_if>0)
-                {
-                    float de=drawE(gpe[si],r0,gpv[si],devQStates+tidx);
-                    long ai=drawA_fi_e(devStates+tidx, f_i, de);
-                    // mcE[idx*reSampleTimes+sampleTime]+=ai;
-                    mcE[tidx]+=ai;
-                }
+                mcE[tidx]+=ai;               
                 count++;
+                bin0clk_t=bin1clk_t;
                 si=sj;
-            }            
-        }
+                // if (debug)
+                //     if(F>0)
+                //         printf("burst id %d, F = %g, ai = %ld\n",idx,F,ai);
+            }
+            mcE[tidx]/=F;
+            #define __count__ 5 
+            if (debug)
+                if(count>__count__)
+                    printf("burst id %d trans %d > %d. clk_p= %g, mcE[%d]= %g\n"  ,idx,count,__count__,clk_p,tidx,mcE[tidx]);            
+                    
+        //}
         mcE[tidx]/=(F*reSampleTimes);
     }    
 }
@@ -281,16 +283,18 @@ mc::mc(int id,int _streamNum, unsigned char de,std::uintmax_t hdf5size,bool _pro
     gpk=(float **)malloc(sizeof(float*)*streamNum);
     gpp=(float **)malloc(sizeof(float*)*streamNum);
     gpe=(float **)malloc(sizeof(float*)*streamNum);    
+    g_P_i2j=(float **)malloc(sizeof(float*)*streamNum);  
     oldN=new int[streamNum];
     std::fill_n(oldN, streamNum, 0); 
     // std::memset(hpv, 0, sizeof(float*)*streamNum);
     // std::memset(hpk, 0, sizeof(float*)*streamNum);
     // std::memset(hpp, 0, sizeof(float*)*streamNum);
-    // std::memset(hpe, 0, sizeof(float*)*streamNum);    
+    // std::memset(hpe, 0, sizeof(float*)*streamNum);  
+    std::memset(g_P_i2j, 0, sizeof(float*)*streamNum);  
     std::memset(gpv, 0, sizeof(float*)*streamNum);
     std::memset(gpk, 0, sizeof(float*)*streamNum);
     std::memset(gpp, 0, sizeof(float*)*streamNum);
-    std::memset(gpe, 0, sizeof(float*)*streamNum);        
+    std::memset(gpe, 0, sizeof(float*)*streamNum);     
     s_n=new int[streamNum];
     gridSize = new int[streamNum];
     begin_burst=new int[streamNum];
@@ -318,7 +322,8 @@ mc::mc(int id,int _streamNum, unsigned char de,std::uintmax_t hdf5size,bool _pro
     std::memset(devScrambleConstants64, 0, sizeof(unsigned long long int*)*streamNum);    
     reSampleTimes=4;
     cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSize, mc_kernel, 0, 0);     
-    blockSize=256;
+    // blockSize=128;
+    printf("blockSize = %d\n",blockSize);
     CURAND_CALL(curandGetDirectionVectors64( &hostVectors64, 
                                     CURAND_SCRAMBLED_DIRECTION_VECTORS_64_JOEKUO6));
     CURAND_CALL(curandGetScrambleConstants64( &hostScrambleConstants64)); 
@@ -393,8 +398,9 @@ void mc::init_randstate(int N,int sid){
         */
         std::cout << sid << " devDirectionVectors64ing, size =" << NN * VECTOR_SIZE * sizeof(long long int)<<std::endl;
         int n=0;
-        while (NN > 0) {
-            int size = (NN > 20000) ? 20000 : NN;
+        int tNN=NN;
+        while (tNN > 0) {
+            int size = (tNN > 20000) ? 20000 : tNN;
             unsigned long long int *buf=devScrambleConstants64[sid];         
             CUDA_CHECK_RETURN(cudaMemcpyAsync(buf+n*20000, hostScrambleConstants64,
                 size*sizeof(unsigned long long int), cudaMemcpyHostToDevice,streams[sid]));
@@ -405,7 +411,7 @@ void mc::init_randstate(int N,int sid){
                 size*sizeof(curandDirectionVectors64_t), 
                cudaMemcpyHostToDevice,streams[sid])); 
 
-            NN -= size;
+            tNN -= size;
             n++;
           }
         std::cout << sid << " devDirectionVectors64ed \n";
@@ -413,7 +419,7 @@ void mc::init_randstate(int N,int sid){
         setup_kernel <<<gridSize[sid], blockSize,0,streams[sid]>>>(devStates[sid], 0,/*time(NULL)*/ NN,        
             devDirectionVectors64[sid], devScrambleConstants64[sid], devQStates[sid]);    
         //CUDAstream_CHECK_LAST_ERROR;
-        // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+        CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     // }
     oldN[sid]=N;
 }
@@ -496,26 +502,26 @@ int mc::setBurstBd(int cstart,int cstop, int sid){
 }
 
 void mc::run_kernel(int N, int sid){     
-    if (debug)
-        cout<<"mcE[sid]"<<sid<<":"<<mcE[sid]<<endl;   
+    AtomicWriter(debug,debugLevel::gpu) <<"mcE[sid]"<<sid<<":"<<mcE[sid]<<"\n";
     
     mc_kernel<<<gridSize[sid],blockSize,0,streams[sid]>>>(g_start,g_stop, 
         g_burst_ad, g_burst_dd, g_istart, g_phCount,
         g_burst_duration,/*g_SgDivSr,*/
         clk_p,bg_ad_rate,bg_dd_rate,
-        gpe[sid],gpv[sid],gpk[sid],gpp[sid],N,s_n[sid],
-        devQStates[sid],devStates[sid], mcE[sid], reSampleTimes/*,ti*/);
+        gpe[sid],gpv[sid],gpk[sid],gpp[sid],g_P_i2j[sid],
+        N,s_n[sid],
+        devQStates[sid],devStates[sid], mcE[sid], reSampleTimes,debug&debugLevel::kernel);
     // CUDAstream_CHECK_LAST_ERROR;
     // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
-    if (debug){
+    if (debug&debugLevel::gpu){
         cout<<"sid:"<<sid<<endl;
         cout<<"streams["<<sid<<"]:"<<streams[sid]<<endl;
         cout<<"hmcE[sid]"<<sid<<":"<<hmcE[sid]<<endl;   
     }
-    // CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid],
-    //     mcE[sid],N * reSampleTimes*sizeof(retype), 
-    //     cudaMemcpyDeviceToHost,
-    //     streams[sid]));
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(hmcE[sid],
+        mcE[sid],N * reSampleTimes*sizeof(retype), 
+        cudaMemcpyDeviceToHost,
+        streams[sid]));
 }
 bool mc::streamQuery(int sid){
     if(sid<0||sid>=streamNum)
@@ -545,7 +551,6 @@ mc::~mc(){
         checkCudaErrors(cudaStreamSynchronize(streams[sid]));
         checkCudaErrors(cudaStreamDestroy ( streams[sid]));
     }
-
     free(streams);
     delete[](s_n);
     delete[](oldN);
@@ -561,8 +566,8 @@ mc::~mc(){
     free(gpe);
     free(gpv);
     free(gpp);
-    free(gpk);        
-
+    free(gpk);  
+    free(g_P_i2j); 
     // free(hostVectors64);
     // free(hostScrambleConstants64);
 
@@ -575,7 +580,6 @@ mc::~mc(){
         std::cout<<"cudaProfilerStop"<<std::endl;
     }
     cudaDeviceReset();
- 
 }
 
 void mc::free_data_gpu(){            
@@ -616,6 +620,7 @@ void mc::free_data_gpu(){
         // CUDA_CHECK_RETURN(cudaFree(mcE[sid]));
         int oldNN=oldN[sid]*reSampleTimes;
         mr->free(mcE[sid], oldNN*sizeof(retype), streams[sid]);
+        mr->free(g_P_i2j[sid],s_n[sid]*sizeof(float)*oldNN,streams[sid]);
         // CUDA_CHECK_RETURN(cudaFree(devStates[sid]));
         // CUDA_CHECK_RETURN(cudaFree(devQStates[sid]));
         // CUDA_CHECK_RETURN(cudaFree(devDirectionVectors64[sid]));
@@ -624,16 +629,17 @@ void mc::free_data_gpu(){
         mr->free(devQStates[sid],oldNN*sizeof (curandStateScrambledSobol64 ),streams[sid]);
         mr->free(devDirectionVectors64[sid],oldNN*  VECTOR_SIZE * sizeof(long long int),streams[sid]);
         mr->free(devScrambleConstants64[sid],oldNN*sizeof(long long int),streams[sid]);
+        
         cout<<"free sid"<<sid<<endl;
         CUDA_CHECK_RETURN(cudaFreeHost(hmcE[sid]));                 
     }
 
 }
 
-bool mc::set_nstates(int n,int sid){
-    bool r=false;
+int mc::set_nstates(int n,int sid){
+    int r=n;
     if (s_n[sid]!=n){
-        r=true;
+        r=s_n[sid];
         checkCudaErrors( cudaStreamSynchronize(streams[sid]) );
         std::cout<<"checkCudaErrors( cudaStreamSynchronize(streams["<<sid<<"])\n";
         // CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
@@ -675,6 +681,11 @@ bool mc::set_nstates(int n,int sid){
     return r;
 }
 
+void mc::set_params_buff(int oldS_n,int N_sid,int sid){
+    mr->free(g_P_i2j[sid],oldS_n*sizeof(float)*oldN[sid]*reSampleTimes,streams[sid]);
+    g_P_i2j[sid]=(float*)mr->malloc(s_n[sid]*sizeof(float)*N_sid*reSampleTimes,streams[sid]);
+}
+
 bool mc::set_params(int n,int sid,vector<float>& args){
     bool r;  
     vecFloatMapper evargs(args.data(),n*n+n);        
@@ -689,7 +700,7 @@ bool mc::set_params(int n,int sid,vector<float>& args){
     r=genMatK(&matK,n,kargs);
     //&matK不可修改，但是matK的值可以修改    
     r=r&&genMatP(&matP,matK);    
-    // cout<<"k:"<<*matK<<endl;
+    // cout<<"[K]:\n"<<*matK<<endl;
     // memcpy(hpe[sid], peargs, sizeof(float)*n);
     // memcpy(hpv[sid], pvargs, sizeof(float)*n);
     // memcpy(hpk[sid], matK->data(), sizeof(float)*n*n);

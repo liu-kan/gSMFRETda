@@ -13,6 +13,7 @@ option  "debug"          D "Turn on all debug info"                             
 option  "debugcpu"       C "CPU debug info"                                        flag        off
 option  "debuggpu"       G "GPU debug info"                                        flag        off
 option  "debugnet"       N "Network debug info"                                    flag        off
+option  "debugkernel"       K "GPU Kernel debug info"                                        flag        off
 option  "gpuinfo"        q "Show GPUs' info"                                       flag        off
 option  "profiler"       p "Enable CUDA profiler"                                  flag        off
 option  "snum"           s "Stream Number, when it's 0 automatically determine"    int         default="0"                    no
