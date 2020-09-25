@@ -1,5 +1,8 @@
 # TODO list
 
+## 2020-9-25 added
+* Cmake use boost histogram version aaccording to libboost-dev version.
+
 ## 2020-9-18 added
 * Allow user to choose 64bit or 32bit precision
 
