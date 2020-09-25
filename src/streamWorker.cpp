@@ -8,6 +8,8 @@
 #include <iostream>
 #include <chrono>
 using namespace std::chrono_literals;
+#include <boost/histogram.hpp>
+#include <vector>
 using namespace boost::histogram;
 streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _fretHistNum,
   std::mutex *m, std::condition_variable *cv,int *_dataready,int *_sn,
@@ -28,7 +30,8 @@ streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _f
 }
 // template <typename Tag, typename Storage>
 auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
-    auto h = make_s(static_tag(), std::vector<float>(), reg(binnum, lv, uv));
+    // auto h = make_s(static_tag(), std::vector<float>(), reg(binnum, lv, uv));
+    auto h = make_histogram( axis::regular<>(binnum, lv, uv) );
     for (auto it = SgDivSr->begin(), end = SgDivSr->end(); it != end;) 
         h(*it++);
     // auto h = make_histogram(
