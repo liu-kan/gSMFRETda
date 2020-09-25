@@ -160,7 +160,7 @@ void genuid(std::string* id,int gid, int sid,char *gpuuid){
     // char cGPUuuid[33];
     for(int i=0;i<16;i++){
         // guid=0;
-        std::memcpy(&guid, gpuuid+i, 1);
+        memcpy(&guid, gpuuid+i, 1);
         sss<< std::setfill ('0') << std::setw(1*2) 
        << std::hex << std::to_integer<int>(guid);
         // snprintf(cGPUuuid+i*2,2,"%hhx",gpuuid[i]);
@@ -171,81 +171,4 @@ void genuid(std::string* id,int gid, int sid,char *gpuuid){
     ss <<sss.str() <<'-' << pid <<"-"<< tid <<"-"<<std::to_string(gid)<<"-"<<std::to_string(sid);
     *id=ss.str();
     // std::cout<<id->size()<<std::endl;
-}
-
-std::unique_ptr<double[]> random_array(unsigned n, int type) {
-  std::unique_ptr<double[]> r(new double[n]);
-  std::default_random_engine gen(1);
-  if (type) { // type == 1
-    std::normal_distribution<> d(0.5, 0.3);
-    for (unsigned i = 0; i < n; ++i) r[i] = d(gen);
-  } else { // type == 0
-    std::uniform_real_distribution<> d(0.0, 1.0);
-    for (unsigned i = 0; i < n; ++i) r[i] = d(gen);
-  }
-  return r;
-}
-#include <boost/format.hpp>
-template <typename Tag, typename Storage>
-double compare_1d(unsigned n, int distrib) {
-  auto r = random_array(n, distrib);
-  auto h = make_s(Tag(), Storage(), reg(100, 0, 1));
-  auto t = clock();
-  double timesp=(double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
-  for (auto it = r.get(), end = r.get() + n; it != end;) h(*it++);
-      for (auto x : indexed(h)) {
-      std::cout << boost::format("bin %3i [%4.4f, %4.4f): %i\n")
-        % x.index() % x.bin().lower() % x.bin().upper() % *x;
-    }
-
-  return timesp;
-}
-double baseline(unsigned n) {
-  auto r = random_array(n, 0);
-  auto t = clock();
-  for (auto it = r.get(), end = r.get() + n; it != end;) {
-    volatile auto x = *it++;
-    (void)(x);
-  }
-  return (double(clock()) - t) / CLOCKS_PER_SEC / n * 1e9;
-}
-auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
-    auto h = make_s(static_tag(), std::vector<float>(), reg(binnum, lv, uv));
-    for (auto it = SgDivSr->begin(), end = SgDivSr->end(); it != end;) 
-        h(*it++);
-    // auto h = make_histogram(
-    //   axis::regular<>(binnum, 0.0, 1.0, "x")
-    // );    
-    // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
-    return h;
-}
-
-
-
-int _main(){    
-    std::string id;
-    genuid(&id,0,0,NULL);
-    std::cout<<id<<std::endl;
-
-    const unsigned nfill = 2000;
-    using SStore = std::vector<int>;
-    using SFStore = std::vector<float>;
-    using DStore = unlimited_storage<>;
-    printf("baseline %.1f\n", baseline(nfill));
-    for (int itype = 0; itype < 2; ++itype) {
-        const char* d = itype == 0 ? "uniform" : "normal ";
-        printf("1D-boost:SS-%s %5.1f\n", d, compare_1d<static_tag, SStore>(nfill, itype));
-        printf("1D-boost:SD-%s %5.1f\n", d, compare_1d<static_tag, DStore>(nfill, itype));
-        printf("1D-boost:DS-%s %5.1f\n", d, compare_1d<dynamic_tag, SStore>(nfill, itype));
-        printf("1D-boost:DD-%s %5.1f\n", d, compare_1d<dynamic_tag, DStore>(nfill, itype));
-
-    }
-    std::vector<float> s={-34.4,0.435,5.3,.67,.45,.72,.56487,.678,.89,.432};
-    auto h=mkhist(&s,3,0,1);//<static_tag,SFStore>
-    
-        for (auto x : indexed(h)) {
-        std::cout << boost::format("bin %3i [%4.4f, %4.4f): %i\n")
-        % x.index() % x.bin().lower() % x.bin().upper() % *x;
-    }
-exit(0);
 }
