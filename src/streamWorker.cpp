@@ -138,7 +138,7 @@ void streamWorker::run(int sid,int sz_burst){
           float chisqr=0;
           for(ihist=0;ihist<fretHistNum;ihist++){
             if(vOEHist[ihist]>0)
-              chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist])),2)
+              chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist]/pdamc->reSampleTimes)),2)
                 /float(vOEHist[ihist]);
             else
               effN--;      

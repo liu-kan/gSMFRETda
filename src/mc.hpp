@@ -40,6 +40,7 @@ class mc
         int64_t *g_burst_ad,  *g_burst_dd;
         int64_t *g_istart,*g_istop;  // ? 32 or 64
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
+        float **g_P_i2j;
         arrFF *matK;
         arrF* matP;                
         int *begin_burst;
@@ -71,10 +72,10 @@ class mc
         atomic_int workerNum;
         retype** hmcE;
         int *s_n;
-        int sz_burst;        
+        int sz_burst;
         bool streamQuery(int sid);
         int reSampleTimes;        
-        bool set_nstates(int n,int sid);
+        int set_nstates(int n,int sid);
         void set_gpuid();
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
@@ -82,6 +83,7 @@ class mc
         void init_randstate(int N,int sid);
         void run_kernel(int N, int sid);
         void get_res(int sid, int N);
+        void set_params_buff(int oldS_n,int N_sid,int sid);
         void init_data_gpu(vector<int64_t>& istart,vector<int64_t>& start,vector<int64_t>& stop,
                         std::vector<int>& phCount,long _sz_tag,int64_t *burst_ad, int64_t *burst_dd,
                         vector<float>& T_burst_duration,vector<float>& SgDivSr,

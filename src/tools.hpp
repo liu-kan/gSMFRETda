@@ -52,7 +52,8 @@ enum debugLevel:unsigned char{
   gpu=1<<1,
   net=1<<2,
   info=1<<3,
-  parameter=1<<4
+  parameter=1<<4,
+  kernel=1<<5
 };
 class AtomicWriter {
     std::ostringstream st;
