@@ -1,0 +1,2 @@
+set demangle-style none
+set cuda software_preemption on

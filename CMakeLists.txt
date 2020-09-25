@@ -10,7 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 #set(Debug OFF CACHE BOOL "Shot debug flag")
 set(DEFAULT_BUILD_TYPE "MinSizeRel")
-if(Debug)
+if(debug)
   set(CMAKE_BUILD_TYPE "Debug")
   message(STATUS "Debug is setted!")
 endif()
@@ -25,15 +25,14 @@ endif()
 
 find_package(Boost 1.65.0 COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
+message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
+
 #set(CMAKE_CUDA_ARCH 3 5.2 6.1 7 7.5)
 #set(CMAKE_CUDA_CODE 3 5.2 6.1 7 7.5)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \
-      -gencode=arch=compute_52,code=sm_52 \
       -gencode=arch=compute_61,code=sm_61 \
-      -gencode=arch=compute_70,code=sm_70 \
-      -gencode=arch=compute_75,code=sm_75 \
-      -gencode=arch=compute_75,code=compute_75")
+      -gencode=arch=compute_75,code=sm_75 ")
       # -gencode arch=compute_75,code=sm_75 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_52,code=sm_52   -gencode arch=compute_70,code=sm_70 --maxrregcount=128
 else ()
   set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "--expt-relaxed-constexpr --ptxas-options=-v -Xptxas -dlcm=cg \

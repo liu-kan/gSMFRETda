@@ -75,7 +75,9 @@ int main(int argc, char* argv[])
     if(args_info.debuggpu_flag)
       debuglevel|=debugLevel::gpu;
     if(args_info.debugnet_flag)
-      debuglevel|=debugLevel::net;            
+      debuglevel|=debugLevel::net;  
+    if(args_info.debugkernel_flag)
+      debuglevel|=debugLevel::kernel;            
     int gpuid=args_info.gpuid_arg;    
     vector<int64_t> istart;vector<int64_t> istop;    
     vector<int64_t> stop;vector<int64_t> start;
