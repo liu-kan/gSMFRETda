@@ -49,8 +49,13 @@ int main(int argc, char* argv[])
     gengetopt_args_info args_info;
     if (cmdline_parser (argc, argv, &args_info) != 0)
       exit(1) ;    
-    if ( args_info.gpuinfo_flag ){
-      showGPUsInfo();
+    if ( args_info.gpuinfo_flag ){      
+      // for (int i = 0; i < args_info.parameters_given; ++i)
+      //   printf ("passed float: %f\n", args_info.parameters_arg[i]);
+      if (args_info.gpuid_given)
+        showGPUsInfo(args_info.gpuid_arg);
+      else
+        showGPUsInfo();
       exit(1);
     }
     if(args_info.inputs_num<1 && !args_info.input_given ){
@@ -79,6 +84,8 @@ int main(int argc, char* argv[])
     if(args_info.debugkernel_flag)
       debuglevel|=debugLevel::kernel;            
     int gpuid=args_info.gpuid_arg;    
+
+
     vector<int64_t> istart;vector<int64_t> istop;    
     vector<int64_t> stop;vector<int64_t> start;
     vector<int64_t> times_ms;

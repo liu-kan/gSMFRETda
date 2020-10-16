@@ -16,8 +16,7 @@ gpuWorker::gpuWorker(mc* _pdamc,int _streamNum, std::vector<float>* _d,int _fret
     pdamc=_pdamc;
     _m=m;
     _cv=cv;
-    streamNum=_streamNum;
-    pdamc->set_gpuid();       
+    streamNum=_streamNum;    
     SgDivSr=_d;
     fretHistNum=_fretHistNum;
     dataready=_dataready;

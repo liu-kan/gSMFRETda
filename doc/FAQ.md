@@ -11,3 +11,4 @@ cmake .. # configure cmake ... use $CONDA_PREFIX if you're using Anaconda
 make 
 make install  
 ```
+* Make sure you build rmm lib with the **cuda version same as** you build gSMFREda.
