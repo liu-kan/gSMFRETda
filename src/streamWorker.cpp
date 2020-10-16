@@ -41,34 +41,36 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
     return h;
 }
 void streamWorker::run(int sid,int sz_burst){  
-    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
+    // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
     int sock;    //local
     // thread_local int s_n;
     int ps_n;
-    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start creating sock \n";
+    // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start creating sock \n";
     sock = nn_socket (AF_SP, NN_REQ);
-    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" sock created:"<<sock<<"\n";
+    //TODO nn_setsockopt
+    // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" sock created:"<<sock<<"\n";
     assert (sock >= 0);
     int nneo=nn_connect(sock, url->c_str());
-    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneting:"<<nneo<<"\n";
+    // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneting:"<<nneo<<"\n";
     assert (nneo>= 0);
-    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneted\n";
+    // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" conneted\n";
     std::string gpuNodeId;
     genuid(&gpuNodeId,pdamc->devid, sid,pdamc->gpuuuid);
-    AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
+    // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
     // int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
-    AtomicWriter(debug,debugLevel::cpu) <<"frethist done\n";
+    // AtomicWriter(debug,debugLevel::cpu) <<"frethist done\n";
     bool ending=false;
+    int32_t params_idx;
     do {        
-      AtomicWriter(debug,debugLevel::net) <<"net th# "<<sid<<" try lock\n";    
+      // AtomicWriter(debug,debugLevel::net) <<"net th# "<<sid<<" try lock\n";    
       std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
       lck.lock();
-      AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" locked\n";   
+      // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" locked\n";   
       char *rbuf = NULL;
       int bytes;
       if(dataready[sid]==0){
-          AtomicWriter(debug,debugLevel::net) <<"dataready 0\n";
+          // AtomicWriter(debug,debugLevel::net) <<"dataready 0\n";
         // {
           gSMFRETda::pb::p_cap cap;
           cap.set_cap(sz_burst);
@@ -99,6 +101,8 @@ void streamWorker::run(int sid,int sz_burst){
           ga.ParseFromArray(rbuf,bytes); 
           ps_n=s_n[sid]*(s_n[sid]+1);
           params[sid].resize(ps_n);
+          params_idx=ga.idx();
+          AtomicWriter(debug,debugLevel::net) << "params_idx recv: "<<params_idx <<'\n';
           for(int pi=0;pi<ps_n;pi++)
             params[sid][pi]=ga.params(pi);
           nn_freemsg (rbuf);
@@ -114,13 +118,22 @@ void streamWorker::run(int sid,int sz_burst){
       bool calcR2=false;
       while(!calcR2){
         if(!lck.try_lock()){
-          std::this_thread::sleep_for(200ms);
+          std::this_thread::sleep_for(200ms);     
           continue;
         }
         else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
+          AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready !=4\n";
+          gSMFRETda::pb::p_n pidx;
+          pidx.set_s_n(params_idx);
+          string spidx;
+          pidx.SerializeToString(&spidx);
+          spidx="k"+spidx;
+          nn_send (sock, spidx.c_str(), spidx.length(), 0);
+          nn_recv(sock, &rbuf,NN_MSG,0);
+          nn_freemsg(rbuf);
+          rbuf=NULL;
           if(lck.owns_lock())
             lck.unlock();
-             AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready !=4\n";
           continue;
         }
         else{
@@ -139,7 +152,7 @@ void streamWorker::run(int sid,int sz_burst){
             vMcHist[ihist++]=*x;      
           int effN=fretHistNum;           
           float chisqr=0;
-          for(ihist=0;ihist<fretHistNum;ihist++){
+          for(ihist=1;ihist<fretHistNum;ihist++){
             if(vOEHist[ihist]>0)
               chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist]/pdamc->reSampleTimes)),2)
                 /float(vOEHist[ihist]);
@@ -149,24 +162,25 @@ void streamWorker::run(int sid,int sz_burst){
           chisqr=chisqr/(effN-s_n[sid]*(s_n[sid]+1));
           // chisqr=(effN-s_n[sid]*(s_n[sid]+1));
           gSMFRETda::pb::res chi2res;
-          chi2res.set_s_n(s_n[sid]);
+          // chi2res.set_s_n(s_n[sid]);
           chi2res.set_idx(gpuNodeId);
-          for (auto v : params[sid])
-            chi2res.add_params(v);
+          chi2res.set_ridx(params_idx);          
+          // for (auto v : params[sid])
+          //   chi2res.add_params(v);
           chi2res.set_e(chisqr);
           string sres;
-          chi2res.SerializeToString(&sres);
-          sres="r"+sres;
-          bytes = nn_send (sock, sres.c_str(), sres.length(), 0);
-          rbuf = NULL;
-          gSMFRETda::pb::p_sid gas;
-          bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+          chi2res.SerializeToString(&sres);          
+          nn_send (sock, ("r"+sres).c_str(), sres.length()+1, 0);
+          // bytes = nn_send (sock, sres.c_str(), sres.length(), 0);           
+          gSMFRETda::pb::p_sid gas; 
+          AtomicWriter(debug,debugLevel::net) << chisqr<<"\t params_idx send: "<<params_idx <<'\n'; 
+          bytes = nn_recv (sock, &rbuf, NN_MSG, 0);           
           gas.ParseFromArray(rbuf,bytes); 
+          AtomicWriter(debug,debugLevel::net) << params_idx<<" p_sid recv: "<<gas.sid() <<'\n'; 
           if(gas.sid()==-1)
             ending=true;
           nn_freemsg (rbuf);
-          rbuf=NULL;
-
+          rbuf=NULL;          
           dataready[sid]=0;
           if(lck.owns_lock())
             lck.unlock();
@@ -176,5 +190,6 @@ void streamWorker::run(int sid,int sz_burst){
     }while(!ending);
     // notice gpu sid ended
     pdamc->workerNum--;
+    nn_close(sock);
 
 }
