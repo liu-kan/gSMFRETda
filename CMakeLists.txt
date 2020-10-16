@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 #set(Debug OFF CACHE BOOL "Shot debug flag")
-set(DEFAULT_BUILD_TYPE "MinSizeRel")
+set(DEFAULT_BUILD_TYPE "Release")
 if(debug)
   set(CMAKE_BUILD_TYPE "Debug")
   message(STATUS "Debug is setted!")
@@ -30,19 +30,21 @@ message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
 #set(CMAKE_CUDA_ARCH 3 5.2 6.1 7 7.5)
 #set(CMAKE_CUDA_CODE 3 5.2 6.1 7 7.5)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \
-      -gencode=arch=compute_61,code=sm_61 \
-      -gencode=arch=compute_75,code=sm_75 ")
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \  
+      -gencode arch=compute_61,code=[sm_61,compute_61] \
+      -gencode arch=compute_70,code=[sm_70,compute_70] \
+      -gencode arch=compute_75,code=[sm_75,compute_75]")
       # -gencode arch=compute_75,code=sm_75 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_52,code=sm_52   -gencode arch=compute_70,code=sm_70 --maxrregcount=128
 else ()
   set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "--expt-relaxed-constexpr --ptxas-options=-v -Xptxas -dlcm=cg \
-      -gencode=arch=compute_52,code=sm_52 \
-      -gencode=arch=compute_61,code=sm_61 \
-      -gencode=arch=compute_70,code=sm_70 \
-      -gencode=arch=compute_75,code=sm_75 \
-      -gencode=arch=compute_75,code=compute_75")
+       -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored \
+       -gencode arch=compute_61,code=[sm_61,compute_61] \
+      -gencode arch=compute_75,code=[sm_75,compute_75]")
        # -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61  -gencode arch=compute_70,code=sm_70 --maxrregcount=128 
 endif()
+      #-gencode arch=compute_52,code=[sm_52,compute_52]  \
+      #
+      #-gencode arch=compute_70,code=[sm_70,compute_70] \
 
 
 
@@ -61,8 +63,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 set(boost_VERSION_MAJOR "1" CACHE STRING "boost's MAJOR version number")
 set(boost_VERSION_MINOR "70" CACHE STRING "boost's MINOR version number")
 set(boost_VERSION_PATCH "0" CACHE STRING "boost's PATCH version number")
-#set(rmm_VERSION_MAJOR "0" CACHE STRING "rmm's MAJOR version number")
-#set(rmm_VERSION_MINOR "9" CACHE STRING "rmm's MINOR version number")
+set(rmm_VERSION_MAJOR "0" CACHE STRING "rmm's MAJOR version number")
+set(rmm_VERSION_MINOR "15" CACHE STRING "rmm's MINOR version number")
 
 set(boost_fname "${boost_VERSION_MAJOR}_${boost_VERSION_MINOR}_${boost_VERSION_PATCH}")
 set(boost_ndir "${boost_VERSION_MAJOR}.${boost_VERSION_MINOR}.${boost_VERSION_PATCH}")
@@ -92,7 +94,6 @@ FetchContent_Populate(
   GIT_TAG        3.3
   GIT_PROGRESS 1  
 )
-
 find_package(HighFive)
 if(NOT HighFive_FOUND)
   message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
@@ -106,24 +107,25 @@ if(NOT HighFive_FOUND)
       USES_TERMINAL_INSTALL true
       UPDATE_DISCONNECTED true
     )
-    #ExternalProject_Add(rmm  
-    #  GIT_REPOSITORY https://git.liukan.org/mirrors/rmm.git
-    #  GIT_PROGRESS 1
-    #  GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
-    #  PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
-    #  PREFIX ${CMAKE_BINARY_DIR}/third/rmm
-    #  CMAKE_ARGS -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
-    #  INSTALL_COMMAND sudo make install
-    #  USES_TERMINAL_INSTALL true
-    #  UPDATE_DISCONNECTED true
-    #)
     add_dependencies(third HighFive)
-    #add_dependencies(third rmm)
+endif()
+#    ExternalProject_Add(rmm  
+#      GIT_REPOSITORY https://git.liukan.org/mirrors/rmm.git
+#      GIT_PROGRESS 1
+#      GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
+#      #PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
+#      PREFIX ${CMAKE_BINARY_DIR}/third/rmm
+#      CMAKE_ARGS -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
+#      INSTALL_COMMAND sudo make install
+#      USES_TERMINAL_INSTALL true
+#      UPDATE_DISCONNECTED true
+#    )
+#    add_dependencies(third rmm)
+## https://anaconda.org/rapidsai/librmm/files
     add_custom_command(TARGET third
                       COMMAND pwd
                       PRE_BUILD
     )
-endif()
 
 #src/3rdparty/protobuf/args.pb.cc src/3rdparty/protobuf/args.pb.h
 
@@ -193,6 +195,6 @@ target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lboost_filesystem
 #${link_stdc__fs}
 if (HighFive_FOUND)
   target_link_libraries(${PROJECT_NAME} HighFive)
-else()
-  add_dependencies(${PROJECT_NAME} third)
 endif()
+  add_dependencies(${PROJECT_NAME} third)
+

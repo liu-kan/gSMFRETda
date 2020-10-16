@@ -24,13 +24,14 @@ git annex get . # retrieve everything under the current directory
 * CUDA version >= 10 
 * libhdf5-dev 1.10 and newer 
 * CMake >= 3.11
+* librmm 0.15 https://anaconda.org/rapidsai/librmm/files
 
 I'm trying to let the program can be compiled both by Linux and Windows natively. If you compile it in Windows, [compile with VS 2019](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio?view=vs-2019). Of course, you can just compile in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) supported.
 
 ## Build the code
 For deb systems, like Debian or Ubuntu
 ```bash
-sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt
+sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev
 ```
 For rpm systems, like Fedora, Centos or Redhat
 ```bash
