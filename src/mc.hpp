@@ -1,3 +1,8 @@
+/**
+ * @file mc.hpp
+ * @author liukan (liuk@apm.ac.cn)
+ * @brief  header of cuda code for gSMFRETda
+ */
 #pragma once
 #include <atomic>
 #include <vector>
@@ -38,7 +43,7 @@ class mc
         int64_t *g_start,*g_stop;//,*g_times_ms;
         int* g_phCount;
         int64_t *g_burst_ad,  *g_burst_dd;
-        int64_t *g_istart,*g_istop;  // ? 32 or 64
+        int64_t *g_istart,*g_istop;  // 64
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         float **g_P_i2j;
         arrFF *matK;
@@ -76,6 +81,10 @@ class mc
         bool streamQuery(int sid);
         int reSampleTimes;        
         int set_nstates(int n,int sid);
+        /**
+         * @brief Set gpuid for calculate
+         * 
+         */
         void set_gpuid();
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
