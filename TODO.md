@@ -1,5 +1,11 @@
 # TODO list
 
+## 2020-10-16 added
+* Change nanomsg to ZMQ.
+
+## 2020-10-13 added
+* Use Cap'n Proto or flatbuffers instead of Protobuf.
+
 ## 2020-9-25 added
 * Cmake use boost histogram version aaccording to libboost-dev version.
 

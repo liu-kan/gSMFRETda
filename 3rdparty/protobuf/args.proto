@@ -2,7 +2,7 @@ syntax = "proto3";
 package gSMFRETda.pb;
 
 message p_ga {   
-    string idx = 1;
+    int32 idx = 1;
     int32 start = 2;
     int32 stop = 3;
     repeated float params = 4 [packed=true];
@@ -17,13 +17,15 @@ message p_sid {
 }
 
 message p_cap {    
-    string idx = 1;
-    int32 cap = 2;    
+    int32 cap = 1;    
 }
 
-message res {    
-    int32 s_n = 1; 
+message p_str {
+    string str = 1;
+}
+
+message res {     
+    int32 ridx=1;
     float e = 2;
     string idx = 3;
-    repeated float params = 4 [packed=true];
 }
