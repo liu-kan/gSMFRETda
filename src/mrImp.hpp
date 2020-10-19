@@ -4,7 +4,7 @@
 #include "rmm/detail/error.hpp"
 #include "rmm/mr/device/cuda_memory_resource.hpp"
 #include "rmm/mr/device/default_memory_resource.hpp"
-#include "rmm/mr/device/device_memory_resource.hpp"
+
 
 class mrImp
 {
