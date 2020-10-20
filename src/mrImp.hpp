@@ -12,8 +12,12 @@ class mrImp
     protected:
         Pool *mr;
         bool _sync;
+        int _gpuid;
+        rmm::mr::cuda_memory_resource *cuda_mr;
+        rmm::mr::pool_memory_resource<rmm::mr::cuda_memory_resource> *pool_mr;
+        int _type;
     public:
-        mrImp(std::size_t init_size,float maxe,bool sync=false);
+        mrImp(std::size_t init_size,float maxe,int gpuid=0, bool sync=false,int type=0);
         void* malloc(std::size_t size,cudaStream_t stream=cudaStreamDefault);
         void free(void *p,std::size_t size,cudaStream_t stream=cudaStreamDefault);
         ~mrImp();
