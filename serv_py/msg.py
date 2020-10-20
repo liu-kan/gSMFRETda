@@ -1,4 +1,5 @@
 import time,threading,os
+import queue 
 import random
 from nanomsg import Socket, REP
 from protobuf import args_pb2
@@ -48,13 +49,22 @@ class paramsServ():
                 # print("pb_cap.idx",pb_cap.idx)
                 s1.send(pb_n.SerializeToString())
             elif recvstr[0]==ord('p'):
+                pb_gpuid=args_pb2.p_str()
+                pb_gpuid.ParseFromString(recvstr[1:])                
                 pb_ga=args_pb2.p_ga()
                 pb_ga.start=0
                 pb_ga.stop=-1
-                ii , ind_ = qO.get()
-                pb_ga.idx=ii
+                ii=-1
+                ind_=[]
+                try:
+                    ii , ind_ = qO.get(False) #TODO change proto to allow ord('p') fail and retry later.
+                except queue.Empty:
+                    # print("params no ready")
+                    pb_ga.idx=-1
+                    s1.send(pb_ga.SerializeToString())
+                    continue
                 # ind_=[random.random()]*(s_n*(s_n+1))
-                # TODO fix connOptR.recv()
+                pb_ga.idx=ii
                 for i in range(s_n):
                     pb_ga.params.append(ind_[i])
                 for i in range(s_n*s_n-s_n):
@@ -64,12 +74,14 @@ class paramsServ():
                 s1.send(pb_ga.SerializeToString())
                 # clients_lastTimeS[pb_ga.idx]=time.perf_counter()
                 # print("p: ",clients_lastTimeS[pb_ga.idx])
-                if pb_ga.idx not in clients:
-                    clients[pb_ga.idx]=gpuClient()
+                if pb_gpuid.str not in clients:
+                    clients[pb_gpuid.str]=gpuClient()
+                else:
+                    clients[pb_gpuid.str].updateTimeStamp()
             elif recvstr[0]==ord('r'):
                 res=args_pb2.res()
                 res.ParseFromString(recvstr[1:])
-                print("res chi2 recv",res.e, " ridx: ",res.ridx)
+                # print("res chi2 recv",res.e, " ridx: ",res.ridx)
                 if stopflag.value >=1:
                     pb_sid.sid=-1                    
                     print("time spend: ",clients.pop(res.idx).runTime)
@@ -78,14 +90,14 @@ class paramsServ():
                     print("stopflag: ",stopflag.value)
                     # s1.close() 
                 s1.send(pb_sid.SerializeToString())
-                print("pb_sid send",pb_sid.sid, " ridx: ",res.ridx)
+                # print("pb_sid send",pb_sid.sid, " ridx: ",res.ridx)
                 if res.idx in clients:
                     clients[res.idx].updateRunTime()                
                 qN.put((res.ridx,res.e)) 
             elif recvstr[0]==ord('k'):
                 pidx=args_pb2.p_n()
                 pidx.ParseFromString(recvstr[1:])
-                print("keepalive: ",pidx.s_n)
+                # print("keepalive: ",pidx.s_n)
                 s1.send('l')
             else:
                 print("Err recv: ",recvstr[0])
