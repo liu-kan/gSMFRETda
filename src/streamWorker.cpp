@@ -65,63 +65,70 @@ void streamWorker::run(int sid,int sz_burst){
     do {        
       // AtomicWriter(debug,debugLevel::net) <<"net th# "<<sid<<" try lock\n";    
       std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
-      lck.lock();
+
+      if(!lck.try_lock()){            
+            continue;
+      }
       // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" locked\n";   
       char *rbuf = NULL;
       int bytes;
       if(dataready[sid]==0){
-          // AtomicWriter(debug,debugLevel::net) <<"dataready 0\n";
-        // {
           gSMFRETda::pb::p_cap cap;
           cap.set_cap(sz_burst);
-          cap.set_idx(gpuNodeId);
           string scap;
           cap.SerializeToString(&scap);
           scap="c"+scap;
           nn_send (sock, scap.c_str(), scap.length(), 0);
-        // }{
           bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
-          // printf("%s\n",rbuf);
           gSMFRETda::pb::p_n sn;
           sn.ParseFromArray(rbuf,bytes);
           nn_freemsg (rbuf);
           rbuf = NULL;
           s_n[sid]=sn.s_n();
           dataready[sid]=1;
-          // printf("%d\n",sn.s_n());
-        // }{
-        // pdamc->set_nstates(s_n,sid);
-        // std::string idxencoded = base64_encode(reinterpret_cast<const unsigned char*>(gpuNodeId.c_str()),
-        //    gpuNodeId.length());
-          nn_send (sock, ("p"+gpuNodeId).c_str(), gpuNodeId.length()+1, 0);
-          AtomicWriter(debug,debugLevel::cpu) << "p"+gpuNodeId <<'\n';
-          
-          gSMFRETda::pb::p_ga ga;
-          bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
-          ga.ParseFromArray(rbuf,bytes); 
-          ps_n=s_n[sid]*(s_n[sid]+1);
-          params[sid].resize(ps_n);
-          params_idx=ga.idx();
-          AtomicWriter(debug,debugLevel::net) << "params_idx recv: "<<params_idx <<'\n';
-          for(int pi=0;pi<ps_n;pi++)
-            params[sid][pi]=ga.params(pi);
-          nn_freemsg (rbuf);
-          rbuf=NULL;
-          ga_start[sid]=ga.start(); ga_stop[sid]=ga.stop();
-          dataready[sid]=2;
-        // }
-        if(lck.owns_lock())
-          lck.unlock();
-        _cv[sid].notify_one();        
+
+          lck.unlock(); 
+          continue;
       }
-      // lck.lock();
-      bool calcR2=false;
-      while(!calcR2){
-        if(!lck.try_lock()){
-          std::this_thread::sleep_for(200ms);     
+      else if (dataready[sid]==1){
+        gSMFRETda::pb::p_str gpuidStr;
+        gpuidStr.set_str(gpuNodeId);
+        string sgpuid;
+        gpuidStr.SerializeToString(&sgpuid);
+        sgpuid="p"+sgpuid;
+        nn_send (sock, sgpuid.c_str(), sgpuid.length(), 0);
+        AtomicWriter(debug,debugLevel::cpu) << "p"+gpuNodeId <<'\n';
+        
+        gSMFRETda::pb::p_ga ga;
+        bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
+        ga.ParseFromArray(rbuf,bytes); 
+        int pidx=ga.idx();
+        if (pidx<0){
+          lck.unlock();
           continue;
         }
-        else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
+        params_idx=pidx;
+        ps_n=s_n[sid]*(s_n[sid]+1);
+        params[sid].resize(ps_n);          
+        AtomicWriter(debug,debugLevel::net) << "params_idx recv: "<<params_idx <<'\n';
+        for(int pi=0;pi<ps_n;pi++)
+          params[sid][pi]=ga.params(pi);
+        nn_freemsg (rbuf);
+        rbuf=NULL;
+        ga_start[sid]=ga.start(); ga_stop[sid]=ga.stop();
+        dataready[sid]=2;
+      
+        lck.unlock();
+        _cv[sid].notify_one(); 
+        continue;
+      }      
+      // bool calcR2=false;
+      // while(!calcR2){
+      //     if(!lck.try_lock()){
+      //       std::this_thread::sleep_for(200ms);     
+      //       continue;
+      //     }
+        if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
           AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready !=4\n";
           gSMFRETda::pb::p_n pidx;
           pidx.set_s_n(params_idx);
@@ -132,13 +139,12 @@ void streamWorker::run(int sid,int sz_burst){
           nn_recv(sock, &rbuf,NN_MSG,0);
           nn_freemsg(rbuf);
           rbuf=NULL;
-          if(lck.owns_lock())
-            lck.unlock();
+          lck.unlock();
           continue;
         }
         else{
           AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready ==4\n";
-          calcR2=true;
+          // calcR2=true;
           vector<float> mcE(pdamc->hmcE[sid], 
             pdamc->hmcE[sid] + N[sid]*pdamc->reSampleTimes);//
           auto mcHist=mkhist(&mcE,fretHistNum,0,1);
@@ -181,12 +187,11 @@ void streamWorker::run(int sid,int sz_burst){
             ending=true;
           nn_freemsg (rbuf);
           rbuf=NULL;          
-          dataready[sid]=0;
-          if(lck.owns_lock())
-            lck.unlock();
+          dataready[sid]=0;          
+          lck.unlock();
           // countcalc++;
         }
-      }
+      // }
     }while(!ending);
     // notice gpu sid ended
     pdamc->workerNum--;

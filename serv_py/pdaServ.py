@@ -27,6 +27,7 @@ work.
     parser.add_argument('-i','--ind_num',default=0, type=int, help="individual number of one gen")
     args = parser.parse_args()
     # https://stackoverflow.com/questions/11312525/catch-ctrlc-sigint-and-exit-multiprocesses-gracefully-in-python
+    # https://www.cloudcity.io/blog/2019/02/27/things-i-wish-they-told-me-about-multiprocessing-in-python/
     original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
     qO  = multiprocessing.Queue()
     qN = multiprocessing.Queue()

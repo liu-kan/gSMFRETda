@@ -1,5 +1,8 @@
 # TODO list
 
+## 2020-10-20 added
+* Change rmm to a simple self written mem pool .
+
 ## 2020-10-16 added
 * Change nanomsg to ZMQ.
 

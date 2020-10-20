@@ -24,22 +24,7 @@ bool genMatK(arrFF** matK,int n, RowVectorXf& args){
                 (**matK)(i,j)=-(*matK)->col(j).sum();                   
     return true;
 }
-/*
-def genMatP(matK):
-    # print(matK)
-    n=matK.shape[0]
-    if n<1:
-        return None
-    matP=np.empty([n,1])
-    ap=0
-    for i in range(n):
-        ap+=matK[i,i]
-    for i in range(n):
-        # print(i,ap,matK)
-        matP[i,0]=matK[i,i]/ap
-    # print(matP)        
-    return matP
-    */
+
 bool genMatP(arrF** matP,arrFF* matK){
     int n=matK->rows();
     if (n<1)
@@ -48,9 +33,10 @@ bool genMatP(arrF** matP,arrFF* matK){
         delete(*matP);        
     *matP=new arrF(n);
     float ap=0;
-    for (int i=0;i<n;i++)
-        ap+=(*matK)(i,i);
-    for (int i=0;i<n;i++)
-        (**matP)(i)=(*matK)(i,i)/ap;
+    for (int i=0;i<n;i++) 
+                (**matP)(i)=(*matK).row(i).sum()-(*matK)(i,i);
+    ap=(**matP).sum();
+    for (int i=0;i<n;i++) 
+        (**matP)(i)=(**matP)(i)/ap;
     return true;
 }
