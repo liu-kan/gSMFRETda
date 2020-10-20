@@ -87,8 +87,8 @@ FetchContent_Populate(
 )
 FetchContent_Populate(
   eigen
-  #GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
-  GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+  GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
+  #GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/eigen
   GIT_SHALLOW 1
   GIT_TAG        3.3

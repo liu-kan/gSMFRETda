@@ -39,7 +39,7 @@ gpuWorker::gpuWorker(mc* _pdamc,int _streamNum, std::vector<float>* _d,int _fret
 //     return h;
 // }
 void gpuWorker::run(int sz_burst){
-    // auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
+    pdamc->set_gpuid();
     int countcalc=0;
     do {            
       for(int sid=0;sid<streamNum;sid++){
@@ -54,6 +54,7 @@ void gpuWorker::run(int sz_burst){
         if (dataready[sid]==3){
           AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==3\n";
           if(pdamc->streamQuery(sid)){
+            AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu calac ready\n";
             dataready[sid]=4;
             lck.unlock();
             _cv[sid].notify_one();
@@ -63,40 +64,27 @@ void gpuWorker::run(int sz_burst){
             lck.unlock();
             continue;
           }          
-        }else if(dataready[sid]==4||dataready[sid]==0){
-          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==4 or 0\n";
+        }else if(dataready[sid]==4||dataready[sid]==0||dataready[sid]==1){
+          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==4 or 0 or 1 , gpu idle \n";
           lck.unlock();
           continue;          
         }
-        else if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return (dataready[sid]==1|| 
-            dataready[sid]==2);})){
-          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready !=1 or 2\n";
-          lck.unlock();
-          continue;
-        }
-        AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready ==1 or 2\n";
+        else if(_cv[sid].wait_for(lck,500ms,[this,sid]{return (dataready[sid]==2);})){
+        // AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready 2\n";
         int oldS_n=pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
         int N_sid=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
         if(oldS_n!=s_n[sid]||N_sid!=N[sid])
           pdamc->set_params_buff(oldS_n,N_sid,sid);
         if (N_sid!=N[sid]){
-          pdamc->init_randstate(N_sid,sid);/*N_sid new N*/
+          pdamc->init_randstate(N_sid,sid);
           N[sid]=N_sid;
         }
         pdamc->run_kernel(N[sid],sid);
-        dataready[sid]=3;
-        if(pdamc->streamQuery(sid)){
-          countcalc++;
-          AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu calac ready\n";
-          dataready[sid]=4;
-          lck.unlock();
-          _cv[sid].notify_one();
-        }
-        else{
+        dataready[sid]=3;        
           lck.unlock();
           continue;
-        }  
+        }     
       }      
     }while(pdamc->workerNum.load()>0);
     AtomicWriter(debug,debugLevel::gpu) <<"gpu loop end\n";

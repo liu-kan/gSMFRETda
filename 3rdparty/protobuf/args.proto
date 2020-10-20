@@ -17,8 +17,11 @@ message p_sid {
 }
 
 message p_cap {    
-    string idx = 1;
-    int32 cap = 2;    
+    int32 cap = 1;    
+}
+
+message p_str {
+    string str = 1;
 }
 
 message res {     
