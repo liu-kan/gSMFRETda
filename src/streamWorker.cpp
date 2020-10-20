@@ -65,6 +65,7 @@ void streamWorker::run(int sid,int sz_burst){
     do {        
       // AtomicWriter(debug,debugLevel::net) <<"net th# "<<sid<<" try lock\n";    
       std::unique_lock<std::mutex> lck(_m[sid],std::defer_lock);
+
       if(!lck.try_lock()){            
             continue;
       }
@@ -138,7 +139,6 @@ void streamWorker::run(int sid,int sz_burst){
           nn_recv(sock, &rbuf,NN_MSG,0);
           nn_freemsg(rbuf);
           rbuf=NULL;
-          
           lck.unlock();
           continue;
         }
