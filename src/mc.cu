@@ -241,7 +241,13 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
             mcE[tidx] = 0;
     }
 }
+/**
+ * @brief  Actual Setup of GPUID, if you have multi gpu. 
+ * According to [nvidia blog](https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/) this fuction must *Always* be called when a new host threads need to call cu kernel.
+ * 
+ */
 void mc::set_gpuid() {
+    cout<<"Thread id: "<<std::this_thread::get_id()<<" cudaSetDevice: "<<devid<<endl;
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
     if (profiler) {
         std::cout << "cudaProfilerStart" << std::endl;
@@ -267,7 +273,7 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
         return;
     }
     set_gpuid();
-    mr = new mrImp(hdf5size, 0.85, false);
+    mr = new mrImp(hdf5size, 0.85, devid,false,0);
     // setAllocator("rmmDefaultPool");
     streams = (cudaStream_t *)malloc(sizeof(cudaStream_t) * streamNum);
     for (int sid = 0; sid < streamNum; sid++) {
@@ -288,13 +294,16 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     gpp = (float **)malloc(sizeof(float *) * streamNum);
     gpe = (float **)malloc(sizeof(float *) * streamNum);
     g_P_i2j = (float **)malloc(sizeof(float *) * streamNum);
+    matK=(arrFF**)malloc(sizeof(arrFF *) * streamNum);
+    matP=(arrF**)malloc(sizeof(arrF *) * streamNum);
     oldN = new int[streamNum];
     std::fill_n(oldN, streamNum, 0);
     // std::memset(hpv, 0, sizeof(float*)*streamNum);
     // std::memset(hpk, 0, sizeof(float*)*streamNum);
     // std::memset(hpp, 0, sizeof(float*)*streamNum);
     // std::memset(hpe, 0, sizeof(float*)*streamNum);
-    std::memset(g_P_i2j, 0, sizeof(float *) * streamNum);
+    std::memset(matP, 0, sizeof(arrF *) * streamNum);
+    std::memset(matK, 0, sizeof(arrFF *) * streamNum);
     std::memset(gpv, 0, sizeof(float *) * streamNum);
     std::memset(gpk, 0, sizeof(float *) * streamNum);
     std::memset(gpp, 0, sizeof(float *) * streamNum);
@@ -612,8 +621,8 @@ void mc::get_res(int sid, int N) {
 
 mc::~mc() {
     free_data_gpu();
-    delete (matK);
-    delete (matP);
+    free (matK);
+    free (matP);
     delete (mr);
     for (int sid = 0; sid < streamNum; sid++) {
         checkCudaErrors(cudaStreamSynchronize(streams[sid]));
@@ -676,6 +685,8 @@ void mc::free_data_gpu() {
     checkCudaErrors(cudaDeviceSynchronize());
 
     for (int sid = 0; sid < streamNum; sid++) {
+       delete(matK[sid]);
+       delete(matP[sid]);
         // cudaStreamSynchronize(streams[sid]);
         // CUDA_CHECK_RETURN(cudaFree(gpe[sid]));
         // CUDA_CHECK_RETURN(cudaFree(gpv[sid]));
@@ -750,7 +761,7 @@ int mc::set_nstates(int n, int sid) {
         gpe[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpv[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpp[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
-        gpk[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
+        gpk[sid] = (float *)(mr->malloc(n * n* sizeof(float), streams[sid]));
         // CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpe[sid]), n*sizeof(float)));
         // CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpv[sid]), n*sizeof(float)));
         // CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpp[sid]), n*sizeof(float)));
@@ -786,9 +797,9 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
     // RowVectorXf vargs=evargs(seqN(n*n,n));
     RowVectorXf vargs = evargs.block(0, n * n, 1, n);
     float *pvargs = vargs.data();
-    r = genMatK(&matK, n, kargs);
+    r = genMatK(&matK[sid], n, kargs);
     //&matK不可修改，但是matK的值可以修改
-    r = r && genMatP(&matP, matK);
+    r = r && genMatP(&matP[sid], matK[sid]);
     // cout<<"[K]:\n"<<*matK<<endl;
     // memcpy(hpe[sid], peargs, sizeof(float)*n);
     // memcpy(hpv[sid], pvargs, sizeof(float)*n);
@@ -799,9 +810,9 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
                                       cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpv[sid], pvargs, sizeof(float) * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpk[sid], matK->data(), sizeof(float) * n * n,
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpk[sid], matK[sid]->data(), sizeof(float) * n * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid], matP->data(), sizeof(float) * n,
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid], matP[sid]->data(), sizeof(float) * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return r;

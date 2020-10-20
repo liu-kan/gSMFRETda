@@ -46,8 +46,9 @@ class mc
         int64_t *g_istart,*g_istop;  // 64
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         float **g_P_i2j;
-        arrFF *matK;
-        arrF* matP;                
+        arrFF **matK;
+        arrF** matP; 
+        
         int *begin_burst;
         int *end_burst;
         rk_state** devStates;
@@ -82,7 +83,7 @@ class mc
         int reSampleTimes;        
         int set_nstates(int n,int sid);
         /**
-         * @brief Set gpuid for calculate
+         * @brief Set which GPU for calculating
          * 
          */
         void set_gpuid();
@@ -98,6 +99,15 @@ class mc
                         vector<float>& T_burst_duration,vector<float>& SgDivSr,
                         float& iclk_p,float& ibg_ad_rate,float& ibg_dd_rate);
         ~mc();
+        /**
+         * @brief Construct a new mc object
+         * 
+         * @param devid the GPU id to use
+         * @param _streamNum total stream number
+         * @param debug  debug flag
+         * @param hdf5size HDF5 file size to setup gpumem pool size
+         * @param profiler  Profiler cuda flag
+         */
         mc(int devid,int _streamNum=16,unsigned char debug=DEBUGMC,std::uintmax_t hdf5size=0,bool profiler=false);
         bool set_params(int n,int sid,vector<float>& args);        
 };
