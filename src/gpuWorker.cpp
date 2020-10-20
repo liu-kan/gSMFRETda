@@ -39,7 +39,7 @@ gpuWorker::gpuWorker(mc* _pdamc,int _streamNum, std::vector<float>* _d,int _fret
 //     return h;
 // }
 void gpuWorker::run(int sz_burst){
-    // auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
+    pdamc->set_gpuid();
     int countcalc=0;
     do {            
       for(int sid=0;sid<streamNum;sid++){
@@ -70,14 +70,14 @@ void gpuWorker::run(int sz_burst){
           continue;          
         }
         else if(_cv[sid].wait_for(lck,500ms,[this,sid]{return (dataready[sid]==2);})){
-        AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready 2\n";
+        // AtomicWriter(debug,debugLevel::gpu) <<dataready[sid]<<" gpu dataready 2\n";
         int oldS_n=pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
         int N_sid=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
         if(oldS_n!=s_n[sid]||N_sid!=N[sid])
           pdamc->set_params_buff(oldS_n,N_sid,sid);
         if (N_sid!=N[sid]){
-          pdamc->init_randstate(N_sid,sid);/*N_sid new N*/
+          pdamc->init_randstate(N_sid,sid);
           N[sid]=N_sid;
         }
         pdamc->run_kernel(N[sid],sid);

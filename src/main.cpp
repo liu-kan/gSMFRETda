@@ -94,6 +94,7 @@ int main(int argc, char* argv[])
     float clk_p,bg_ad_rate,bg_dd_rate;
     std::uintmax_t hdf5size=loadhdf5(H5FILE_NAME,start,stop,istart,istop,times_ms,mask_ad,mask_dd,T_burst_duration,
         SgDivSr,clk_p,bg_ad_rate,bg_dd_rate);
+    cout <<"HD5 size: "<<hdf5size<<endl;
     std::cout<<H5FILE_NAME<<" loaded."<<std::endl;
     assert (mask_ad.size() == times_ms.size());
     assert (T_burst_duration.size() == SgDivSr.size());
