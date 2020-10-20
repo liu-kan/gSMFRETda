@@ -54,7 +54,7 @@ class opt_toobox():
         self.toolbox.register("select", tools.selTournament, tournsize=3)
         self.toolbox.decorate("mate", self.checkBounds(ind_range_min, ind_range_max))
         self.toolbox.decorate("mutate", self.checkBounds(ind_range_min, ind_range_max))
-    def run(self,stopflag,q,ind_num=0,NGEN=50,CXPB=0.35,MUTPB=0.4):
+    def run(self,stopflag,q,ind_num=0,NGEN=500,CXPB=0.35,MUTPB=0.4):
         self.ind_num=ind_num
         qO,qN=q
         if ind_num==0:
@@ -80,17 +80,9 @@ class opt_toobox():
                     del mutant.fitness.values
             # # Evaluate the individuals with an invalid fitness
             # for oi in offspring:
-            #     print(gen,"son send: ",oi.fitness.values)  
-            print(offspring[0])
+            #     print(gen,"son send: ",oi.fitness.values)
             invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-            # invalid_ind[0].fitness.values=(1,)
-            # connI.send(invalid_ind[0])
             count=len(invalid_ind)
-            # fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
-            # for ind, fit in zip(invalid_ind, fitnesses):
-            #     ind.fitness.values = fit
-            # pop_dict=dict()
-            # connOpt.send(count)
             print("sent count: ",count)
             for i in range(count):
                 if stopflag.value>=1:
@@ -106,7 +98,7 @@ class opt_toobox():
                 #     break
                 ii , ind_fit = qN.get()
                 count_r=count_r+1
-                print("recv idx: ",ii, " tot_recv: ",count_r," ind_fit: ",ind_fit) 
+                # print("recv idx: ",ii, " tot_recv: ",count_r," ind_fit: ",ind_fit) 
                 invalid_ind[ii].fitness.values=(ind_fit,)
             
             if not running or stopflag.value>=1:
@@ -114,9 +106,10 @@ class opt_toobox():
             pop[:] = offspring
             bestf=9999999999999.9
             for oi in offspring:
-                print(oi.fitness.values)
-                # if (oi.fitness.values)[0]<bestf:
-                #     bestf=(oi.fitness.values)[0]
+                print(gen, " oi.fitness.values",oi.fitness.values)
+                if (oi.fitness.valid):
+                    if (oi.fitness.values[0])<bestf:
+                        bestf=(oi.fitness.values[0])
             print(gen," , best: ", bestf)
         # connOpt.close()
         # print("connOpt.close()")
