@@ -241,6 +241,7 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
             mcE[tidx] = 0;
     }
 }
+
 /**
  * @brief  Actual Setup of GPUID, if you have multi gpu. 
  * According to [nvidia blog](https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/) this fuction must *Always* be called when a new host threads need to call cu kernel.
@@ -304,6 +305,7 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     // std::memset(hpe, 0, sizeof(float*)*streamNum);
     std::memset(matP, 0, sizeof(arrF *) * streamNum);
     std::memset(matK, 0, sizeof(arrFF *) * streamNum);
+    std::memset(g_P_i2j, 0, sizeof(float *) * streamNum);
     std::memset(gpv, 0, sizeof(float *) * streamNum);
     std::memset(gpk, 0, sizeof(float *) * streamNum);
     std::memset(gpp, 0, sizeof(float *) * streamNum);
@@ -797,6 +799,7 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
     // RowVectorXf vargs=evargs(seqN(n*n,n));
     RowVectorXf vargs = evargs.block(0, n * n, 1, n);
     float *pvargs = vargs.data();
+
     r = genMatK(&matK[sid], n, kargs);
     //&matK不可修改，但是matK的值可以修改
     r = r && genMatP(&matP[sid], matK[sid]);
@@ -810,6 +813,7 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
                                       cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpv[sid], pvargs, sizeof(float) * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
+
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpk[sid], matK[sid]->data(), sizeof(float) * n * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid], matP[sid]->data(), sizeof(float) * n,
