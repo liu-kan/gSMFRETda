@@ -59,7 +59,6 @@ __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* sta
 }
 // typedef Eigen::Map<Eigen::MatrixXf> matFlMapper;
 __device__ int drawJ_Si2Sj(float *P_i2j, float *matK,int n_sates,int i,curandStateScrambledSobol64* state){
-    //TODO Change algorithm, change malloc to cudaMalloc
     /*    
     P_i2j=copy.deepcopy(matP)
     P_i2j[i]=0
@@ -67,8 +66,6 @@ __device__ int drawJ_Si2Sj(float *P_i2j, float *matK,int n_sates,int i,curandSta
     j=drawDisIdx(np.arange(n_states),P_i2j)
     return j
     */
-    //预先生成不同初始状态之间的转换矩阵
-    // float *P_i2j=(float *)malloc(sizeof(float)*n_sates);
     memcpy(P_i2j,matK+i*n_sates,sizeof(float)*n_sates);   //Eigen::ColMajor
     P_i2j[i]=0.0;
     for( int ii=0;ii<n_sates-1;ii++){

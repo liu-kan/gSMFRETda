@@ -1,7 +1,8 @@
 import random,array
 from timeit import default_timer as timer
 from deap import base, creator, tools
-
+import sys
+eps=sys.float_info.epsilon
 class opt_toobox():
     def checkBounds(self,min, max):
         def decorator(func):
@@ -9,10 +10,16 @@ class opt_toobox():
                 offspring = func(*args, **kargs)
                 for child in offspring:
                     for i in range(len(child)):
-                        if child[i] > max[i]:  #TODO 超出的部分以 50% 概率整除取余数减掉，或顶格减去eps*randint(20)
-                            child[i] = max[i]
+                        if child[i] > max[i]:
+                            if random.random()<0.8:
+                                child[i] = max[i]- ((child[i] - max[i]) % (max[i]-min[i]))
+                            else:
+                                child[i] = max[i]-eps*random.randint(1,1e10) # eps ~ 1e-16 * e10 -> \us
                         elif child[i] < min[i]:
-                            child[i] = min[i]
+                            if random.random()<0.8:
+                                child[i] = min[i]+ (( min[i]-child[i]) % (max[i]-min[i]))
+                            else:
+                                child[i] = min[i]+eps*random.randint(1,1e10) # eps ~ 1e-16 * e10 -> \us                            
                 return offspring
             return wrapper
         return decorator
@@ -24,8 +31,8 @@ class opt_toobox():
         
         self.toolbox = base.Toolbox()
         FLT_MIN_E, FLT_MAX_E = 0, 1
-        FLT_MIN_K, FLT_MAX_K = 0, 100
-        FLT_MIN_V, FLT_MAX_V = 0, 4
+        FLT_MIN_K, FLT_MAX_K = 0, 100000
+        FLT_MIN_V, FLT_MAX_V = 0, 100
         self.s_n = s_n
         self.toolbox.register("attr_flt", random.random)
         self.toolbox.register("attr_flt_k", random.uniform, FLT_MIN_K, FLT_MAX_K)
@@ -36,7 +43,7 @@ class opt_toobox():
         for _ in range(s_n):
             ind_type=ind_type+(self.toolbox.attr_flt,)
             ind_range_max=ind_range_max+(FLT_MAX_E,)
-            ind_range_min=ind_range_min+(FLT_MAX_E,)
+            ind_range_min=ind_range_min+(FLT_MIN_E,)
         for _ in range(s_n*(s_n-1)):
             ind_type=ind_type+(self.toolbox.attr_flt_k,)
             ind_range_max=ind_range_max+(FLT_MAX_K,)
