@@ -94,6 +94,14 @@ FetchContent_Populate(
   GIT_TAG        3.3
   GIT_PROGRESS 1  
 )
+FetchContent_Populate(
+  eigen
+  GIT_REPOSITORY  https://github.com/liu-kan/smFRETLikelihood.git
+  SOURCE_DIR ${CMAKE_BINARY_DIR}/smFRETLikelihood
+  GIT_SHALLOW 1
+  GIT_TAG        origin/gSMFRETda
+  GIT_PROGRESS 1  
+)
 find_package(HighFive)
 if(NOT HighFive_FOUND)
   message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
@@ -134,16 +142,13 @@ endif()
 add_subdirectory(3rdparty)
 
 execute_process(
-    #COMMAND protoc --cpp_out=src 3rdparty/protobuf/args.proto
-    COMMAND protoc --python_out=serv_py 3rdparty/protobuf/args.proto
+    COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga 3rdparty/protobuf/args.proto
     COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
-#file(COPY ${CMAKE_SOURCE_DIR}/src/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/src)
-file(COPY ${CMAKE_SOURCE_DIR}/serv_py/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/serv_py)
-file(REMOVE_RECURSE ${CMAKE_SOURCE_DIR}/serv_py/3rdparty)
-file(COPY ${CMAKE_SOURCE_DIR}/serv_py DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga)
+file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty)
 
 find_package(HDF5 REQUIRED)
 find_package(NANOMSG QUIET)
@@ -187,7 +192,6 @@ add_executable(${PROJECT_NAME}
     src/mrImp.cpp
     src/mrImp.hpp    
     )
-    #src/rmm.hpp
 target_link_libraries(${PROJECT_NAME} proto)
 
 target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lboost_filesystem 
