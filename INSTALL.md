@@ -28,7 +28,7 @@ git annex get . # retrieve everything under the current directory
 * CMake >= 3.11
 * librmm 0.15 https://anaconda.org/rapidsai/librmm/files
 
-I'm trying to let the program can be compiled both by Linux and Windows natively. If you compile it in Windows, [compile with VS 2019](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio?view=vs-2019). Of course, you can just compile in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) supported.
+I'm trying to let the program can be compiled both by Linux and Windows natively. I recommend you run the program under Linux now. If you compile it in Windows, [compile with VS 2019](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio?view=vs-2019). Of course, you can just compile in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) supported.
 
 ### Build the code
 For deb systems, like Debian or Ubuntu
