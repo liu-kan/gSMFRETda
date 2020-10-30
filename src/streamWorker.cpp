@@ -44,6 +44,7 @@ void streamWorker::run(int sid,int sz_burst){
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
     int sock;    //local
     // thread_local int s_n;
+    unsigned long keepalivecount=0;
     int ps_n;
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start creating sock \n";
     sock = nn_socket (AF_SP, NN_REQ);
@@ -130,15 +131,17 @@ void streamWorker::run(int sid,int sz_burst){
       //     }
         if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
           AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready !=4\n";
-          gSMFRETda::pb::p_n pidx;
-          pidx.set_s_n(params_idx);
-          string spidx;
-          pidx.SerializeToString(&spidx);
-          spidx="k"+spidx;
-          nn_send (sock, spidx.c_str(), spidx.length(), 0);
-          nn_recv(sock, &rbuf,NN_MSG,0);
-          nn_freemsg(rbuf);
-          rbuf=NULL;
+          if(++keepalivecount%60==0){
+            gSMFRETda::pb::p_n pidx;
+            pidx.set_s_n(params_idx);
+            string spidx;
+            pidx.SerializeToString(&spidx);
+            spidx="k"+spidx;
+            nn_send (sock, spidx.c_str(), spidx.length(), 0);
+            nn_recv(sock, &rbuf,NN_MSG,0);
+            nn_freemsg(rbuf);
+            rbuf=NULL;
+          }
           lck.unlock();
           continue;
         }

@@ -23,6 +23,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+option(pserver "whether auto build smFRETLikelihood" ON)
 find_package(Boost 1.65.0 COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
@@ -39,6 +40,7 @@ else ()
   set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "--expt-relaxed-constexpr --ptxas-options=-v -Xptxas -dlcm=cg \
        -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored \
        -gencode arch=compute_61,code=[sm_61,compute_61] \
+       -gencode arch=compute_70,code=[sm_70,compute_70] \
       -gencode arch=compute_75,code=[sm_75,compute_75]")
        # -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61  -gencode arch=compute_70,code=sm_70 --maxrregcount=128 
 endif()
@@ -94,6 +96,7 @@ FetchContent_Populate(
   GIT_TAG        3.3
   GIT_PROGRESS 1  
 )
+if(pserver)
 FetchContent_Populate(
   eigen
   GIT_REPOSITORY  https://github.com/liu-kan/smFRETLikelihood.git
@@ -102,6 +105,7 @@ FetchContent_Populate(
   GIT_TAG        origin/gSMFRETda
   GIT_PROGRESS 1  
 )
+endif()
 find_package(HighFive)
 if(NOT HighFive_FOUND)
   message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
@@ -142,14 +146,17 @@ endif()
 add_subdirectory(3rdparty)
 
 execute_process(
-    COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga 3rdparty/protobuf/args.proto
     COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-
-file(COPY ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga)
-file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty)
-
+if(EXISTS ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga)
+  execute_process(
+      COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga 3rdparty/protobuf/args.proto
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+  file(COPY ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga)
+  file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty)
+endif()
 find_package(HDF5 REQUIRED)
 find_package(NANOMSG QUIET)
 
