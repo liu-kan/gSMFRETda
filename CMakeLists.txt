@@ -89,8 +89,8 @@ FetchContent_Populate(
 )
 FetchContent_Populate(
   eigen
-  GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
-  #GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+  #GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
+  GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/eigen
   GIT_SHALLOW 1
   GIT_TAG        3.3
@@ -110,7 +110,8 @@ find_package(HighFive)
 if(NOT HighFive_FOUND)
   message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
     ExternalProject_Add(HighFive  
-      GIT_REPOSITORY https://git.liukan.org/mirrors/HighFive.git
+      #GIT_REPOSITORY https://git.liukan.org/mirrors/HighFive.git
+      GIT_REPOSITORY https://github.com/BlueBrain/HighFive.git
       GIT_SHALLOW 1
       GIT_PROGRESS 1
       CMAKE_ARGS -DHIGHFIVE_EXAMPLES=OFF -DHIGHFIVE_UNIT_TESTS=OFF
