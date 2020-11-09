@@ -1,4 +1,4 @@
-# Installtion gSMFRETda
+# Installtion of gSMFRETda
 
 ## Compile from source
 

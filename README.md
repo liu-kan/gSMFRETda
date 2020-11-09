@@ -8,7 +8,7 @@ The program is fine designed. It's not only allows you use multi streams multi G
 
 Although the program can calculate FRET efficiency (E) interconversion matrix (K) now, it is still rapidly developed, the binary package isn't provided, you can compile it under instructions of file [INSTALL.md](INSTALL.md)
 
-## Useage
+## Usage
 
 After compiling code under instructions of file [INSTALL.md](INSTALL.md), you will have a program file gSMFRETda and a directory called smFRETLikelihood in building directory. Before running code, install prerequest of [smFRETLikelihood](https://github.com/liu-kan/smFRETLikelihood/blob/gSMFRETda/README.md). Then, use screen or tmux to run programs.
 
@@ -29,3 +29,4 @@ More help can be obtained by
 ./gSMFRETda -h
 python3 smFRETLikelihood/serv_pdaga/pdaServ.py -h
 ```
+Or refering [USAGE.md](USAGE.md)
