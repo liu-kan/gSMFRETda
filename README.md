@@ -29,4 +29,6 @@ More help can be obtained by
 ./gSMFRETda -h
 python3 smFRETLikelihood/serv_pdaga/pdaServ.py -h
 ```
-Or refering [USAGE.md](USAGE.md)
+Or refering [USAGE.md](USAGE.md).
+
+If you encounter any problems, feel free to open a [new issue here](https://github.com/liu-kan/gSMFRETda/issues).
