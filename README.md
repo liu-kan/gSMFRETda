@@ -1,4 +1,6 @@
 # gSMFRETda
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fliu-kan%2FgSMFRETda.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fliu-kan%2FgSMFRETda?ref=badge_shield)
+
 
 gSMFRETda is a single molecule fluorescence resonance energy transfer (or smFRET) probability distribution analysis (PDA) program written under C++/CUDA. It can use GPUs to accelerate Monte Carlo simulations of PDA. And because it drastically reduces the calculation time, people can sample dwell time and other parameters more densely, it enable PDA to analyse very fast dynamic interconversion of the system or some other complex TCSPC setup forms requesting lots of PDA calculation.
 
@@ -32,3 +34,6 @@ python3 smFRETLikelihood/serv_pdaga/pdaServ.py -h
 Or refering [USAGE.md](USAGE.md).
 
 If you encounter any problems, feel free to open a [new issue here](https://github.com/liu-kan/gSMFRETda/issues).
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fliu-kan%2FgSMFRETda.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fliu-kan%2FgSMFRETda?ref=badge_large)
