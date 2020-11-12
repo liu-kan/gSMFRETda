@@ -1,0 +1,19 @@
+[submodule "3rdparty/src/HighFive"]
+	path = 3rdparty/src/HighFive
+	url = https://github.com/BlueBrain/HighFive.git
+[submodule "3rdparty/src/eigen"]
+	path = 3rdparty/src/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+	branch = 3.3
+[submodule "3rdparty/src/boost"]
+	path = 3rdparty/src/boost
+	url = https://github.com/boostorg/boost.git
+[submodule "3rdparty/src/nanomsg"]
+	path = 3rdparty/src/nanomsg
+	url = https://github.com/nanomsg/nanomsg.git
+[submodule "3rdparty/src/protobuf"]
+	path = 3rdparty/src/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+[submodule "3rdparty/src/hdf5"]
+	path = 3rdparty/src/hdf5
+	url = https://github.com/HDFGroup/hdf5.git

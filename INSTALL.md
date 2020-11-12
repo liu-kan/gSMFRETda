@@ -4,31 +4,15 @@
 
 ### Clone the code
 ```bash
-git clone --recurse-submodules -j8 https://git.liukan.org/liuk/gSMFRETda.git
-```
-or
-```bash
-git clone https://git.liukan.org/liuk/gSMFRETda.git
-git submodule init
-git submodule update
-```
-
-### Get dataset & 3rd Party libs
-gSMFRETda use git annex instead of git lfs to handle large files, because it can use local filesystem repository to save large files. To get dataset and 3rd party libs, you need install GitAnnex first, and follow the instructions.
-```bash
-sudo apt-get install git-annex
-git remote add datasrc file:///home/liuk/sync/coding/smfret/gSMFRETda.git
-git fetch datasrc # getting files
-git annex get . # retrieve everything under the current directory
+git clone https://github.com/liu-kan/gSMFRETda.git
 ```
 
 ### Building prerequest
 * CUDA version >= 10 
 * libhdf5-dev 1.10 and newer 
 * CMake >= 3.11
-* librmm 0.15 https://anaconda.org/rapidsai/librmm/files
 
-I'm trying to let the program can be compiled both by Linux and Windows natively. I recommend you run the program under Linux now. If you compile it in Windows, [compile with VS 2019](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio?view=vs-2019). Of course, you can just compile in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) supported.
+I'm trying to let the program can be compiled both by Linux and Windows natively. But now if you want to use it under windows, just compile it in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html).
 
 ### Build the code
 For deb systems, like Debian or Ubuntu
