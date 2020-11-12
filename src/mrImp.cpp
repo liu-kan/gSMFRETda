@@ -1,6 +1,6 @@
 #include "mrImp.hpp"
 #include "cuda_tools.hpp"
-#include "helper_cuda.h"
+
 mrImp::mrImp(std::size_t init_size,float maxe, int gpuid, bool sync,int type){
     _sync=sync;
     _gpuid=gpuid;
@@ -11,15 +11,15 @@ mrImp::~mrImp(){
 }
 void* mrImp::malloc(std::size_t size,cudaStream_t stream ){
         void *p;
-        checkCudaErrors(cudaMalloc(&p,size));
+        CUDA_CHECK_RETURN(cudaMalloc(&p,size));
         if (_sync)
-            checkCudaErrors(cudaStreamSynchronize(stream));
+            CUDA_CHECK_RETURN(cudaStreamSynchronize(stream));
         return p;
 }
 void mrImp::free(void *p,std::size_t size,cudaStream_t stream ){
-        checkCudaErrors(cudaFree(p));
+        CUDA_CHECK_RETURN(cudaFree(p));
         if(_sync)
-            checkCudaErrors(cudaStreamSynchronize(stream));
+            CUDA_CHECK_RETURN(cudaStreamSynchronize(stream));
 }
 
 

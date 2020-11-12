@@ -14,8 +14,6 @@ using namespace std;
 #include "cuda_tools.hpp"
 #include "loadHdf5.hpp"
 #define DEBUGMC 0
-// #include "Poco/Mutex.h"
-#include "helper_cuda.h"
 
 #include "mrImp.hpp"
 typedef struct {

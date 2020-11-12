@@ -26,7 +26,7 @@ void CUDART_CB myStreamCallback(cudaStream_t stream, cudaError_t status,
 
 int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
     int nDevices, i, n_Devices;
-    checkCudaErrors(cudaGetDeviceCount(&nDevices));
+    CUDA_CHECK_RETURN(cudaGetDeviceCount(&nDevices));
     if (dn >= 0) {
         n_Devices = dn + 1;
         i = dn;
@@ -37,7 +37,7 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
     if (dn < nDevices) {
         for (; i < n_Devices; i++) {
             cudaDeviceProp prop;
-            checkCudaErrors(cudaGetDeviceProperties(&prop, i));
+            CUDA_CHECK_RETURN(cudaGetDeviceProperties(&prop, i));
             printf("Device Number: %d\n", i);
             if (gpuuid) {
 #if (CUDART_VERSION < 10000)
@@ -252,7 +252,7 @@ void mc::set_gpuid() {
     CUDA_CHECK_RETURN(cudaSetDevice(devid));
     if (profiler) {
         std::cout << "cudaProfilerStart" << std::endl;
-        checkCudaErrors(cudaProfilerStart());
+        CUDA_CHECK_RETURN(cudaProfilerStart());
     }
 }
 mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
@@ -627,8 +627,8 @@ mc::~mc() {
     free (matP);
     delete (mr);
     for (int sid = 0; sid < streamNum; sid++) {
-        checkCudaErrors(cudaStreamSynchronize(streams[sid]));
-        checkCudaErrors(cudaStreamDestroy(streams[sid]));
+        CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+        CUDA_CHECK_RETURN(cudaStreamDestroy(streams[sid]));
     }
     free(streams);
     delete[](s_n);
@@ -655,7 +655,7 @@ mc::~mc() {
     free(devDirectionVectors64);
     free(devScrambleConstants64);
     if (profiler) {
-        checkCudaErrors(cudaProfilerStop());
+        CUDA_CHECK_RETURN(cudaProfilerStop());
         std::cout << "cudaProfilerStop" << std::endl;
     }
     cudaDeviceReset();
@@ -674,7 +674,7 @@ void mc::free_data_gpu() {
     // CUDA_CHECK_RETURN(cudaFree(g_SgDivSr));
     // CUDA_CHECK_RETURN(cudaFree(g_burst_duration));
     int sidx = 0;
-    checkCudaErrors(cudaDeviceSynchronize());
+    CUDA_CHECK_RETURN(cudaDeviceSynchronize());
     mr->free(g_phCount, sizeof(int) * sz_burst, streams[(sidx++) % streamNum]);
     mr->free(g_burst_ad, sizeof(int64_t) * sz_tag, streams[(sidx++) % streamNum]);
     mr->free(g_burst_dd, sizeof(int64_t) * sz_tag, streams[(sidx++) % streamNum]);
@@ -684,7 +684,7 @@ void mc::free_data_gpu() {
     mr->free(g_burst_duration, sizeof(float) * sz_burst,
              streams[(sidx++) % streamNum]);
     mr->free(g_SgDivSr, sizeof(float) * sz_burst, streams[(sidx++) % streamNum]);
-    checkCudaErrors(cudaDeviceSynchronize());
+    CUDA_CHECK_RETURN(cudaDeviceSynchronize());
 
     for (int sid = 0; sid < streamNum; sid++) {
        delete(matK[sid]);
@@ -731,8 +731,8 @@ int mc::set_nstates(int n, int sid) {
     int r = n;
     if (s_n[sid] != n) {
         r = s_n[sid];
-        checkCudaErrors(cudaStreamSynchronize(streams[sid]));
-        // std::cout << "checkCudaErrors( cudaStreamSynchronize(streams[" << sid
+        CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
+        // std::cout << "CUDA_CHECK_RETURN( cudaStreamSynchronize(streams[" << sid
         //           << "])\n";
         // CUDA_CHECK_RETURN(cudaFreeHost(hpe[sid]));
         // CUDA_CHECK_RETURN(cudaFreeHost(hpv[sid]));
