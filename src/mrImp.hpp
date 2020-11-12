@@ -1,6 +1,6 @@
 #pragma once
 #include "cuda_tools.hpp"
-#include "helper_cuda.h"
+
 class mrImp
 {
     protected:
