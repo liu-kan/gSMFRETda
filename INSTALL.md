@@ -6,6 +6,7 @@
 ```bash
 git clone https://github.com/liu-kan/gSMFRETda.git
 ```
+Submodules are not necessary to pull, them are just listed for FOSSA to analyse dependencies.
 
 ### Building prerequest
 * CUDA version >= 10 
