@@ -23,7 +23,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-option(pserver "whether auto build smFRETLikelihood" ON)
+option(pserver "whether auto build pySMFRETda" ON)
 find_package(Boost 1.65.0 COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
@@ -99,10 +99,10 @@ FetchContent_Populate(
 if(pserver)
 FetchContent_Populate(
   eigen
-  GIT_REPOSITORY  https://github.com/liu-kan/smFRETLikelihood.git
-  SOURCE_DIR ${CMAKE_BINARY_DIR}/smFRETLikelihood
+  GIT_REPOSITORY  https://github.com/liu-kan/pySMFRETda.git
+  SOURCE_DIR ${CMAKE_BINARY_DIR}/pySMFRETda
   GIT_SHALLOW 1
-  GIT_TAG        origin/gSMFRETda
+  GIT_TAG        origin/main
   GIT_PROGRESS 1  
 )
 endif()
@@ -150,13 +150,13 @@ execute_process(
     COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-if(EXISTS ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga)
+if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
   execute_process(
-      COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga 3rdparty/protobuf/args.proto
+      COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   )
-  file(COPY ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga)
-  file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/smFRETLikelihood/serv_pdaga/3rdparty)
+  file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
+  file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty)
 endif()
 find_package(HDF5 REQUIRED)
 find_package(NANOMSG QUIET)
