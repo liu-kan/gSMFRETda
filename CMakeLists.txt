@@ -148,6 +148,7 @@ add_subdirectory(3rdparty)
 
 execute_process(
     COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
+    COMMAND gengetopt -i 3rdparty/gengetopt/call_gSMFRETda.ggo --file-name=src/3rdparty/gengetopt/call_gSMFRETda
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
@@ -174,6 +175,14 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 link_directories(${nanomsg_LIBDIR})
 link_directories(${CUDA_TOOLKIT_ROOT_DIR}/compat)
+
+add_executable(call_${PROJECT_NAME}
+    src/3rdparty/gengetopt/call_gSMFRETda.c
+    src/3rdparty/gengetopt/call_gSMFRETda.h
+    src/call_main.cpp
+    )
+target_link_libraries(call_${PROJECT_NAME} 
+    ${Boost_LIBRARIES} -lboost_filesystem -ldl) 
 
 add_executable(${PROJECT_NAME}
     #src/3rdparty/protobuf/args.pb.cc

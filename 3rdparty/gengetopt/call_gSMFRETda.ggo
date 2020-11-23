@@ -1,0 +1,13 @@
+# file call_gSMFRETda.ggo
+package "call_gSMFRETda"
+version "1.0.0"
+purpose "Compute smFRET PDA by GPU"
+
+args "-u"
+
+option  "url"            u "params server url tcp://ip:port"                                             string      default="tcp://127.0.0.1:7777"  no
+option  "input"          i "Input HDF5 filename"                                                         string                                      no
+#option  "gpuid"          g "The index of the GPU will be used"                                           int         default="0"                     no   
+option  "fret_hist_num"  f "fret hist Number"                                                            int         default="200"                   no   
+option  "snum"           s "Stream Number, when it's 0 automatically determine"                          int         default="0"                    no
+option  "gpuids"     g "The indices of the GPUs will be used. Give -1 to use All GPUs on the node. Or like '0,2,3' to use GPU 0 2 3."    int       optional                       multiple
