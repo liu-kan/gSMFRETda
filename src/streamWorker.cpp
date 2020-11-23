@@ -60,7 +60,10 @@ void streamWorker::run(int sid,int sz_burst){
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
     // int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
-    // AtomicWriter(debug,debugLevel::cpu) <<"frethist done\n";
+    vector<float> vOEHist(fretHistNum);
+    int ihistO=0;
+    for (auto x : indexed(fretHist))
+      vOEHist[ihistO++]=*x;
     bool ending=false;
     int32_t params_idx;
     do {        
@@ -152,11 +155,7 @@ void streamWorker::run(int sid,int sz_burst){
             pdamc->hmcE[sid] + N[sid]*pdamc->reSampleTimes);//
           auto mcHist=mkhist(&mcE,fretHistNum,0,1);
           vector<float> vMcHist(fretHistNum);
-          vector<float> vOEHist(fretHistNum);
           int ihist=0;
-          for (auto x : indexed(fretHist))
-            vOEHist[ihist++]=*x;
-          ihist=0;
           for (auto x : indexed(mcHist))
             vMcHist[ihist++]=*x;      
           int effN=fretHistNum;           

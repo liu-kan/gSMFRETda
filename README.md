@@ -10,7 +10,7 @@ Although the program can calculate FRET efficiency (E) interconversion matrix (K
 
 ## Usage
 
-After compiling code under instructions of file [INSTALL.md](INSTALL.md), you will have a program file gSMFRETda and a directory called pySMFRETda in building directory. Before running code, install prerequest of [pySMFRETda](https://github.com/liu-kan/pySMFRETda/blob/main/README.md). Then, use screen or tmux to run programs.
+After compiling code under instructions of file [INSTALL.md](INSTALL.md), you will have a program file gSMFRETda and a directory called pySMFRETda in building directory. Before running code, install prerequest of [pySMFRETda](https://github.com/liu-kan/pySMFRETda/blob/main/README.md). Then, use [screen](https://gist.github.com/liu-kan/9ab154d91c3bc8659a2979fcca74406d) or [tmux](https://gist.github.com/liu-kan/59ed943b149447aa34dff87d49c8dc96) to run programs.
 
 ```bash
 # Prepare data for gSMFRETda
