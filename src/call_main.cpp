@@ -1,7 +1,3 @@
-#include <boost/process/group.hpp>
-#include <boost/process/spawn.hpp>
-namespace bp = boost::process; 
-
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
@@ -9,16 +5,29 @@ namespace bp = boost::process;
 namespace fs = boost::filesystem;
 
 #include "3rdparty/gengetopt/call_gSMFRETda.h"
+#include "cuda_tools.hpp"
+#include <cuda_runtime_api.h>
+#include <chrono>
+#include <thread>
+#include <csignal>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fstream>
+#if !defined(_WIN64) && !defined(_WIN32)
+    #include <signal.h>
+#endif
 
-void spawn(std::string pp)
+namespace
 {
-    bp::group g;
-    bp::spawn(pp.c_str(), g);
-    // bp::spawn("bar", g);
-    g.wait();
+    volatile std::sig_atomic_t gSignalStatus;
 }
 
-void modArg(std::string& cmdline, gengetopt_args_info& args_info){
+void signal_handler(int signal)
+{
+    gSignalStatus = signal;
+}
+
+void modArg(std::string& cmdline, gengetopt_args_info& args_info){ 
     if(args_info.inputs_num<1 && !args_info.input_given ){
       std::cout<<"You need either appoint -i or add hdf5 filename in the end of cmdline!"<<std::endl;
       exit(1);
@@ -33,11 +42,33 @@ void modArg(std::string& cmdline, gengetopt_args_info& args_info){
         cmdline=cmdline+" -f "+args_info.fret_hist_num_orig;
     if (args_info.snum_given)
         cmdline=cmdline+" -s "+args_info.snum_orig;
+    if( remove( args_info.pid_arg )!= 0 )
+        perror( "Error deleting file" );
+    cmdline=cmdline+" -I "+args_info.pid_arg;
 }
-
+void terminatePid(char *pidfn){
+    using namespace std;
+    string line;
+    ifstream pidfile(pidfn);
+    if (pidfile) 
+    {
+        while (getline(pidfile, line)) {
+            int pid=stoi(line);
+            #if defined(_WIN64)|| defined(_WIN32)
+                std::string thecmd="START /B taskkill /pid "+line;
+                system(thecmd.c_str());
+            #else            
+                kill(pid, SIGKILL);
+            #endif
+        }
+        pidfile.close();
+    }
+}
 int main(int argc,char** argv)
 {
-
+using namespace std::chrono_literals;
+using namespace std::chrono;
+std::signal(SIGINT, signal_handler);
     fs::path gSMFRETda_path = boost::dll::program_location();
     //g++ src/call_main.cpp -lboost_filesystem -ldl
     gSMFRETda_path.remove_filename();
@@ -50,15 +81,48 @@ int main(int argc,char** argv)
     int minGid=99999;
     bool useAll=false;
     if (args_info.gpuids_given>=1){
-        for (int igi=0;igi<args_info.gpuids_given;igi++){
-            if (args_info.gpuids_arg[igi]<minGid)
-                minGid=args_info.gpuids_arg[igi];
+        for (int ii=0;ii<args_info.gpuids_given;ii++){
+            if (args_info.gpuids_arg[ii]<minGid)
+                minGid=args_info.gpuids_arg[ii];
         }
         if (minGid==-1)
             useAll=true;
     }
+    else
+        useAll=true;  
+    int nDevices;
+    CUDA_CHECK_RETURN(cudaGetDeviceCount(&nDevices));
+    if(nDevices<=0)
+        exit(-1);
     
-    spawn(gSMFRETda_path.string()+" -h");
-
+    if (useAll){
+        for (int igi =0;igi<nDevices;igi++){            
+        #if defined(_WIN64)|| defined(_WIN32)
+            std::string thecmd="START /B "+cmdline+" -g "+std::to_string(igi);
+        #else
+            std::string thecmd=cmdline+" -g "+std::to_string(igi)+ " &";
+        #endif
+            system(thecmd.c_str());
+            std::this_thread::sleep_for(1s);
+        }
+    }
+    else{
+        for (int ii =0;ii<args_info.gpuids_given;ii++){
+        #if defined(_WIN64)|| defined(_WIN32)
+            std::string thecmd="START /B "+cmdline+" -g "+std::to_string(args_info.gpuids_arg[ii];
+        #else
+            std::string thecmd=cmdline+" -g "+std::to_string(args_info.gpuids_arg[ii])+" &";
+        #endif
+            system(thecmd.c_str());
+            std::this_thread::sleep_for(1s);
+        }
+    }
+    while(true){
+        std::this_thread::sleep_for(1s);
+        if (gSignalStatus==2){
+            terminatePid(args_info.pid_arg);
+            break;
+        }
+    }
     return 0;
 }

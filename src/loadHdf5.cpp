@@ -7,7 +7,6 @@
 #include <highfive/H5DataSpace.hpp>
 // #include <numeric>
 #include "loadHdf5.hpp"
-// #include "bitUbyte.hpp"
 #include <boost/filesystem.hpp>
 using namespace boost::filesystem;
 #include "eigenhelper.hpp"

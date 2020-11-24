@@ -64,14 +64,6 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
                     *streamCount = prop.asyncEngineCount * 2;
             }
             printf("  Device name: %s\n", prop.name);
-            /*
-            printf("  Memory Clock Rate (KHz): %d\n",
-                    prop.memoryClockRate);
-            printf("  Memory Bus Width (bits): %d\n",
-                    prop.memoryBusWidth);
-            printf("  Peak Memory Bandwidth (GB/s): %f\n",
-                    2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
-            */
             printf("  GPU global memory = %lu GBytes\n",
                    (prop.totalGlobalMem >> 30) + 1);
         }
@@ -81,51 +73,6 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
 #define CUDAstream_CHECK_LAST_ERROR                                                 \
     cudaStreamAddCallback(streams[sid], myStreamCallback, nullptr, 0)
 
-//__forceinline__
-// template <typename T>
-// __device__ void binTimeHist(arrF* hist, arrI64& x,
-//          cuList<T> bins ){
-//     int binlen=bins.len;
-//     hist->resize(1,binlen-1);
-//     hist->setZero();
-//     int datalen=x.cols();
-//     for (int i=0;i<datalen;i++){
-//         if(x(i)==0)
-//             continue;
-//         int idxbin=1;
-//         do{
-//             T v=*(bins.at(idxbin));
-//             if (x(i)<v){
-//                 ((*hist)(idxbin-1))+=1;
-//                 break;
-//             }
-//             idxbin++;
-//         }while(idxbin<binlen);
-//     }
-// }
-/*
-input:x 时间序列, bin0/1开始和结束时间点，x0起始搜索idx
-output:hist 保存hist值，x0保存下次的起始位置
-*/
-// template <typename T>
-// __device__ void p2TimeHist(float* hist, arrI64& x,
-//          T bin0, T bin1 , int64_t* x0){
-//     *hist=0;
-//     int datalen=x.cols();
-//     for (int i=*x0;i<datalen;i++){
-//         if(x(i)==0)
-//             continue;
-//         if (x(i)<bin0)
-//             continue;
-//         else if(x(i)<bin1){
-//             *hist=(*hist)+1;
-//         }
-//         else{
-//             break;
-//             *x0=i;
-//         }
-//     }
-// }
 __global__ void
 mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_dd,
           int64_t *g_istart, int *g_phCount, float *T, /*float* SgDivSr,*/

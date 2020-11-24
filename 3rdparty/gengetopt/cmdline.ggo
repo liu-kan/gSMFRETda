@@ -18,3 +18,4 @@ option  "gpuinfo"        q "Show GPUs' info"                                    
 option  "profiler"       P "Enable CUDA profiler"                                                        flag        off
 option  "snum"           s "Stream Number, when it's 0 automatically determine"                          int         default="0"                    no
 option  "parameters"     p "Calculate with the parameters. Give them\n like -p 0.34,0.56,455,673,2,4"    float       optional                       multiple
+option  "pid"            I "Appoint a pid file "                                                         string                                     no
