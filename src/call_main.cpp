@@ -13,6 +13,8 @@ namespace fs = boost::filesystem;
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
+#include <vector>
+#include <algorithm>
 #if !defined(_WIN64) && !defined(_WIN32)
     #include <signal.h>
 #endif
@@ -97,24 +99,29 @@ std::signal(SIGINT, signal_handler);
     
     if (useAll){
         for (int igi =0;igi<nDevices;igi++){            
-        #if defined(_WIN64)|| defined(_WIN32)
-            std::string thecmd="START /B "+cmdline+" -g "+std::to_string(igi);
-        #else
-            std::string thecmd=cmdline+" -g "+std::to_string(igi)+ " &";
-        #endif
+            #if defined(_WIN64)|| defined(_WIN32)
+                std::string thecmd="START /B "+cmdline+" -g "+std::to_string(igi);
+            #else
+                std::string thecmd=cmdline+" -g "+std::to_string(igi)+ " &";
+            #endif
             system(thecmd.c_str());
             std::this_thread::sleep_for(1s);
         }
     }
     else{
-        for (int ii =0;ii<args_info.gpuids_given;ii++){
-        #if defined(_WIN64)|| defined(_WIN32)
-            std::string thecmd="START /B "+cmdline+" -g "+std::to_string(args_info.gpuids_arg[ii];
-        #else
-            std::string thecmd=cmdline+" -g "+std::to_string(args_info.gpuids_arg[ii])+" &";
-        #endif
-            system(thecmd.c_str());
-            std::this_thread::sleep_for(1s);
+        std::vector<int> vgpuids(args_info.gpuids_arg,args_info.gpuids_arg+args_info.gpuids_given);
+        std::sort(vgpuids.begin(),vgpuids.end());
+        vgpuids.erase( std::unique( vgpuids.begin(), vgpuids.end() ), vgpuids.end() );
+        for (int gpuid: vgpuids){
+            if(gpuid<nDevices&& gpuid >=0){
+                #if defined(_WIN64)|| defined(_WIN32)
+                    std::string thecmd="START /B "+cmdline+" -g "+std::to_string(gpuid);
+                #else
+                    std::string thecmd=cmdline+" -g "+std::to_string(gpuid)+" &";
+                #endif
+                system(thecmd.c_str());
+                std::this_thread::sleep_for(1s);
+            }
         }
     }
     while(true){
