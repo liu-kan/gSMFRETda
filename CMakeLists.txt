@@ -60,7 +60,7 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-unused-result -s")
 
 set(boost_VERSION_MAJOR "1" CACHE STRING "boost's MAJOR version number")
 set(boost_VERSION_MINOR "70" CACHE STRING "boost's MINOR version number")
@@ -182,7 +182,7 @@ add_executable(call_${PROJECT_NAME}
     src/call_main.cpp
     )
 target_link_libraries(call_${PROJECT_NAME} 
-    ${Boost_LIBRARIES} -lboost_filesystem -ldl) 
+    ${Boost_LIBRARIES} -lboost_filesystem -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
 
 add_executable(${PROJECT_NAME}
     #src/3rdparty/protobuf/args.pb.cc
@@ -190,7 +190,6 @@ add_executable(${PROJECT_NAME}
     src/3rdparty/gengetopt/cmdline.c
     src/3rdparty/gengetopt/cmdline.h
     src/binom.cuh
-    src/bitUbyte.hpp
     src/cuda_tools.hpp
     src/eigenhelper.cpp
     src/eigenhelper.hpp

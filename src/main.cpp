@@ -15,6 +15,13 @@ using namespace std::chrono_literals;
 using namespace std;
 #include "tools.hpp"
 #include "3rdparty/gengetopt/cmdline.h"
+#if defined(_WIN64)|| defined(_WIN32)
+  #include <process.h>
+#else
+  #include <sys/types.h>
+  #include <unistd.h>
+#endif
+
 
 void share_var_init(int streamNum,std::mutex **_m, std::condition_variable **_cv,
   int **s_n, vector<float> **params, int **ga_start, int **ga_stop,
@@ -42,13 +49,27 @@ void share_var_free(int streamNum,std::mutex *_m, std::condition_variable *_cv,
     delete[] N;
     delete[] dataready;
 }
+void writepid(string fn){
+  FILE * pFile;
+#if defined(_WIN64)|| defined(_WIN32)
+  int pid=_getpid();
+#else
+  int pid=getpid();
+#endif
+  pFile = fopen (fn.c_str(),"a");
+  std::string pidstr = std::to_string(pid)+'\n';
+  fputs (pidstr.c_str(),pFile);
+  fclose (pFile);
+}
 
 int main(int argc, char* argv[])
 {
     // auto result = parse(argc, argv);
     gengetopt_args_info args_info;
     if (cmdline_parser (argc, argv, &args_info) != 0)
-      exit(1) ;    
+      exit(1) ;   
+    if(args_info.pid_given)
+      writepid(args_info.pid_arg); 
     if ( args_info.gpuinfo_flag ){      
       // for (int i = 0; i < args_info.parameters_given; ++i)
       //   printf ("passed float: %f\n", args_info.parameters_arg[i]);
