@@ -43,6 +43,9 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
 void streamWorker::run(int sid,int sz_burst){  
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
     int sock;    //local
+    bool send_sHist=false;
+    bool sent_oHist=false;
+    float msg_bestcs=3.1E32;
     // thread_local int s_n;
     unsigned long keepalivecount=0;
     int ps_n;
@@ -97,6 +100,14 @@ void streamWorker::run(int sid,int sz_burst){
       else if (dataready[sid]==1){
         gSMFRETda::pb::p_str gpuidStr;
         gpuidStr.set_str(gpuNodeId);
+        if(send_sHist && !sent_oHist){
+          gpuidStr.set_hist(true);
+          sent_oHist=true;
+          for(float o : vOEHist)
+            gpuidStr.add_ohist(o);
+        }
+        else
+          gpuidStr.set_hist(false);
         string sgpuid;
         gpuidStr.SerializeToString(&sgpuid);
         sgpuid="p"+sgpuid;
@@ -107,6 +118,7 @@ void streamWorker::run(int sid,int sz_burst){
         bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
         ga.ParseFromArray(rbuf,bytes); 
         int pidx=ga.idx();
+        msg_bestcs=ga.hist();
         if (pidx<0){
           lck.unlock();
           continue;
@@ -135,8 +147,8 @@ void streamWorker::run(int sid,int sz_burst){
         if(!_cv[sid].wait_for(lck,500ms,[this,sid]{return dataready[sid]==4;})){
           AtomicWriter(debug,debugLevel::cpu) <<dataready[sid]<<" dataready !=4\n";
           if(++keepalivecount%60==0){
-            gSMFRETda::pb::p_n pidx;
-            pidx.set_s_n(params_idx);
+            gSMFRETda::pb::p_sid pidx;
+            pidx.set_sid(params_idx);
             string spidx;
             pidx.SerializeToString(&spidx);
             spidx="k"+spidx;
@@ -172,10 +184,16 @@ void streamWorker::run(int sid,int sz_burst){
           gSMFRETda::pb::res chi2res;
           // chi2res.set_s_n(s_n[sid]);
           chi2res.set_idx(gpuNodeId);
-          chi2res.set_ridx(params_idx);          
-          // for (auto v : params[sid])
-          //   chi2res.add_params(v);
-          chi2res.set_e(chisqr);
+          chi2res.set_ridx(params_idx);
+          chi2res.set_e(chisqr);      
+          if(chisqr<msg_bestcs){
+            send_sHist=true;        
+            for (float s : vMcHist)
+              chi2res.add_shist(s);
+          }
+          else
+            send_sHist=false;   
+          chi2res.set_hist(send_sHist);
           string sres;
           chi2res.SerializeToString(&sres);          
           nn_send (sock, ("r"+sres).c_str(), sres.length()+1, 0);

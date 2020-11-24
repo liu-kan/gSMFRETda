@@ -5,14 +5,24 @@ message p_ga {
     int32 idx = 1;
     int32 start = 2;
     int32 stop = 3;
-    repeated float params = 4 [packed=true];
+    /**
+    *  indicate current best fit value
+    */
+    float hist = 4;
+    repeated float params = 5 [packed=true];
 }
 
 message p_n {    
     int32 s_n = 1;
 }
 
-message p_sid {    
+/**
+*p_sid indicate gpu node state
+*/
+message p_sid {
+    /**
+    * when sid==-1 gpu node will stop
+    */
     int32 sid = 1;
 }
 
@@ -21,11 +31,15 @@ message p_cap {
 }
 
 message p_str {
-    string str = 1;
+    bool hist = 1;
+    string str = 2;
+    repeated float ohist = 3 [packed=true];
 }
 
 message res {     
     int32 ridx=1;
     float e = 2;
-    string idx = 3;
+    bool hist = 3;
+    string idx = 4;
+    repeated float shist = 5 [packed=true];
 }
