@@ -8,7 +8,7 @@
     #include <unistd.h>
 #elif _WIN32
     #include <process.h>
-    #define getpid _getpid()
+    #define getpid _getpid
 #endif
 #include "tools.hpp"
 #include <iostream>

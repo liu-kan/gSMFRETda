@@ -17,6 +17,12 @@ namespace fs = boost::filesystem;
 #include <algorithm>
 #if !defined(_WIN64) && !defined(_WIN32)
     #include <signal.h>
+#else
+    #include <windows.h>
+    #include <tlhelp32.h>
+    #include <tchar.h>
+    #include <Psapi.h>
+    #pragma comment (lib,"Psapi.lib")
 #endif
 
 namespace

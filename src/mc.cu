@@ -9,9 +9,6 @@
 #include <algorithm>
 #include <cuda_profiler_api.h>
 #include <numeric>
-
-// #include "cuList.cuh"
-// #include "rmm.hpp"
 #include "tools.hpp"
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -91,7 +88,7 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
         // int sampleTime=tidx%reSampleTimes;
         // If n is a power of 2, ( i / n ) is equivalent to ( i ≫ log2 n ) and (
         // i % n ) is equivalent to ( i & n - 1 ).
-        int idx = tidx >> ((int)log2(reSampleTimes));
+        int idx = tidx >> ((int)log2((double)reSampleTimes));
         // int sampleTime = tidx & reSampleTimes - 1;
         int phCount = g_phCount[idx];
         int64_t *burst_ad = g_burst_ad + g_istart[idx];

@@ -1,0 +1,32 @@
+*** build\Eigen\src\eigen\Eigen\src\Core\arch\CUDA\Half.h	Wed Jan 03 13:55:52 2018
+--- build\Eigen\src\eigen\Eigen\src\Core\arch\CUDA\Half.h	Sun Mar 11 13:24:39 2018
+***************
+*** 155,161 ****
+--- 155,165 ----
+  // conversion steps back and forth.
+  
+  EIGEN_STRONG_INLINE __device__ half operator + (const half& a, const half& b) {
++ #if defined(EIGEN_CUDACC_VER) && EIGEN_CUDACC_VER >= 90000
++   return __hadd(::__half(a), ::__half(b));
++ #else
+    return __hadd(a, b);
++ #endif
+  }
+  EIGEN_STRONG_INLINE __device__ half operator * (const half& a, const half& b) {
+    return __hmul(a, b);
+***************
+*** 164,172 ****
+--- 168,180 ----
+    return __hsub(a, b);
+  }
+  EIGEN_STRONG_INLINE __device__ half operator / (const half& a, const half& b) {
++ #if defined(EIGEN_CUDACC_VER) && EIGEN_CUDACC_VER >= 90000
++   return __hdiv(a, b);
++ #else
+    float num = __half2float(a);
+    float denom = __half2float(b);
+    return __float2half(num / denom);
++ #endif
+  }
+  EIGEN_STRONG_INLINE __device__ half operator - (const half& a) {
+    return __hneg(a);
