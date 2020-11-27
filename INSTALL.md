@@ -1,6 +1,9 @@
 # Installtion of gSMFRETda
 
-## Compile from source
+Although gSMFRETda is coded under Linux firstly, but it designed as a cross-platform application. The core program than runs on GPU nodes, can be compiled and executed under Linux and Windows. The [parameter server demo](https://github.com/liu-kan/pySMFRETda) written with python can run on Linux/Windows/MacOS boxes.
+
+## Linux
+### Compile from source
 
 ### Clone the code
 ```bash
@@ -12,8 +15,6 @@ Submodules are not necessary to pull, them are just listed for FOSSA to analyse 
 * CUDA version >= 10 
 * libhdf5-dev 1.10 and newer 
 * CMake >= 3.11
-
-I'm trying to let the program can be compiled both by Linux and Windows natively. But now if you want to use it under windows, just compile it in [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html).
 
 ### Build the code
 For deb systems, like Debian or Ubuntu
@@ -37,13 +38,13 @@ sudo dnf install protobuf-devel texinfo hdf5-devel
 #if fedora
 sudo dnf install nanomsg-devel gengetopt cmake
 #endif
-# Download [rmm](https://github.com/rapidsai/rmm), and install it.
 ```
 
-Then
+Then, [install Conan](https://conan.io/downloads.html). Finally
 ```bash
 mkdir gSMFRETda/build
 cd gSMFRETda/build
+conan install .. --build=missing 
 cmake ..
 make -j8
 sudo ldconfig
@@ -58,3 +59,26 @@ before cmake. Or add them into ~/.bashrc
 
 ### Notice
 <!-- If you encounter cuda memory access issues, check if your GPU has enough memory first!  -->
+Now, gSMFRETda depend on boost EXACT version of 1.70.0. If your Linux distribution doesn't ship this version (in most cases), you need install [CONAN](http://conan.io/downloads.html) first, and run 
+```bash
+conan install .. --build=missing 
+```
+in build directory before you run cmake .. .
+
+## Windows (bugs exist, don't use now)
+The program can be compiled on Windows natively. And if you wish, it can also run on [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) with compiling method of Linux mentioned above.
+
+### Compiling natively from source
+Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with C++, CMake for Windows, CMake for Linux & English language pack Component installation), CUDA for Windows, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
+
+```bash
+cd \path\to\build\dir
+git clone https://github.com/liu-kan/gSMFRETda.git
+mkdir build
+cd build
+..\gSMFRETda\buildWin.bat
+```
+
+The exe files will sit on .\bin\
+
+If the install_dir of Git for Windows is not default sit at "C:/Program Files/Git". [Change win_patch around line 3 of CMakeLists.txt](https://github.com/liu-kan/gSMFRETda/blob/master/CMakeLists.txt#L3) to you real patch.exe path like "f:/Program Files/Git/usr/bin/patch.exe"

@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
-#find_package(CUDAToolkit REQUIRED)
 
-project(gSMFRETda CUDA CXX C)
+set(win_patch "C:/Program Files/Git/usr/bin/patch.exe")
+
+project(gSMFRETda LANGUAGES CUDA CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
@@ -24,81 +25,61 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(pserver "whether auto build pySMFRETda" ON)
-find_package(Boost 1.65.0 COMPONENTS filesystem)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  conan_basic_setup()
+endif()
+find_package(Boost 1.70.0 EXACT COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
 
-#set(CMAKE_CUDA_ARCH 3 5.2 6.1 7 7.5)
-#set(CMAKE_CUDA_CODE 3 5.2 6.1 7 7.5)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \  
+  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \
       -gencode arch=compute_61,code=[sm_61,compute_61] \
       -gencode arch=compute_70,code=[sm_70,compute_70] \
       -gencode arch=compute_75,code=[sm_75,compute_75]")
-      # -gencode arch=compute_75,code=sm_75 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_52,code=sm_52   -gencode arch=compute_70,code=sm_70 --maxrregcount=128
 else ()
   set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "--expt-relaxed-constexpr --ptxas-options=-v -Xptxas -dlcm=cg \
        -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored \
        -gencode arch=compute_61,code=[sm_61,compute_61] \
        -gencode arch=compute_70,code=[sm_70,compute_70] \
       -gencode arch=compute_75,code=[sm_75,compute_75]")
-       # -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61  -gencode arch=compute_70,code=sm_70 --maxrregcount=128 
+      # -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61  -gencode arch=compute_70,code=sm_70 --maxrregcount=128 
 endif()
-      #-gencode arch=compute_52,code=[sm_52,compute_52]  \
-      #
-      #-gencode arch=compute_70,code=[sm_70,compute_70] \
 
-
-
-#set(link_stdc__fs "")
-#if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
-#  message( FATAL_ERROR "g++ need >=8, CMake will exit." )
-#elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-#  message( STATUS "g++ 8.x, add -lstdc++fs" )
-#  set(link_stdc__fs "-lstdc++fs")
-#endif()
+set(link_stdc__fs "")
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
+  message( FATAL_ERROR "g++ need >=8, CMake will exit." )
+elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+  message( STATUS "g++ 8.x, add -lstdc++fs" )
+  set(link_stdc__fs "-lstdc++fs")
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-unused-result -s")
-
-set(boost_VERSION_MAJOR "1" CACHE STRING "boost's MAJOR version number")
-set(boost_VERSION_MINOR "70" CACHE STRING "boost's MINOR version number")
-set(boost_VERSION_PATCH "0" CACHE STRING "boost's PATCH version number")
-set(rmm_VERSION_MAJOR "0" CACHE STRING "rmm's MAJOR version number")
-set(rmm_VERSION_MINOR "15" CACHE STRING "rmm's MINOR version number")
-
-set(boost_fname "${boost_VERSION_MAJOR}_${boost_VERSION_MINOR}_${boost_VERSION_PATCH}")
-set(boost_ndir "${boost_VERSION_MAJOR}.${boost_VERSION_MINOR}.${boost_VERSION_PATCH}")
-set(boostURL ${CMAKE_SOURCE_DIR}/3rdparty/boost_${boost_fname}.tar.bz2)
+if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-unused-result -s")
+endif()
 
 include(ExternalProject)
 add_custom_target(third)
 
-if (NOT EXISTS ${boostURL})
-  #set(boostURL https://dl.bintray.com/boostorg/release/${boost_ndir}/source/boost_${boost_fname}.tar.bz2)
-  set(boostURL http://mirrors.163.com/gentoo/distfiles/boost_${boost_fname}.tar.bz2)
-  message(STATUS "CMake will download boost from ${boostURL} for you!!!!!")
-endif()
-
 include(FetchContent)
-FetchContent_Populate(
-  boost
-  URL ${boostURL}
-  SOURCE_DIR ${CMAKE_BINARY_DIR}/third/boost
-)
+
 FetchContent_Populate(
   eigen
-  #GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
-  GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+  GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
+  #GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/eigen
-  GIT_SHALLOW 1
+  GIT_SHALLOW    1
   GIT_TAG        3.3
-  GIT_PROGRESS 1  
+  GIT_PROGRESS 1
+  UPDATE_DISCONNECTED true
 )
+
 if(pserver)
 FetchContent_Populate(
-  eigen
+  pySMFRETda
   GIT_REPOSITORY  https://github.com/liu-kan/pySMFRETda.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/pySMFRETda
   GIT_SHALLOW 1
@@ -106,44 +87,21 @@ FetchContent_Populate(
   GIT_PROGRESS 1  
 )
 endif()
-find_package(HighFive)
-if(NOT HighFive_FOUND)
-  message(STATUS "Don't worry!!! CMake will try to install dependencies for you! Maybe you need to input sudo password when you run make!")
-    ExternalProject_Add(HighFive  
-      #GIT_REPOSITORY https://git.liukan.org/mirrors/HighFive.git
-      GIT_REPOSITORY https://github.com/BlueBrain/HighFive.git
-      GIT_SHALLOW 1
-      GIT_PROGRESS 1
-      CMAKE_ARGS -DHIGHFIVE_EXAMPLES=OFF -DHIGHFIVE_UNIT_TESTS=OFF
-      PREFIX ${CMAKE_BINARY_DIR}/third/HighFive
-      INSTALL_COMMAND sudo make install
-      USES_TERMINAL_INSTALL true
-      UPDATE_DISCONNECTED true
-    )
-    add_dependencies(third HighFive)
-endif()
-#    ExternalProject_Add(rmm  
-#      GIT_REPOSITORY https://git.liukan.org/mirrors/rmm.git
-#      GIT_PROGRESS 1
-#      GIT_TAG origin/branch-${rmm_VERSION_MAJOR}.${rmm_VERSION_MINOR}
-#      #PATCH_COMMAND patch -p0 < ${CMAKE_SOURCE_DIR}/3rdparty/rmm-0.9.patch 
-#      PREFIX ${CMAKE_BINARY_DIR}/third/rmm
-#      CMAKE_ARGS -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
-#      INSTALL_COMMAND sudo make install
-#      USES_TERMINAL_INSTALL true
-#      UPDATE_DISCONNECTED true
-#    )
-#    add_dependencies(third rmm)
-## https://anaconda.org/rapidsai/librmm/files
-    add_custom_command(TARGET third
-                      COMMAND pwd
-                      PRE_BUILD
-    )
+FetchContent_Populate(
+  HighFive
+  GIT_REPOSITORY  https://git.liukan.org/mirrors/HighFive.git
+  SOURCE_DIR ${CMAKE_BINARY_DIR}/third/HighFive
+  GIT_SHALLOW 1
+  GIT_PROGRESS 1
+  UPDATE_DISCONNECTED true
+)
 
-#src/3rdparty/protobuf/args.pb.cc src/3rdparty/protobuf/args.pb.h
+add_custom_command(TARGET third
+    COMMAND ${win_patch} --ignore-whitespace -p4 < ${CMAKE_SOURCE_DIR}/3rdparty/patches/eigenHalfH.patch || (exit 0)
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third/eigen
+    PRE_BUILD
+)
 
-#find_package(Protobuf REQUIRED)
-#include_directories(${Protobuf_INCLUDE_DIRS})
 add_subdirectory(3rdparty)
 
 execute_process(
@@ -151,29 +109,50 @@ execute_process(
     COMMAND gengetopt -i 3rdparty/gengetopt/call_gSMFRETda.ggo --file-name=src/3rdparty/gengetopt/call_gSMFRETda
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
+
 if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
-  execute_process(
-      COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  )
+  if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+      execute_process(
+          COMMAND ${CONAN_BIN_DIRS_PROTOBUF}/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      )
+  else()
+      execute_process(
+          COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      )
+  endif()
   file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
   file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty)
 endif()
-find_package(HDF5 REQUIRED)
-find_package(NANOMSG QUIET)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+  include_directories(${CONAN_INCLUDE_DIRS_HDF5})
+  include_directories(${CONAN_INCLUDE_DIRS_GETOPT-FOR-VISUAL-STUDIO})
+else()
+  find_package(HDF5 REQUIRED)
+  include_directories(${HDF5_INCLUDE_DIRS})
+  find_package(NANOMSG QUIET)
+endif()
 
 include_directories(${CUDA_INCLUDE_DIRS})
-include_directories(${HDF5_INCLUDE_DIRS})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(/usr/local/include)
-include_directories(${CMAKE_BINARY_DIR}/third/eigen)
+include_directories(${CMAKE_BINARY_DIR}/third/HighFive/include)
 include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${nanomsg_INCDIR})
-include_directories(${CMAKE_BINARY_DIR}/third/boost)
-include_directories(${Boost_INCLUDE_DIRS})
 
-link_directories(${nanomsg_LIBDIR})
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    include_directories(${CONAN_INCLUDE_DIRS_BOOST})
+    include_directories(${CONAN_INCLUDE_DIRS_NANOMSG})
+elseif(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+    include_directories(${nanomsg_INCDIR})
+else()
+    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    include_directories(${CONAN_INCLUDE_DIRS_BOOST})
+    include_directories(${nanomsg_INCDIR})
+endif()
+
 link_directories(${CUDA_TOOLKIT_ROOT_DIR}/compat)
 
 add_executable(call_${PROJECT_NAME}
@@ -181,12 +160,22 @@ add_executable(call_${PROJECT_NAME}
     src/3rdparty/gengetopt/call_gSMFRETda.h
     src/call_main.cpp
     )
-target_link_libraries(call_${PROJECT_NAME} 
-    ${Boost_LIBRARIES} -lboost_filesystem -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
+include_directories(${CMAKE_BINARY_DIR}/third/eigen)    
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    #include_directories(${CONAN_INCLUDE_DIRS_EIGEN})
+    link_directories(${CONAN_LIB_DIRS_BOOST})
+    target_link_libraries(call_${PROJECT_NAME} 
+        ${CONAN_LIBS_BOOST} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread -ldl)
+elseif(Boost_FOUND)
+    target_link_libraries(call_${PROJECT_NAME} 
+        ${Boost_LIBRARIES} -lboost_filesystem -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
+else()
+    link_directories(${CONAN_LIB_DIRS_BOOST})    
+    target_link_libraries(call_${PROJECT_NAME} 
+        ${CONAN_LIBS_BOOST} -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
+endif()
 
 add_executable(${PROJECT_NAME}
-    #src/3rdparty/protobuf/args.pb.cc
-    #src/3rdparty/protobuf/args.pb.h
     src/3rdparty/gengetopt/cmdline.c
     src/3rdparty/gengetopt/cmdline.h
     src/binom.cuh
@@ -208,13 +197,37 @@ add_executable(${PROJECT_NAME}
     src/mrImp.cpp
     src/mrImp.hpp    
     )
-target_link_libraries(${PROJECT_NAME} proto)
+#set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
+set_property(TARGET call_${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
+set_property(TARGET proto PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
+add_compile_options(${PROJECT_NAME} 
+    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+)
+string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr")
+#set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS
+#            "$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CUDA>>:-Xcompiler=--expt-relaxed-constexpr>"
+#            )
 
-target_link_libraries(${PROJECT_NAME} -lpthread -lnanomsg -lboost_filesystem 
-     ${HDF5_C_LIBRARIES} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ${Boost_LIBRARIES}) 
-#${link_stdc__fs}
-if (HighFive_FOUND)
-  target_link_libraries(${PROJECT_NAME} HighFive)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    link_directories(${CONAN_LIB_DIRS_BOOST})
+    link_directories(${CONAN_LIB_DIRS_HDF5})
+    target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS_HDF5} ${CONAN_LIBS_BOOST} ${CONAN_LIBS_NANOMSG})
+elseif(Boost_FOUND)
+    link_directories(${nanomsg_LIBDIR})
+    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} -lboost_filesystem 
+          -lpthread -lnanomsg ${link_stdc__fs} ${Boost_LIBRARIES})
+else()
+    link_directories(${nanomsg_LIBDIR})
+    link_directories(${CONAN_LIB_DIRS_BOOST})    
+    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS_BOOST} ${link_stdc__fs} -lpthread )
 endif()
+target_link_libraries(${PROJECT_NAME} proto)
+target_link_libraries(${PROJECT_NAME} 
+     ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})
+
+#if (HighFive_FOUND)
+#  target_link_libraries(${PROJECT_NAME} HighFive)
+#endif()
   add_dependencies(${PROJECT_NAME} third)
 
