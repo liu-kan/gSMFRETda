@@ -239,16 +239,16 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     gpp = (float **)malloc(sizeof(float *) * streamNum);
     gpe = (float **)malloc(sizeof(float *) * streamNum);
     g_P_i2j = (float **)malloc(sizeof(float *) * streamNum);
-    matK=(arrFF**)malloc(sizeof(arrFF *) * streamNum);
-    matP=(arrF**)malloc(sizeof(arrF *) * streamNum);
+    matK=(float**)malloc(sizeof(float *) * streamNum);
+    matP=(float**)malloc(sizeof(float *) * streamNum);
     oldN = new int[streamNum];
     std::fill_n(oldN, streamNum, 0);
     // std::memset(hpv, 0, sizeof(float*)*streamNum);
     // std::memset(hpk, 0, sizeof(float*)*streamNum);
     // std::memset(hpp, 0, sizeof(float*)*streamNum);
     // std::memset(hpe, 0, sizeof(float*)*streamNum);
-    std::memset(matP, 0, sizeof(arrF *) * streamNum);
-    std::memset(matK, 0, sizeof(arrFF *) * streamNum);
+    std::memset(matP, 0, sizeof(float *) * streamNum);
+    std::memset(matK, 0, sizeof(float *) * streamNum);
     std::memset(g_P_i2j, 0, sizeof(float *) * streamNum);
     std::memset(gpv, 0, sizeof(float *) * streamNum);
     std::memset(gpk, 0, sizeof(float *) * streamNum);
@@ -664,12 +664,11 @@ void mc::free_data_gpu() {
     }
 }
 /**
- * @brief               Setup the number of protien's states in simulation.
+ * @brief          Setup the number of protien's states in simulation.
  *
- * @param n         The number of protien's states
+ * @param n        The number of protien's states
  * @param sid      The gpu stream idx
- * @return int       The number of protien's states setuped in the gpu stream
- * idx.
+ * @return int     The number of protien's states than setuped in the gpu stream idx before this call.
  */
 int mc::set_nstates(int n, int sid) {
     int r = n;
@@ -702,8 +701,10 @@ int mc::set_nstates(int n, int sid) {
         mr->free(gpv[sid], s_n[sid] * sizeof(float), streams[sid]);
         mr->free(gpp[sid], s_n[sid] * sizeof(float), streams[sid]);
         mr->free(gpk[sid], s_n[sid] * sizeof(float), streams[sid]);
-        // std::cout << "&(gpe[" << sid << "]):" << (void **)&(gpe[sid]) << "\tn:" << n
-        //           << std::endl;
+        delete (matK[sid]);
+        matK[sid]=new float[n*n];
+        delete(matP[sid]);
+        matP[sid]=new float[n];        
         gpe[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpv[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpp[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
@@ -744,24 +745,28 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
     RowVectorXf vargs = evargs.block(0, n * n, 1, n);
     float *pvargs = vargs.data();
 
-    r = genMatK(&matK[sid], n, kargs);
+    r = genMatK(matK[sid], n, kargs);
     //&matK不可修改，但是matK的值可以修改
-    r = r && genMatP(&matP[sid], matK[sid]);
+    r = r && genMatP(matP[sid], matK[sid],n);
     // cout<<"[K]:\n"<<*matK<<endl;
-    // memcpy(hpe[sid], peargs, sizeof(float)*n);
-    // memcpy(hpv[sid], pvargs, sizeof(float)*n);
-    // memcpy(hpk[sid], matK->data(), sizeof(float)*n*n);
     // memcpy(hpp[sid], matP->data(), sizeof(float)*n);
     // todo
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpe[sid], peargs, sizeof(float) * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpv[sid], pvargs, sizeof(float) * n,
                                       cudaMemcpyHostToDevice, streams[sid]));
+    //std::cout << *(matK[sid]) << std::endl;
+    // for (int di=0;di<n;di++){
+    //     std::cout << *(matP[sid]+di) << std::endl;
+    //     for (int dj=0;dj<n;dj++)
+    //         std::cout << *(matK[sid]+di+dj*n) << "\t";
+    //     std::cout<< std::endl;
+    // }
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpk[sid], matK[sid], sizeof(float) * n * n,
+                                     cudaMemcpyHostToDevice, streams[sid]));
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid], matP[sid], sizeof(float) * n,
+                                     cudaMemcpyHostToDevice, streams[sid]));
 
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpk[sid], matK[sid]->data(), sizeof(float) * n * n,
-                                      cudaMemcpyHostToDevice, streams[sid]));
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid], matP[sid]->data(), sizeof(float) * n,
-                                      cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return r;
 }
