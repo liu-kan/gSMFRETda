@@ -17,5 +17,5 @@ typedef Eigen::Map<arrUchar> arrUcharMapper;
 typedef Eigen::Map<RowVectorXf> vecFloatMapper;
 typedef Eigen::Map<arrFF> matXfMapper;
 
-bool genMatK(arrFF** matK,int n, RowVectorXf& args);
-bool genMatP(arrF** matP,arrFF* matK);
+bool genMatK(float* matK,int n, RowVectorXf& args);
+bool genMatP(float* matP,float* matK,int n);

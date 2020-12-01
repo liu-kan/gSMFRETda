@@ -44,7 +44,7 @@ Then, [install Conan](https://conan.io/downloads.html). Finally
 ```bash
 mkdir gSMFRETda/build
 cd gSMFRETda/build
-conan install .. --build=missing 
+conan install ../conanfile.posix --build=missing 
 cmake ..
 make -j8
 sudo ldconfig
@@ -61,11 +61,11 @@ before cmake. Or add them into ~/.bashrc
 <!-- If you encounter cuda memory access issues, check if your GPU has enough memory first!  -->
 Now, gSMFRETda depend on boost EXACT version of 1.70.0. If your Linux distribution doesn't ship this version (in most cases), you need install [CONAN](http://conan.io/downloads.html) first, and run 
 ```bash
-conan install .. --build=missing 
+conan install ../conanfile.posix --build=missing 
 ```
 in build directory before you run cmake .. .
 
-## Windows (bugs exist, don't use now)
+## Windows
 The program can be compiled on Windows natively. And if you wish, it can also run on [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) with compiling method of Linux mentioned above.
 
 ### Compiling natively from source

@@ -44,8 +44,8 @@ class mc
         int64_t *g_istart,*g_istop;  // 64
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         float **g_P_i2j;
-        arrFF **matK;
-        arrF** matP; 
+        float **matK;
+        float **matP; 
         
         int *begin_burst;
         int *end_burst;
