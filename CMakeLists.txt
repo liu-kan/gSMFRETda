@@ -85,6 +85,7 @@ FetchContent_Populate(
   GIT_SHALLOW 1
   GIT_TAG        origin/main
   GIT_PROGRESS 1  
+  UPDATE_DISCONNECTED true
 )
 endif()
 FetchContent_Populate(
@@ -155,24 +156,46 @@ endif()
 
 link_directories(${CUDA_TOOLKIT_ROOT_DIR}/compat)
 
+include_directories(${CMAKE_BINARY_DIR}/third/eigen)    
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")    
+    link_directories(${CONAN_LIB_DIRS_BOOST})
+elseif(Boost_FOUND)
+else()
+    link_directories(call_${PROJECT_NAME} ${CONAN_LIB_DIRS_BOOST})    
+endif()
+
+#if(MSVC)
+#            set(CMAKE_EXE_LINKER_FLAGS
+#          "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:msvcrt.lib")
+#endif()
+
 add_executable(call_${PROJECT_NAME}
     src/3rdparty/gengetopt/call_gSMFRETda.c
     src/3rdparty/gengetopt/call_gSMFRETda.h
     src/call_main.cpp
     )
-include_directories(${CMAKE_BINARY_DIR}/third/eigen)    
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    #include_directories(${CONAN_INCLUDE_DIRS_EIGEN})
-    link_directories(${CONAN_LIB_DIRS_BOOST})
     target_link_libraries(call_${PROJECT_NAME} 
-        ${CONAN_LIBS_BOOST} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread -ldl)
+        ${CONAN_LIBS_BOOST} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY})
 elseif(Boost_FOUND)
     target_link_libraries(call_${PROJECT_NAME} 
         ${Boost_LIBRARIES} -lboost_filesystem -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
 else()
-    link_directories(${CONAN_LIB_DIRS_BOOST})    
     target_link_libraries(call_${PROJECT_NAME} 
         ${CONAN_LIBS_BOOST} -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
+endif()
+
+string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr")
+
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    link_directories(${CONAN_LIB_DIRS_BOOST})
+    link_directories(${CONAN_LIB_DIRS_HDF5})
+    link_directories(${CONAN_LIB_DIRS_NANOMSG})
+elseif(Boost_FOUND)
+    link_directories(${nanomsg_LIBDIR})
+else()
+    link_directories(${nanomsg_LIBDIR})
+    link_directories(${CONAN_LIB_DIRS_BOOST})    
 endif()
 
 add_executable(${PROJECT_NAME}
@@ -204,23 +227,16 @@ set_property(TARGET proto PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
 add_compile_options(${PROJECT_NAME} 
     $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
 )
-string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr")
 #set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS
 #            "$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CUDA>>:-Xcompiler=--expt-relaxed-constexpr>"
 #            )
-
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    link_directories(${CONAN_LIB_DIRS_BOOST})
-    link_directories(${CONAN_LIB_DIRS_HDF5})
     target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS_HDF5} ${CONAN_LIBS_BOOST} ${CONAN_LIBS_NANOMSG})
 elseif(Boost_FOUND)
-    link_directories(${nanomsg_LIBDIR})
     target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} -lboost_filesystem 
           -lpthread -lnanomsg ${link_stdc__fs} ${Boost_LIBRARIES})
 else()
-    link_directories(${nanomsg_LIBDIR})
-    link_directories(${CONAN_LIB_DIRS_BOOST})    
-    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS_BOOST} ${link_stdc__fs} -lpthread )
+    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS_BOOST} ${link_stdc__fs} -lpthread -lnanomsg)
 endif()
 target_link_libraries(${PROJECT_NAME} proto)
 target_link_libraries(${PROJECT_NAME} 
@@ -230,4 +246,3 @@ target_link_libraries(${PROJECT_NAME}
 #  target_link_libraries(${PROJECT_NAME} HighFive)
 #endif()
   add_dependencies(${PROJECT_NAME} third)
-
