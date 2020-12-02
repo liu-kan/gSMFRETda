@@ -21,14 +21,20 @@ namespace fs = boost::filesystem;
     #include <windows.h>
     #include <tlhelp32.h>
     #include <tchar.h>
+    #include <Processthreadsapi.h>
     #include <Psapi.h>
+    #include <Synchapi.h>
+#include <strsafe.h>
+#include <atlstr.h>
     #pragma comment (lib,"Psapi.lib")
+    #pragma comment (lib,"Kernel32.lib")
 #endif
 
 namespace
 {
     volatile std::sig_atomic_t gSignalStatus;
 }
+using namespace std;
 
 void signal_handler(int signal)
 {
@@ -54,20 +60,70 @@ void modArg(std::string& cmdline, gengetopt_args_info& args_info){
         perror( "Error deleting file" );
     cmdline=cmdline+" -I "+args_info.pid_arg;
 }
-void terminatePid(char *pidfn){
-    using namespace std;
+void terminatePid(vector<int>& vpid){
+    for ( int pid: vpid )
+    {
+        #if defined(_WIN64)|| defined(_WIN32)
+            std::string thecmd="START /B taskkill /F /pid "+std::to_string(pid);;
+            system(thecmd.c_str());
+        #else            
+            kill(pid, SIGKILL);
+        #endif
+    }
+}
+#if defined(_WIN64)|| defined(_WIN32)
+int FindProcessId(int pid)
+{
+    PROCESSENTRY32 processInfo;
+    processInfo.dwSize = sizeof(processInfo);
+    HANDLE processesSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+    if (processesSnapshot == INVALID_HANDLE_VALUE)
+        return 0;
+    Process32First(processesSnapshot, &processInfo);
+    if (pid== processInfo.th32ProcessID)
+    {
+        CloseHandle(processesSnapshot);
+        return processInfo.th32ProcessID;
+    }
+
+    while (Process32Next(processesSnapshot, &processInfo))
+    {
+        if (pid == processInfo.th32ProcessID)
+        {
+            CloseHandle(processesSnapshot);
+            return processInfo.th32ProcessID;
+        }
+    }
+    CloseHandle(processesSnapshot);
+    return -1;
+}
+#endif
+bool pidsRunning(vector<int>& vpid){
+#define BUFFER_SIZE 100
+    int pidsLen=vpid.size();
+    for ( int pid: vpid )
+    {
+        #if defined(_WIN64)|| defined(_WIN32)
+            if(FindProcessId(pid)<0)
+                pidsLen--;
+        #else            
+            if(0!=kill(pid, 0))
+                pidsLen--;
+        #endif
+    }
+    if(pidsLen<=0)
+        return false;
+    else
+        return true;
+}
+void getPid(char *pidfn, vector<int>& vpid){
     string line;
     ifstream pidfile(pidfn);
     if (pidfile) 
     {
         while (getline(pidfile, line)) {
             int pid=stoi(line);
-            #if defined(_WIN64)|| defined(_WIN32)
-                std::string thecmd="START /B taskkill /pid "+line;
-                system(thecmd.c_str());
-            #else            
-                kill(pid, SIGKILL);
-            #endif
+            vpid.push_back(pid);
         }
         pidfile.close();
     }
@@ -130,12 +186,18 @@ std::signal(SIGINT, signal_handler);
             }
         }
     }
+    vector<int> vpid;
+    getPid(args_info.pid_arg, vpid);
+    for (int pid :vpid)
+        std::cout << "pid: " <<pid<< std::endl;
     while(true){
         std::this_thread::sleep_for(1s);
         if (gSignalStatus==2){
-            terminatePid(args_info.pid_arg);
+            terminatePid(vpid);
             break;
         }
+        if (!pidsRunning(vpid))
+             break;
     }
     return 0;
 }
