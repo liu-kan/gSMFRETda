@@ -63,7 +63,7 @@ Now, gSMFRETda depend on boost EXACT version of 1.70.0. If your Linux distributi
 ```bash
 conan install ../conanfile.posix --build=missing 
 ```
-in build directory before you run cmake .. .
+in build directory before you run ```cmake ..```  .
 
 ## Windows
 The program can be compiled on Windows natively. And if you wish, it can also run on [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) with compiling method of Linux mentioned above.
@@ -81,4 +81,8 @@ cd build
 
 The exe files will sit on .\bin\
 
-If the install_dir of Git for Windows is not default sit at "C:/Program Files/Git". [Change win_patch around line 3 of CMakeLists.txt](https://github.com/liu-kan/gSMFRETda/blob/master/CMakeLists.txt#L3) to you real patch.exe path like "f:/Program Files/Git/usr/bin/patch.exe"
+If the install_dir of Git for Windows is not default sit at "C:/Program Files/Git". Set environment variables patch to full path of patch.exe file,
+```bash
+set patch=F:/Program Files/Git/usr/bin/patch.exe
+```
+before run batch file of ```buildWin.bat```/```buildWinDebug.bat``` .

@@ -1,0 +1,1 @@
+%win_patch% --ignore-whitespace -p4 < %eigen_patch% || (exit 0)

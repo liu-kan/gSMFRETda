@@ -1,5 +1,5 @@
 #pragma once
-
+#define EIGEN_MPL2_ONLY 1
 #include <Eigen/Core>
 #include <Eigen/Eigen>
 

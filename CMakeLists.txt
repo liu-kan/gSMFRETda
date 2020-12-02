@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
-set(win_patch "C:/Program Files/Git/usr/bin/patch.exe")
-
 project(gSMFRETda LANGUAGES CUDA CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 14)
@@ -26,8 +24,13 @@ endif()
 
 option(pserver "whether auto build pySMFRETda" ON)
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  conan_basic_setup()
+    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    conan_basic_setup()
+    if(DEFINED ENV{patch})
+        set(win_patch $ENV{patch})
+    else()
+        set(win_patch "C:/Program Files/Git/usr/bin/patch.exe")
+    endif()  
 endif()
 find_package(Boost 1.70.0 EXACT COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
@@ -65,7 +68,6 @@ include(ExternalProject)
 add_custom_target(third)
 
 include(FetchContent)
-
 FetchContent_Populate(
   eigen
   GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
@@ -96,12 +98,14 @@ FetchContent_Populate(
   GIT_PROGRESS 1
   UPDATE_DISCONNECTED true
 )
-
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
 add_custom_command(TARGET third
-    COMMAND ${win_patch} --ignore-whitespace -p4 < ${CMAKE_SOURCE_DIR}/3rdparty/patches/eigenHalfH.patch || (exit 0)
+    COMMAND set win_patch="${win_patch}" & set eigen_patch="${CMAKE_SOURCE_DIR}/3rdparty/patches/eigenHalfH.patch" & ${CMAKE_SOURCE_DIR}/3rdparty/patches/patches_apply.bat
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third/eigen
+    COMMENT "Patching Eigen"
     PRE_BUILD
 )
+endif()
 
 add_subdirectory(3rdparty)
 
