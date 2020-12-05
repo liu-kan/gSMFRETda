@@ -12,11 +12,11 @@
 # the License.
 # =============================================================================
 # Build the list of supported architectures
-set(SUPPORTED_CUDA_ARCHITECTURES "50" "60" "62" "70" "72" "75" "80")
+set(SUPPORTED_CUDA_ARCHITECTURES "52" "60" "62" "70" "72" "75" "80")
 # Check for embedded vs workstation architectures
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
   # This is being built for Linux4Tegra or SBSA ARM64
-  list(REMOVE_ITEM SUPPORTED_CUDA_ARCHITECTURES "60" "70")
+  list(REMOVE_ITEM SUPPORTED_CUDA_ARCHITECTURES "52" "60" "70")
 else()
   # This is being built for an x86 or x86_64 architecture
   list(REMOVE_ITEM SUPPORTED_CUDA_ARCHITECTURES "62" "72")

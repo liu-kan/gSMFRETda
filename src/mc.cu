@@ -296,13 +296,11 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     CURAND_CALL(curandGetScrambleConstants64(&hostScrambleConstants64));
 }
 void mc::set_reSampleTimes(int t) { reSampleTimes = pow(2, (int)log2(t)); }
-int mc::getStream() {
-    int r = -1;
-    if (!streamFIFO.empty()) {
-        int r = streamFIFO.front();
-        streamFIFO.pop();
-    }
-    return r;
+cudaStream_t* mc::getStreams(int *numStream =NULL) {
+    if(numStream)
+        *numStream=streamNum;
+    return streams;
+    
 }
 
 void mc::givebackStream(int i) { streamFIFO.push(i); }
@@ -461,7 +459,14 @@ void mc::init_data_gpu(vector<int64_t> &istart, vector<int64_t> &start,
     // CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
 }
-
+/**
+ * @brief Setup the range of burst for computation
+ * 
+ * @param cstart start of range
+ * @param cstop end of range, when it's -1 means last burst
+ * @param sid stream number 
+ * @return int real nubmer of burst for computation
+ */
 int mc::setBurstBd(int cstart, int cstop, int sid) {
     int rcstart = cstart;
     int rcstop = cstop;
@@ -503,14 +508,6 @@ int mc::setBurstBd(int cstart, int cstop, int sid) {
                                         N * reSampleTimes * sizeof(retype),
                                         cudaHostAllocDefault));
     }
-    // if(nDevices>1)
-    //     CUDA_CHECK_RETURN(cudaMemset(mcE[sid], 0, N *reSampleTimes*
-    //     sizeof(retype)));
-    // else
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
-    // CUDA_CHECK_RETURN(cudaMemsetAsync(mcE[sid], 0, N *reSampleTimes*
-    // sizeof(retype),streams[sid]));
-    // CUDA_CHECK_RETURN(cudaStreamSynchronize(streams[sid]));
     return N;
 }
 

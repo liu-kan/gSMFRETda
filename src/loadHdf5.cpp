@@ -97,7 +97,7 @@ std::uintmax_t loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std
 void burst_data(vector<int64_t>& istart,vector<int64_t>& istop,vector<int64_t>& times_ms, vector<unsigned char>& mask_ad,vector<unsigned char>& mask_dd, 
                 std::vector<int>& phCount,int64_t **burst_ad, int64_t **burst_dd)
 {
-    int sz_burst=istart.size();
+    size_t sz_burst=istart.size();
     if (phCount.size()!=sz_burst)
         phCount.resize(sz_burst);
     for(int idx=0;idx<sz_burst;idx++){    

@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
     burst_data(istart,istop,times_ms,mask_ad,mask_dd, 
                 phCount,&burst_ad, &burst_dd);
     mc pdamc(gpuid,streamNum,debuglevel,hdf5size,args_info.profiler_flag);
-    streamNum=pdamc.streamNum;
+    //streamNum=pdamc.streamNum;
     pdamc.init_data_gpu(istart,start,stop,
         phCount,times_ms.size(),burst_ad, burst_dd,
         T_burst_duration,SgDivSr,

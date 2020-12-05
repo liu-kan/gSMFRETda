@@ -64,13 +64,14 @@ class mc
         retype** mcE;
         unsigned char debug;
         std::queue<int> streamFIFO;
-        int getStream();
+        cudaStream_t* getStreams(int *numStream) ;
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
         int nDevices;
         bool profiler;
+        int streamNum;
     public:      
-        int streamNum;  
+        
         int devid;  
         char gpuuuid[33];
         atomic_int workerNum;

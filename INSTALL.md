@@ -2,6 +2,8 @@
 
 Although gSMFRETda is coded under Linux firstly, but it designed as a cross-platform application. The core program than runs on GPU nodes, can be compiled and executed under Linux and Windows. The [parameter server demo](https://github.com/liu-kan/pySMFRETda) written with python can run on Linux/Windows/MacOS boxes.
 
+If your program runs on the same CUDA_ARCHITECTURES machines as your compiling box, you can change add ```-DCMAKE_CUDA_ARCHITECTURES=""``` to the cmake configure command. i.e. ```cmake .. -DCMAKE_CUDA_ARCHITECTURES=""``` for Linux, or ```cmake %src_dir% -DCMAKE_CUDA_ARCHITECTURES="" -G "Visual Studio 16"``` in buildWin.bat for Windows.
+
 ## Linux
 ### Compile from source
 

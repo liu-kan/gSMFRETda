@@ -1,11 +1,23 @@
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
-project(gSMFRETda LANGUAGES CUDA CXX C)
+project(gSMFRETda 
+        VERSION 0.8.7.201204
+        LANGUAGES CXX C CUDA)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+include(CMakeFindDependencyMacro)
+if(NOT ${CMAKE_VERSION} VERSION_LESS "3.17.0") 
+    find_dependency(CUDAToolkit)
+endif()
+# Auto-detect available GPU compute architectures
+include(${CMAKE_SOURCE_DIR}/cmake/SetGPUArchs.cmake)
+message(STATUS "Building with GPU Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+#enable_language(CUDA)
+
+set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
 
 #set(Debug OFF CACHE BOOL "Shot debug flag")
 set(DEFAULT_BUILD_TYPE "Release")
@@ -36,26 +48,12 @@ find_package(Boost 1.70.0 EXACT COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "-G --expt-relaxed-constexpr --ptxas-options=-v  -Xptxas -dlcm=cg \
-      -gencode arch=compute_61,code=[sm_61,compute_61] \
-      -gencode arch=compute_70,code=[sm_70,compute_70] \
-      -gencode arch=compute_75,code=[sm_75,compute_75]")
-else ()
-  set(CMAKE_CUDA_FLAGS ${CMAKE_CUDA_FLAGS} "--expt-relaxed-constexpr --ptxas-options=-v -Xptxas -dlcm=cg \
-       -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored \
-       -gencode arch=compute_61,code=[sm_61,compute_61] \
-       -gencode arch=compute_70,code=[sm_70,compute_70] \
-      -gencode arch=compute_75,code=[sm_75,compute_75]")
-      # -gencode arch=compute_52,code=sm_52 -gencode arch=compute_61,code=sm_61  -gencode arch=compute_70,code=sm_70 --maxrregcount=128 
-endif()
-
 set(link_stdc__fs "")
 if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
   message( FATAL_ERROR "g++ need >=8, CMake will exit." )
 elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
   message( STATUS "g++ 8.x, add -lstdc++fs" )
-  set(link_stdc__fs "-lstdc++fs")
+  set(link_stdc__fs "stdc++fs")
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -108,13 +106,13 @@ add_custom_command(TARGET third
 endif()
 
 add_subdirectory(3rdparty)
-
+if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows")
 execute_process(
     COMMAND gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
     COMMAND gengetopt -i 3rdparty/gengetopt/call_gSMFRETda.ggo --file-name=src/3rdparty/gengetopt/call_gSMFRETda
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-
+endif()
 if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
   if (CMAKE_SYSTEM_NAME MATCHES "Windows")
       execute_process(
@@ -142,7 +140,6 @@ endif()
 include_directories(${CUDA_INCLUDE_DIRS})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(/usr/local/include)
 include_directories(${CMAKE_BINARY_DIR}/third/HighFive/include)
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -152,7 +149,9 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
 elseif(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     include_directories(${nanomsg_INCDIR})
+    include_directories(/usr/local/include)
 else()
+    include_directories(/usr/local/include)
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     include_directories(${CONAN_INCLUDE_DIRS_BOOST})
     include_directories(${nanomsg_INCDIR})
@@ -183,13 +182,11 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         ${CONAN_LIBS_BOOST} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY})
 elseif(Boost_FOUND)
     target_link_libraries(call_${PROJECT_NAME} 
-        ${Boost_LIBRARIES} -lboost_filesystem -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
+        ${Boost_LIBRARIES} boost_filesystem dl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} pthread) 
 else()
     target_link_libraries(call_${PROJECT_NAME} 
-        ${CONAN_LIBS_BOOST} -ldl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} -lpthread) 
+        ${CONAN_LIBS_BOOST} dl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} pthread) 
 endif()
-
-string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr")
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     link_directories(${CONAN_LIB_DIRS_BOOST})
@@ -224,23 +221,20 @@ add_executable(${PROJECT_NAME}
     src/mrImp.cpp
     src/mrImp.hpp    
     )
-#set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
-set_property(TARGET call_${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
-set_property(TARGET proto PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
-add_compile_options(${PROJECT_NAME} 
-    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
-)
-#set_property(TARGET ${PROJECT_NAME} PROPERTY INTERFACE_COMPILE_OPTIONS
-#            "$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CUDA>>:-Xcompiler=--expt-relaxed-constexpr>"
-#            )
+set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(call_${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+set_property(TARGET call_${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+#set_property(TARGET proto PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
+add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS_HDF5} ${CONAN_LIBS_BOOST} ${CONAN_LIBS_NANOMSG})
 elseif(Boost_FOUND)
-    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} -lboost_filesystem 
-          -lpthread -lnanomsg ${link_stdc__fs} ${Boost_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} boost_filesystem 
+          pthread nanomsg ${link_stdc__fs} ${Boost_LIBRARIES})
 else()
-    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS_BOOST} ${link_stdc__fs} -lpthread -lnanomsg)
+    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS_BOOST} ${link_stdc__fs} pthread nanomsg)
 endif()
 target_link_libraries(${PROJECT_NAME} proto)
 target_link_libraries(${PROJECT_NAME} 
@@ -250,3 +244,9 @@ target_link_libraries(${PROJECT_NAME}
 #  target_link_libraries(${PROJECT_NAME} HighFive)
 #endif()
   add_dependencies(${PROJECT_NAME} third)
+
+option(BUILD_TESTS "Configure CMake to build tests" OFF)
+if(BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif(BUILD_TESTS)
