@@ -46,7 +46,7 @@ Then, [install Conan](https://conan.io/downloads.html). Finally
 ```bash
 mkdir gSMFRETda/build
 cd gSMFRETda/build
-conan install ../conanfile.posix --build=missing 
+conan install --build=missing ../conanfile.posix
 cmake ..
 make -j8
 sudo ldconfig
@@ -63,7 +63,7 @@ before cmake. Or add them into ~/.bashrc
 <!-- If you encounter cuda memory access issues, check if your GPU has enough memory first!  -->
 Now, gSMFRETda depend on boost EXACT version of 1.70.0. If your Linux distribution doesn't ship this version (in most cases), you need install [CONAN](http://conan.io/downloads.html) first, and run 
 ```bash
-conan install ../conanfile.posix --build=missing 
+conan install --build=missing ../conanfile.posix 
 ```
 in build directory before you run ```cmake ..```  .
 
@@ -71,7 +71,7 @@ in build directory before you run ```cmake ..```  .
 The program can be compiled on Windows natively. And if you wish, it can also run on [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) with compiling method of Linux mentioned above.
 
 ### Compiling natively from source
-Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with C++, CMake for Windows, CMake for Linux & English language pack Component installation), CUDA for Windows, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
+Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with C++, CMake for Windows, CMake for Linux & English language pack Component installation. It's highly recommended that installing VS to default path.), CUDA for Windows, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
 
 ```bash
 cd \path\to\build\dir

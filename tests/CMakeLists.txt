@@ -23,20 +23,20 @@ endif()
 if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT Boost_FOUND)
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 endif()
-if (${DLIB_USE_CUDA})
-  add_definitions("-DDLIB_USE_CUDA")
-endif()
+
+add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu)
+target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY}) 
 
 ###################################################################################################
 # - compiler function
 function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     add_executable(${CMAKE_TEST_NAME} ${CMAKE_TEST_SRC})
-    #set_target_properties(${CMAKE_TEST_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-    #target_include_directories(${CMAKE_TEST_NAME} PRIVATE "$<BUILD_INTERFACE:${gSMFRETda_SOURCE_DIR}/src>")
+    set_target_properties(${CMAKE_TEST_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(${CMAKE_TEST_NAME} PRIVATE "$<BUILD_INTERFACE:${gSMFRETda_SOURCE_DIR}/src>")
     ### include_directories
     include_directories(${CUDA_INCLUDE_DIRS})
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-        #target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_DLIB})
+        target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_DLIB})
         target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_GTEST})
         target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_BOOST})
     elseif(NOT Boost_FOUND)
@@ -47,7 +47,7 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     ### link_directories
     target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/compat)
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-        #target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_DLIB})
+        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_DLIB})
         target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_GTEST})
         target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_BOOST})
     elseif(NOT Boost_FOUND)
@@ -56,27 +56,34 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
 
     ### target_link_libraries
     target_link_libraries(${CMAKE_TEST_NAME}
-                         ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY})    
+                         ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})    
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         target_link_libraries(${CMAKE_TEST_NAME} 
-            ${CONAN_LIBS_GTEST} ${Boost_LIBRARIES})
-            #${CONAN_LIBS_DLIB} ${CONAN_SYSTEM_LIBS_DLIB} 
+            ${CONAN_LIBS_GTEST} ${Boost_LIBRARIES} ${CONAN_LIBS_DLIB} ${CONAN_SYSTEM_LIBS_DLIB})
     elseif(NOT Boost_FOUND)
         target_link_libraries(${CMAKE_TEST_NAME} 
-            gtest gtest_main dl pthread ${CONAN_LIBS_BOOST}) 
-            #dlib::dlib 
+            gtest gtest_main dl pthread ${CONAN_LIBS_BOOST} dlib::dlib)
     else()
         TARGET_LINK_LIBRARIES(${CMAKE_TEST_NAME} 
-            gtest gtest_main dl pthread ${Boost_LIBRARIES}) 
-            #dlib::dlib
+            gtest gtest_main dl pthread ${Boost_LIBRARIES} dlib::dlib)             
     endif()
 
     set_target_properties(${CMAKE_TEST_NAME} PROPERTIES
                             RUNTIME_OUTPUT_DIRECTORY "${gSMFRETda_BINARY_DIR}/gtests")
     set_target_properties(${CMAKE_TEST_NAME}  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     set_property(TARGET ${CMAKE_TEST_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
-  
+    target_link_libraries(${CMAKE_TEST_NAME} genRand)
     add_test(NAME ${CMAKE_TEST_NAME} COMMAND ${CMAKE_TEST_NAME})
+    if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows")
+        add_custom_target(virtual_target_${CMAKE_TEST_NAME})
+        add_dependencies(${CMAKE_TEST_NAME} virtual_target_${CMAKE_TEST_NAME})
+        add_custom_command(TARGET virtual_target_${CMAKE_TEST_NAME}
+            COMMAND sed -i "s/-Wreturn-type//Ig"  tests/CMakeFiles/${CMAKE_TEST_NAME}.dir/flags.make
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Wreturn-type patch"
+            PRE_BUILD
+        )
+    endif()
 endfunction(ConfigureTest)
 
 ###################################################################################################

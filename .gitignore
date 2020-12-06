@@ -2,3 +2,4 @@
 *.out
 .clangd
 commit.log
+scripts/mirrorsURL.csv

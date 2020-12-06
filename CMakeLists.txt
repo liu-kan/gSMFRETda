@@ -68,8 +68,7 @@ add_custom_target(third)
 include(FetchContent)
 FetchContent_Populate(
   eigen
-  GIT_REPOSITORY  https://git.liukan.org/mirrors/eigen.git
-  #GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+  GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/eigen
   GIT_SHALLOW    1
   GIT_TAG        3.3
@@ -90,7 +89,7 @@ FetchContent_Populate(
 endif()
 FetchContent_Populate(
   HighFive
-  GIT_REPOSITORY  https://git.liukan.org/mirrors/HighFive.git
+  GIT_REPOSITORY  https://github.com/BlueBrain/HighFive.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/HighFive
   GIT_SHALLOW 1
   GIT_PROGRESS 1
