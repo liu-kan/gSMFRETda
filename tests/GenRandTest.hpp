@@ -15,7 +15,7 @@ typedef struct {
   double psave, r, q, fm, p1, xm, xl, xr, c, laml, lamr, p2, p3, p4;
 } rk_state;
 
-class GenRandTest : public ::testing::TestWithParam<std::tuple<int, float>>  {
+class GenRandTest : public ::testing::TestWithParam<std::tuple<int, int>>  {
     protected:
         void SetUp() override;
         void TearDown() override ;
@@ -24,14 +24,16 @@ class GenRandTest : public ::testing::TestWithParam<std::tuple<int, float>>  {
 class GenRand{
     public:
         void init_randstate(int N);
+        void init_mem(int N);
+        void test_drawDisIdx(int n);
     private:        
         int gridSize;
-        int reSampleTimes=1;
         int minGridSize, blockSize;
         rk_state* devStates;
         curandStateScrambledSobol64* devQStates;
         curandDirectionVectors64_t* hostVectors64;
         unsigned long long int* hostScrambleConstants64;
         unsigned long long int* devDirectionVectors64;
-        unsigned long long int* devScrambleConstants64;        
+        unsigned long long int* devScrambleConstants64;
+        int *int_res;
 };

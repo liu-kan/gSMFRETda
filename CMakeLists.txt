@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 project(gSMFRETda 
         VERSION 0.8.7.201204
         LANGUAGES CXX C CUDA)
-set(CMAKE_CXX_STANDARD 17)
+#set(CMAKE_CXX_STANDARD 17) # enable std::byte
+# gcc now has bug if -std=c++17 is used with Boost::histogram
+# https://github.com/boostorg/histogram/issues/290
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -44,7 +47,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         set(win_patch "C:/Program Files/Git/usr/bin/patch.exe")
     endif()  
 endif()
-find_package(Boost 1.70.0 EXACT COMPONENTS filesystem)
+find_package(Boost 1.71.0 COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
 
@@ -175,6 +178,7 @@ add_executable(call_${PROJECT_NAME}
     src/3rdparty/gengetopt/call_gSMFRETda.c
     src/3rdparty/gengetopt/call_gSMFRETda.h
     src/call_main.cpp
+    resources/gSMFRETda.rc
     )
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     target_link_libraries(call_${PROJECT_NAME} 
@@ -218,7 +222,8 @@ add_executable(${PROJECT_NAME}
     src/tools.cpp
     src/tools.hpp
     src/mrImp.cpp
-    src/mrImp.hpp    
+    src/mrImp.hpp
+    resources/gSMFRETda.rc
     )
 set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(call_${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

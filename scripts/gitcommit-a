@@ -1,3 +1,4 @@
 #!/bin/bash
 python3 scripts/replaceGitURLwith.py -p
 git commit -a
+python3 scripts/replaceGitURLwith.py -k

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
 project(gSMFRETda_tests LANGUAGES CXX C CUDA)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -18,14 +18,11 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 else()
     FIND_PACKAGE(dlib REQUIRED)
-    find_package(Boost 1.70.0 EXACT)
+    find_package(Boost 1.71.0)
 endif()
 if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT Boost_FOUND)
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 endif()
-
-add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu)
-target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY}) 
 
 ###################################################################################################
 # - compiler function
@@ -72,7 +69,7 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
                             RUNTIME_OUTPUT_DIRECTORY "${gSMFRETda_BINARY_DIR}/gtests")
     set_target_properties(${CMAKE_TEST_NAME}  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     set_property(TARGET ${CMAKE_TEST_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
-    target_link_libraries(${CMAKE_TEST_NAME} genRand)
+    
     add_test(NAME ${CMAKE_TEST_NAME} COMMAND ${CMAKE_TEST_NAME})
     if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows")
         add_custom_target(virtual_target_${CMAKE_TEST_NAME})
@@ -86,12 +83,18 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     endif()
 endfunction(ConfigureTest)
 
+
 ###################################################################################################
 # - genrand tests
 set(gen_rand_tests_SRC
 	"${gSMFRETda_SOURCE_DIR}/tests/gen_rand_tests.cu" 
     )
 ConfigureTest(gen_rand_tests "${gen_rand_tests_SRC}")
+
+add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu 
+        hist.cpp hist.hpp) # boost histogram need to be compiled by gcc, no nvcc
+target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY}) 
+target_link_libraries(gen_rand_tests genRand)
 
 ###################################################################################################
 enable_testing()

@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     }
     std::cout<<"Using "<<H5FILE_NAME<<std::endl;
     string url=args_info.url_arg ;    
-    int streamNum=args_info.snum_arg;    
+    int streamNum=args_info.snum_arg;
     int fretHistNum=args_info.fret_hist_num_arg;    
     unsigned char debuglevel=0;
     if(args_info.debug_flag)
@@ -127,6 +127,9 @@ int main(int argc, char* argv[])
                 phCount,&burst_ad, &burst_dd);
     mc pdamc(gpuid,streamNum,debuglevel,hdf5size,args_info.profiler_flag);
     //streamNum=pdamc.streamNum;
+    //calling getStreams is necessary, because streamNum=args_info.snum_arg may be setted to 0
+    pdamc.getStreams(&streamNum);
+    std::cout<<"streamNum: "<<streamNum<<std::endl;
     pdamc.init_data_gpu(istart,start,stop,
         phCount,times_ms.size(),burst_ad, burst_dd,
         T_burst_duration,SgDivSr,

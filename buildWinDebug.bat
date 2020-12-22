@@ -4,6 +4,6 @@ rem echo %pwd%
 
 SET srcpath=%~dp0
 set src_dir=%srcpath:~0,-1%
-conan install %src_dir% --profile %src_dir%\conan_debug_profile.txt --build=missing
-cmake -G "Visual Studio 16" -DBUILD_TESTS=ON %src_dir%
+conan install %src_dir% --profile %src_dir%\conan_debug_profile.txt --build=missing -r conan-center
+cmake -G "Visual Studio 16" -DCMAKE_CUDA_ARCHITECTURES="" -DBUILD_TESTS=ON %src_dir%
 cmake --build . --config Debug -- /p:CharacterSet=Unicode

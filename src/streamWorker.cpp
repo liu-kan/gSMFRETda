@@ -28,16 +28,11 @@ streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _f
     N=_N;
     debug=debugl;
 }
-// template <typename Tag, typename Storage>
+
 auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv){
-    // auto h = make_s(static_tag(), std::vector<float>(), reg(binnum, lv, uv));
     auto h = make_histogram( axis::regular<>(binnum, lv, uv) );
     for (auto it = SgDivSr->begin(), end = SgDivSr->end(); it != end;) 
-        h(*it++);
-    // auto h = make_histogram(
-    //   axis::regular<>(binnum, 0.0, 1.0, "x")
-    // );    
-    // std::for_each(SgDivSr->begin(), SgDivSr->end(), std::ref(h));
+        h(*(it++));
     return h;
 }
 void streamWorker::run(int sid,int sz_burst){  
@@ -65,7 +60,7 @@ void streamWorker::run(int sid,int sz_burst){
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     vector<float> vOEHist(fretHistNum);
     int ihistO=0;
-    for (auto x : indexed(fretHist))
+    for (auto&& x : indexed(fretHist, coverage::inner))
       vOEHist[ihistO++]=*x;
     bool ending=false;
     int32_t params_idx;
@@ -168,14 +163,14 @@ void streamWorker::run(int sid,int sz_burst){
           auto mcHist=mkhist(&mcE,fretHistNum,0,1);
           vector<float> vMcHist(fretHistNum);
           int ihist=0;
-          for (auto x : indexed(mcHist))
+          for (auto&& x : indexed(mcHist, coverage::inner))
             vMcHist[ihist++]=*x;      
           int effN=fretHistNum;           
           float chisqr=0;
-          for(ihist=1;ihist<fretHistNum;ihist++){
-            if(vOEHist[ihist]>0)
+          for(ihist=0;ihist<fretHistNum;ihist++){
+            if(vMcHist[ihist]>0)
               chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist]/pdamc->reSampleTimes)),2)
-                /float(vOEHist[ihist]);
+                /float(vMcHist[ihist]);
             else
               effN--;      
           }

@@ -156,19 +156,16 @@ void genuid(std::string* id,int gid, int sid,char *gpuuid){
     std::string pid=std::to_string(getpid());
     auto tid = std::this_thread::get_id();
     std::stringstream ss,sss;
-    std::byte guid;
+    // std::byte guid; //need c++17
+    unsigned char guid;
     // char cGPUuuid[33];
     for(int i=0;i<16;i++){
         // guid=0;
         memcpy(&guid, gpuuid+i, 1);
         sss<< std::setfill ('0') << std::setw(1*2) 
-       << std::hex << std::to_integer<int>(guid);
-        // snprintf(cGPUuuid+i*2,2,"%hhx",gpuuid[i]);
-        // printf("%hhx-%d ",gpuuid[i],i);
+       << std::hex << int(guid);
+    //    std::to_integer<int>(guid); //with std::byte
     }
-    // cGPUuuid[32]=0;
-    // std::cout<<sss.str()<<std::endl;
     ss <<sss.str() <<'-' << pid <<"-"<< tid <<"-"<<std::to_string(gid)<<"-"<<std::to_string(sid);
     *id=ss.str();
-    // std::cout<<id->size()<<std::endl;
 }

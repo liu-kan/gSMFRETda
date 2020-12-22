@@ -25,7 +25,7 @@ def replaceURL(oldURL,newURL,filename="CMakeLists.txt"):
         f.write(s)
     return True
 
-def main_function():
+def main_function(fn):
     parser = argparse.ArgumentParser(description='hook to change FetchContent_Populate in CMakefile.txt',
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog=
@@ -44,8 +44,10 @@ def main_function():
         else:
             oldurl=aname
     if newurl!=oldurl:
-        replaceURL(oldurl,newurl)
+        for filename in fn:
+            replaceURL(oldurl,newurl,filename)
 
 if __name__ == '__main__':
-    main_function()
+    fn=["CMakeLists.txt","buildWin.bat","buildWinDebug.bat"]
+    main_function(fn)
     

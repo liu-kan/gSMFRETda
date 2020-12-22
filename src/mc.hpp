@@ -63,15 +63,14 @@ class mc
         int *gridSize;   // The actual grid size needed, based on input size   
         retype** mcE;
         unsigned char debug;
-        std::queue<int> streamFIFO;
-        cudaStream_t* getStreams(int *numStream) ;
+        std::queue<int> streamFIFO;        
         void givebackStream(int i); 
         // Poco::FastMutex streamLock;
         int nDevices;
         bool profiler;
         int streamNum;
     public:      
-        
+        cudaStream_t* getStreams(int* numStream);
         int devid;  
         char gpuuuid[33];
         atomic_int workerNum;
