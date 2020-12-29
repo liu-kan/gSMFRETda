@@ -47,6 +47,8 @@ void streamWorker::run(int sid,int sz_burst){
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start creating sock \n";
     sock = nn_socket (AF_SP, NN_REQ);
     //TODO nn_setsockopt
+    int reconnect_ivl = 200;
+    nn_setsockopt (sock, NN_SOL_SOCKET, NN_RECONNECT_IVL, &reconnect_ivl, sizeof (reconnect_ivl));
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" sock created:"<<sock<<"\n";
     assert (sock >= 0);
     int nneo=nn_connect(sock, url->c_str());
@@ -80,7 +82,12 @@ void streamWorker::run(int sid,int sz_burst){
           string scap;
           cap.SerializeToString(&scap);
           scap="c"+scap;
-          nn_send (sock, scap.c_str(), scap.length(), 0);
+          bytes = nn_send (sock, scap.c_str(), scap.length(), 0);
+          if(bytes==-1){
+            // printf("nn_send failed! error: %s.rc = %d.\n", nn_strerror(errno), bytes);
+            lck.unlock(); 
+            continue;
+          }
           bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
           gSMFRETda::pb::p_n sn;
           sn.ParseFromArray(rbuf,bytes);
@@ -106,9 +113,13 @@ void streamWorker::run(int sid,int sz_burst){
         string sgpuid;
         gpuidStr.SerializeToString(&sgpuid);
         sgpuid="p"+sgpuid;
-        nn_send (sock, sgpuid.c_str(), sgpuid.length(), 0);
+        bytes = nn_send (sock, sgpuid.c_str(), sgpuid.length(), 0);
+        if(bytes==-1){
+            // printf("nn_send failed! error: %s.rc = %d.\n", nn_strerror(errno), bytes);
+            lck.unlock();
+            continue;
+        }
         AtomicWriter(debug,debugLevel::cpu) << "p"+gpuNodeId <<'\n';
-        
         gSMFRETda::pb::p_ga ga;
         bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
         ga.ParseFromArray(rbuf,bytes); 
@@ -147,7 +158,12 @@ void streamWorker::run(int sid,int sz_burst){
             string spidx;
             pidx.SerializeToString(&spidx);
             spidx="k"+spidx;
-            nn_send (sock, spidx.c_str(), spidx.length(), 0);
+            bytes=nn_send (sock, spidx.c_str(), spidx.length(), 0);
+            if(bytes==-1){
+                // printf("nn_send failed! error: %s.rc = %d.\n", nn_strerror(errno), bytes);
+                lck.unlock();
+                continue;
+            }            
             nn_recv(sock, &rbuf,NN_MSG,0);
             nn_freemsg(rbuf);
             rbuf=NULL;
@@ -191,8 +207,12 @@ void streamWorker::run(int sid,int sz_burst){
           chi2res.set_hist(send_sHist);
           string sres;
           chi2res.SerializeToString(&sres);          
-          nn_send (sock, ("r"+sres).c_str(), sres.length()+1, 0);
-          // bytes = nn_send (sock, sres.c_str(), sres.length(), 0);           
+          bytes=nn_send (sock, ("r"+sres).c_str(), sres.length()+1, 0);
+          if(bytes==-1){
+              // printf("nn_send failed! error: %s.rc = %d.\n", nn_strerror(errno), bytes);
+              lck.unlock();
+              continue;
+          }                    
           gSMFRETda::pb::p_sid gas; 
           AtomicWriter(debug,debugLevel::net) << chisqr<<"\t params_idx send: "<<params_idx <<'\n'; 
           bytes = nn_recv (sock, &rbuf, NN_MSG, 0);           
