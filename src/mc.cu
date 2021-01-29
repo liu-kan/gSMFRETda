@@ -35,7 +35,7 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
         for (; i < n_Devices; i++) {
             cudaDeviceProp prop;
             CUDA_CHECK_RETURN(cudaGetDeviceProperties(&prop, i));
-            printf("Device Number: %d\n", i);
+            printf("Device Index: %d\n", i);
             if (gpuuid) {
 #if (CUDART_VERSION < 10000)
                 boost::uuids::uuid a_uuid = boost::uuids::random_generator()();

@@ -24,8 +24,11 @@ class GenRandTest : public ::testing::TestWithParam<std::tuple<int, int>>  {
 class GenRand{
     public:
         void init_randstate(int N);
-        void init_mem(int N);
+        void init_mem(int N,int n);
+        void free_mem();
         void test_drawDisIdx(int n);
+        GenRand();
+        ~GenRand();
     private:        
         int gridSize;
         int minGridSize, blockSize;
@@ -36,4 +39,6 @@ class GenRand{
         unsigned long long int* devDirectionVectors64;
         unsigned long long int* devScrambleConstants64;
         int *int_res;
+        float* gp;
+        int randstateN;
 };

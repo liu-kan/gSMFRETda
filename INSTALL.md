@@ -21,7 +21,7 @@ Submodules are not necessary to pull, them are just listed for FOSSA to analyse 
 ### Build the code
 For deb systems, like Debian or Ubuntu
 ```bash
-sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev
+sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev
 ```
 For rpm systems, like Fedora, Centos or Redhat
 ```bash
@@ -36,9 +36,10 @@ sudo yum install pkg-config python3-protobuf openssl-devel python3-devel
 sudo dnf install protobuf-devel texinfo hdf5-devel 
 #If centos or redhat
 # Download [nanomsg](https://nanomsg.org/), [gengetopt](http://www.gnu.org/software/gengetopt/), [cmake >=3.14](https://github.com/Kitware/CMake/releases/download/v3.17.4/cmake-3.17.4.tar.gz) and install them.
+# gtest-devel sqlite-devel lapack-devel and dlib-devel etc... are needed by unit tests, if you don't build with ctest, you can ignore them.
 #endif
 #if fedora
-sudo dnf install nanomsg-devel gengetopt cmake
+sudo dnf install nanomsg-devel gengetopt cmake gtest-devel sqlite-devel lapack-devel dlib-devel
 #endif
 ```
 
@@ -71,7 +72,7 @@ in build directory before you run ```cmake ..```  .
 The program can be compiled on Windows natively. And if you wish, it can also run on [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) with compiling method of Linux mentioned above.
 
 ### Compiling natively from source
-Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with C++, CMake for Windows, CMake for Linux & English language pack Component installation. It's highly recommended that installing VS to default path.), CUDA for Windows, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
+Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with **C++, CMake for Windows, CMake for Linux & English language pack Component** installation. It's highly recommended that installing VS to default path.), CUDA for Windows, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
 
 ```bash
 cd \path\to\build\dir

@@ -24,6 +24,14 @@ __global__ void setup_kernel  (rk_state * state, unsigned long seed , int N,
     // printf("idx = %d, N=%d \n",idx,N); 
 } 
 
+/**
+ * @brief Draw a random integer from 0 to n, obeying the probability distribution of p
+ * 
+ * @param n int number 0...n
+ * @param p probability distribution of p
+ * @param state curandStateScrambledSobol64
+ * @return __device__ int  
+ */
 __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
@@ -40,6 +48,7 @@ __device__ int drawDisIdx(int n,float* p,curandStateScrambledSobol64* state){
     *state=s;
     return n-1;
 }
+
 __device__ float drawTau(float k,curandStateScrambledSobol64* state,int randN=10, float precision=1e-6){
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
