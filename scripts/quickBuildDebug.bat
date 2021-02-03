@@ -1,0 +1,1 @@
+cmake --build . --config Debug -j -- /p:CharacterSet=Unicode

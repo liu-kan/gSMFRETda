@@ -487,7 +487,7 @@ int mc::setBurstBd(int cstart, int cstop, int sid) {
         // dim3 threads = dim3(dimension, 1);
         // int blocksCount = ceil(float(N)/dimension);
         // dim3 blocks  = dim3(blocksCount, 1);
-        gridSize[sid] = (N + blockSize - 1) / blockSize;
+        gridSize[sid] = (N* reSampleTimes + blockSize - 1) / blockSize;
         // if (debug)
         //     cout << gridSize[sid] << " g " << N * reSampleTimes << " tN "
         //          << blockSize << " bS " << mcE[sid] << endl;

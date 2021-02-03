@@ -19,3 +19,4 @@ typedef Eigen::Map<arrFF> matXfMapper;
 
 bool genMatK(float* matK,int n, RowVectorXf& args);
 bool genMatP(float* matP,float* matK,int n);
+void genP_i2j(float* matK, float* matP_i2j,int n_sates);

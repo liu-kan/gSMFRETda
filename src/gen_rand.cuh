@@ -66,15 +66,17 @@ __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* sta
     *state=s;
     return 1/(1+powf(rd/r0,6));
 }
-// typedef Eigen::Map<Eigen::MatrixXf> matFlMapper;
+/**
+ * @brief get the next rand state from matK
+ * @param P_i2j a prealloc buff on gpu
+ * @param matK 
+ * @param n_sates 
+ * @param i previous state
+ * @param state rand number gen state
+ * @return new state idx
+*/
 __device__ int drawJ_Si2Sj(float *P_i2j, float *matK,int n_sates,int i,curandStateScrambledSobol64* state){
-    /*    
-    P_i2j=copy.deepcopy(matP)
-    P_i2j[i]=0
-    P_i2j=P_i2j/sum(P_i2j)
-    j=drawDisIdx(np.arange(n_states),P_i2j)
-    return j
-    */
+
     memcpy(P_i2j,matK+i*n_sates,sizeof(float)*n_sates);   //Eigen::ColMajor
     P_i2j[i]=0.0;
     for( int ii=0;ii<n_sates-1;ii++){
@@ -91,7 +93,6 @@ __device__ int drawJ_Si2Sj(float *P_i2j, float *matK,int n_sates,int i,curandSta
     int j = drawDisIdx(n_sates-1,P_i2j,state);
     if (j>=i)
         ++j;
-    // free(P_i2j);
     return j;
 }
 

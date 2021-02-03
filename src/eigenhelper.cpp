@@ -21,6 +21,21 @@ bool genMatK(float* matK,int n, RowVectorXf& args){
     return true;
 }
 
+void genP_i2j(float* matK, float* matP_i2j,int n_sates) {
+    for (int j = 0; j < n_sates; j++) {
+        float sum = 0.0;
+        for (int ii = 0; ii < n_sates; ii++) {
+            if(ii!=j)
+                sum += *(matK + ii + j * n_sates);
+        }
+        for (int ii = 0; ii < n_sates ; ii++) {
+            if (ii != j)
+                *(matP_i2j + ii + j * n_sates) = *(matK + ii + j * n_sates) / sum;
+            else
+                *(matP_i2j + ii + j * n_sates) = 0;
+        }
+    }
+}
 bool genMatP(float* matP,float* matK,int n){
     // int n=matK->rows();
     if (n<1)

@@ -4,18 +4,10 @@
 #include <vector>
 
 #include "GenRandTest.hpp"
-
+#include "ParamsTest.hpp"
 std::vector<int> ints_n;
 std::vector<int> ints_N;
 std::vector<float> floats;
-
-//TEST_P(GenRandTest, Basic) {
-//    std::cout << "Basic int: "        << std::get<0>(GetParam())
-//              << "int: \"" << std::get<1>(GetParam())
-//              << "\"\n";
-//    GenRand gr;
-//    gr.init_randstate(std::get<0>(GetParam()));
-//}
 
 TEST_P(GenRandTest, drawDisIdx) {
   GenRand gr;
@@ -25,6 +17,9 @@ TEST_P(GenRandTest, drawDisIdx) {
   gr.init_mem(N,n); 
   gr.test_drawDisIdx(n);
   gr.free_mem();
+  std::vector<float> args;
+  MatCheck matCheck;
+  matCheck.genRandMatk( n,args);  
 }
 
 INSTANTIATE_TEST_CASE_P(CombinBurstSizeAndParams,
