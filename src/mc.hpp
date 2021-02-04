@@ -37,7 +37,8 @@ class mc
         // unsigned char *g_mask_ad,*g_mask_dd;
         // float *gchi2,*hchi2;
         float **hpe,**hpk,**hpp,**hpv;
-        float **gpe,**gpk,**gpp,**gpv;        
+        float **gpe,**gpk,**gpp,**gpv;
+        float** gpp_i2j;
         int64_t *g_start,*g_stop;//,*g_times_ms;
         int* g_phCount;
         int64_t *g_burst_ad,  *g_burst_dd;
@@ -45,6 +46,7 @@ class mc
         float *g_burst_duration,*g_SgDivSr,clk_p,bg_ad_rate,bg_dd_rate;
         float **g_P_i2j;
         float **matK;
+        float** matP_i2j;
         float **matP; 
         
         int *begin_burst;

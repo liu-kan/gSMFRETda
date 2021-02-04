@@ -1,3 +1,4 @@
+#pragma once
 #include <gtest/gtest.h>
 #include <vector>
 class ParamsTest : public ::testing::TestWithParam<int> {

@@ -69,26 +69,18 @@ __device__ float drawE(float e,float r0,float v,curandStateScrambledSobol64* sta
 /**
  * @brief get the next rand state from matK
  * @param P_i2j a prealloc buff on gpu
- * @param matK 
+ * @param matP_i2j 
  * @param n_sates 
  * @param i previous state
  * @param state rand number gen state
  * @return new state idx
 */
-__device__ int drawJ_Si2Sj(float *P_i2j, float *matK,int n_sates,int i,curandStateScrambledSobol64* state){
-
-    memcpy(P_i2j,matK+i*n_sates,sizeof(float)*n_sates);   //Eigen::ColMajor
-    P_i2j[i]=0.0;
+__device__ int drawJ_Si2Sj(float *P_i2j, float * matP_i2j,int n_sates,int i,curandStateScrambledSobol64* state){
     for( int ii=0;ii<n_sates-1;ii++){
         if(ii>=i)
-            P_i2j[ii]=P_i2j[ii+1];
-    }
-    float sum=0.0;
-    for( int ii=0;ii<n_sates-1;ii++){
-        sum+=P_i2j[ii];
-    }
-    for( int ii=0;ii<n_sates-1;ii++){
-        P_i2j[ii]=P_i2j[ii]/sum;
+            P_i2j[ii]= matP_i2j[i * n_sates+ii+1];
+        else
+            P_i2j[ii] = matP_i2j[i * n_sates + ii ];
     }
     int j = drawDisIdx(n_sates-1,P_i2j,state);
     if (j>=i)

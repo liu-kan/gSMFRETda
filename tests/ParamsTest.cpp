@@ -65,7 +65,7 @@ void ParamsTest::paraMatCheck_test(int n) {
         ASSERT_LT(abs(matP_i2jmp(i, j) / matP_i2jmp(ii, j) - matKmp(i, j) / matKmp(ii, j)), 0.0001);
     }
   }
-  std::cout << matKmp.format(CleanFmt) << sep;
+  std::cout << matP_i2jmp.format(CleanFmt) << sep;
   delete[] matK;
   delete[] matP_i2j;
   delete[] matP;

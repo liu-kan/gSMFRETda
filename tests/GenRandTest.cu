@@ -6,6 +6,9 @@
 #include "hist.hpp"
 #include <vector>
 #include <dlib/statistics.h>
+#include "ParamsTest.hpp"
+#include "eigenhelper.hpp"
+
 void GenRandTest::SetUp(){
   printf("GenRandTest SetUp()\n");
   int nDevices=0;
@@ -72,6 +75,7 @@ void GenRand::init_randstate(int N){
       devScrambleConstants64, devQStates);
   std::cout<<"setup_kernel done!\n";
   CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+  randstateN = N;
 }
 void GenRand::init_mem(int N,int n){
     cudaError_t e = cudaMalloc((void**)&gp, n * sizeof(float));
@@ -81,13 +85,15 @@ void GenRand::init_mem(int N,int n){
     randstateN = N;
 }
 void GenRand::free_mem() {    
-    std::cout << " devDirectionVectors64: " << static_cast<void*>(devDirectionVectors64) << "\n";
-    CUDA_CHECK_RETURN(cudaFree(devDirectionVectors64));
-    CUDA_CHECK_RETURN(cudaFree(devScrambleConstants64));
     if (randstateN > 0) {
         CUDA_CHECK_RETURN(cudaFree(int_res));        
     }
-
+}
+void GenRand::free_randstate() {
+    CUDA_CHECK_RETURN(cudaFree(devDirectionVectors64));
+    CUDA_CHECK_RETURN(cudaFree(devScrambleConstants64));
+    CUDA_CHECK_RETURN(cudaFree(devStates));
+    CUDA_CHECK_RETURN(cudaFree(devQStates));
 }
 
 __global__ void
@@ -98,6 +104,62 @@ test_drawDisIdx_kernel(int n,float* p, int N, int* int_res,
   if (tidx < N) {
       int_res[tidx] = drawDisIdx(n, p, devQStates + tidx);
   }
+}
+
+__global__ void
+test_drawJ_Si2Sj_kernel(int n, float* P_i2j, float* gpp_i2j,int i, int N, int* int_res,
+    curandStateScrambledSobol64* devQStates)
+{
+    int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tidx < N) {
+        int_res[tidx] = drawJ_Si2Sj(P_i2j + tidx * n, gpp_i2j, n, i, devQStates+ tidx);
+    }
+}
+
+void GenRand::test_drawJ_Si2Sj(int n) {
+    float* g_P_i2j;
+    float* gpp_i2j;
+    CUDA_CHECK_RETURN(cudaMalloc((void**)&g_P_i2j,n* randstateN * sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void**)&gpp_i2j, n * n * sizeof(float)));
+    float* matK = new float[n * n];
+    float* matP_i2j = new float[n * n];
+    int* res_c = new int[randstateN];
+    float* p = new float[n];
+    std::ostringstream os;
+
+    std::vector<float> args;
+    MatCheck matCheck;
+    matCheck.genRandMatk(n, args);
+    vecFloatMapper evargs(args.data(), n * n + n);
+    RowVectorXf eargs = evargs.block(0, 0, 1, n);
+    float* peargs = eargs.data();
+    RowVectorXf kargs = evargs.block(0, n, 1, n * n - n);
+    RowVectorXf vargs = evargs.block(0, n * n, 1, n);
+    float* pvargs = vargs.data();
+    bool r = genMatK(matK, n, kargs);
+    genP_i2j(matK, matP_i2j, n);
+    matXfMapper matP_i2jmp(matP_i2j, n, n);
+    CUDA_CHECK_RETURN(cudaMemcpy(gpp_i2j, matP_i2j, sizeof(float) * n * n,cudaMemcpyHostToDevice));
+    for (int ni = 0; ni < n; ni++) {
+        test_drawJ_Si2Sj_kernel <<<gridSize, blockSize >>> (n, g_P_i2j, gpp_i2j, ni,randstateN, int_res, devQStates);
+        os.str("");
+        os.clear();
+        CUDA_CHECK_RETURN(cudaMemcpy(res_c, int_res, randstateN * sizeof(int), cudaMemcpyDeviceToHost));
+        getoss_i(res_c, randstateN, n, os, p);
+        std::vector<float> sp(p, p + n);
+        std::vector<float> tp(matP_i2jmp.data()+ni*n, matP_i2jmp.data() + ni * n + n);
+        float r2 = dlib::r_squared(sp, tp);
+        std::cout << "test_drawJ_Si2Sj r2: " << r2 << std::endl;
+        if (randstateN > 10000)
+            EXPECT_GE(r2, 0.711);
+    }
+
+    delete[] matK;
+    delete[] matP_i2j;
+    delete[] res_c;
+    delete[] p;
+    CUDA_CHECK_RETURN(cudaFree(g_P_i2j));
+    CUDA_CHECK_RETURN(cudaFree(gpp_i2j));
 }
 
 /**
@@ -132,9 +194,9 @@ void GenRand::test_drawDisIdx(int n){
   std::cout << os.str() << std::flush;
   std::vector<float> sp(p, p + n);  
   float r2 = dlib::r_squared(sp, tp);
-  std::cout << "r2: " << r2 << std::endl;
+  std::cout << "test_drawDisIdx r2: " << r2 << std::endl;
   if(randstateN>10000)
-    EXPECT_GE(r2, 0.78);
+    EXPECT_GE(r2, 0.711);
   delete[] p;
   delete[] rawp;
   delete[] res_c;

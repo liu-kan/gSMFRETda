@@ -74,7 +74,7 @@ __global__ void
 mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_dd,
           int64_t *g_istart, int *g_phCount, float *T, /*float* SgDivSr,*/
           float clk_p, float bg_ad_rate, float bg_dd_rate, float *gpe, float *gpv,
-          float *gpk, float *gpp, float *P_i2j, int N, int s_n,
+          float *gpk, float* gpp_i2j, float *gpp, float *P_i2j, int N, int s_n,
           curandStateScrambledSobol64 *devQStates, rk_state *devStates, retype *mcE,
           int reSampleTimes, unsigned char debug = 0, float gamma = 0.34,
           float beta = 1.42, float DexDirAem = 0.08, float Dch2Ach = 0.07,
@@ -105,7 +105,7 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
         int64_t bin1clk_t = start[idx];
         int sj = 0, binIdxStart = 0;
         while (T[idx] > mcSpendTime) {
-            sj = drawJ_Si2Sj(P_i2j + tidx * s_n, gpk, s_n, si, devQStates + tidx);
+            sj = drawJ_Si2Sj(P_i2j + tidx * s_n, gpp_i2j, s_n, si, devQStates + tidx);
             // if(si==0 && sj==2&& tidx<100)
             //     printf("s_n=%d,sj=%d,gpp=%f, %f, %f,
             //     tidx=%d\n",s_n,sj,gpp[0],gpp[1],gpp[2],tidx);
@@ -236,10 +236,12 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     // hpe=(float **)malloc(sizeof(float*)*streamNum);
     gpv = (float **)malloc(sizeof(float *) * streamNum);
     gpk = (float **)malloc(sizeof(float *) * streamNum);
+    gpp_i2j = (float**)malloc(sizeof(float*) * streamNum);
     gpp = (float **)malloc(sizeof(float *) * streamNum);
     gpe = (float **)malloc(sizeof(float *) * streamNum);
     g_P_i2j = (float **)malloc(sizeof(float *) * streamNum);
     matK=(float**)malloc(sizeof(float *) * streamNum);
+    matP_i2j = (float**)malloc(sizeof(float*) * streamNum);
     matP=(float**)malloc(sizeof(float *) * streamNum);
     oldN = new int[streamNum];
     std::fill_n(oldN, streamNum, 0);
@@ -249,9 +251,11 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     // std::memset(hpe, 0, sizeof(float*)*streamNum);
     std::memset(matP, 0, sizeof(float *) * streamNum);
     std::memset(matK, 0, sizeof(float *) * streamNum);
+    std::memset(matP_i2j, 0, sizeof(float*) * streamNum);
     std::memset(g_P_i2j, 0, sizeof(float *) * streamNum);
     std::memset(gpv, 0, sizeof(float *) * streamNum);
-    std::memset(gpk, 0, sizeof(float *) * streamNum);
+    std::memset(gpp_i2j, 0, sizeof(float *) * streamNum);
+    std::memset(gpk, 0, sizeof(float*) * streamNum);
     std::memset(gpp, 0, sizeof(float *) * streamNum);
     std::memset(gpe, 0, sizeof(float *) * streamNum);
     s_n = new int[streamNum];
@@ -518,7 +522,7 @@ void mc::run_kernel(int N, int sid) {
     mc_kernel<<<gridSize[sid], blockSize, 0, streams[sid]>>>(
         g_start, g_stop, g_burst_ad, g_burst_dd, g_istart, g_phCount,
         g_burst_duration, /*g_SgDivSr,*/
-        clk_p, bg_ad_rate, bg_dd_rate, gpe[sid], gpv[sid], gpk[sid], gpp[sid],
+        clk_p, bg_ad_rate, bg_dd_rate, gpe[sid], gpv[sid], gpk[sid], gpp_i2j[sid], gpp[sid],
         g_P_i2j[sid], N, s_n[sid], devQStates[sid], devStates[sid], mcE[sid],
         reSampleTimes, debug & debugLevel::kernel);
     // CUDAstream_CHECK_LAST_ERROR;
@@ -565,6 +569,7 @@ void mc::get_res(int sid, int N) {
 mc::~mc() {
     free_data_gpu();
     free (matK);
+    free(matP_i2j);
     free (matP);
     delete (mr);
     for (int sid = 0; sid < streamNum; sid++) {
@@ -587,6 +592,7 @@ mc::~mc() {
     free(gpv);
     free(gpp);
     free(gpk);
+    free(gpp_i2j);
     free(g_P_i2j);
     // free(hostVectors64);
     // free(hostScrambleConstants64);
@@ -629,6 +635,7 @@ void mc::free_data_gpu() {
 
     for (int sid = 0; sid < streamNum; sid++) {
        delete(matK[sid]);
+       delete(matP_i2j[sid]);
        delete(matP[sid]);
         // cudaStreamSynchronize(streams[sid]);
         // CUDA_CHECK_RETURN(cudaFree(gpe[sid]));
@@ -639,7 +646,7 @@ void mc::free_data_gpu() {
         mr->free(gpv[sid], s_n[sid] * sizeof(float), streams[sid]);
         mr->free(gpp[sid], s_n[sid] * sizeof(float), streams[sid]);
         mr->free(gpk[sid], s_n[sid] * sizeof(float), streams[sid]);
-
+        mr->free(gpp_i2j[sid], s_n[sid] * sizeof(float), streams[sid]);
         // CUDA_CHECK_RETURN(cudaFree(mcE[sid]));
         int oldNN = oldN[sid] * reSampleTimes;
         mr->free(mcE[sid], oldNN * sizeof(retype), streams[sid]);
@@ -698,14 +705,18 @@ int mc::set_nstates(int n, int sid) {
         mr->free(gpv[sid], s_n[sid] * sizeof(float), streams[sid]);
         mr->free(gpp[sid], s_n[sid] * sizeof(float), streams[sid]);
         mr->free(gpk[sid], s_n[sid] * sizeof(float), streams[sid]);
+        mr->free(gpp_i2j[sid], s_n[sid] * sizeof(float), streams[sid]);
         delete (matK[sid]);
         matK[sid]=new float[n*n];
+        delete (matP_i2j[sid]);
+        matP_i2j[sid] = new float[n * n];
         delete(matP[sid]);
         matP[sid]=new float[n];        
         gpe[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpv[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpp[sid] = (float *)(mr->malloc(n * sizeof(float), streams[sid]));
         gpk[sid] = (float *)(mr->malloc(n * n* sizeof(float), streams[sid]));
+        gpp_i2j[sid] = (float*)(mr->malloc(n * n * sizeof(float), streams[sid]));
         // CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpe[sid]), n*sizeof(float)));
         // CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpv[sid]), n*sizeof(float)));
         // CUDA_CHECK_RETURN(cudaMalloc((void **)&(gpp[sid]), n*sizeof(float)));
@@ -743,6 +754,7 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
     float *pvargs = vargs.data();
 
     r = genMatK(matK[sid], n, kargs);
+    genP_i2j(matK[sid], matP_i2j[sid], n);
     //&matK不可修改，但是matK的值可以修改
     r = r && genMatP(matP[sid], matK[sid],n);
     // cout<<"[K]:\n"<<*matK<<endl;
@@ -761,6 +773,8 @@ bool mc::set_params(int n, int sid, vector<float> &args) {
     // }
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpk[sid], matK[sid], sizeof(float) * n * n,
                                      cudaMemcpyHostToDevice, streams[sid]));
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp_i2j[sid], matP_i2j[sid], sizeof(float) * n * n,
+        cudaMemcpyHostToDevice, streams[sid]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(gpp[sid], matP[sid], sizeof(float) * n,
                                      cudaMemcpyHostToDevice, streams[sid]));
 

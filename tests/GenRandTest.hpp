@@ -27,6 +27,8 @@ class GenRand{
         void init_mem(int N,int n);
         void free_mem();
         void test_drawDisIdx(int n);
+        void free_randstate();
+        void test_drawJ_Si2Sj(int n);
         GenRand();
         ~GenRand();
     private:        

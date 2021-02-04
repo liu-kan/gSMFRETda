@@ -91,10 +91,10 @@ set(gen_rand_tests_SRC
     )
 ConfigureTest(gen_rand_tests "${gen_rand_tests_SRC}")
 
-add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu 
+add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.cpp ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.hpp
         hist.cpp hist.hpp) # boost histogram need to be compiled by gcc, no nvcc
-target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY}) 
-target_link_libraries(gen_rand_tests genRand ParamsTest)
+target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ParamsTest)
+target_link_libraries(gen_rand_tests genRand)
 
 set(paraMatCheck_SRC
 	"${gSMFRETda_SOURCE_DIR}/tests/paraMatCheck.cpp" 
