@@ -25,12 +25,14 @@ sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libpro
 ```
 For rpm systems, like Fedora, Centos or Redhat
 ```bash
+#if centos 8
+sudo dnf config-manager --set-enabled PowerTools 
+#elseif redhat 8
+sudo subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms
+#endif
 sudo yum groupinstall "Development Tools" 
 #if centos or redhat
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm # or epel-release-latest-<your_version>.noarch.rpm  
-#endif
-#if centos 8
-sudo dnf config-manager --set-enabled PowerTools 
 #endif
 sudo yum install pkg-config python3-protobuf openssl-devel python3-devel 
 sudo dnf install protobuf-devel texinfo hdf5-devel 
