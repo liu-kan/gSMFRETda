@@ -102,7 +102,7 @@ void streamWorker::run(int sid,int sz_burst){
       else if (dataready[sid]==1){
         gSMFRETda::pb::p_str gpuidStr;
         gpuidStr.set_str(gpuNodeId);
-        if(send_sHist && !sent_oHist){
+        if(/*send_sHist &&*/ !sent_oHist){
           gpuidStr.set_hist(true);
           sent_oHist=true;
           for(float o : vOEHist)

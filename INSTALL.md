@@ -18,6 +18,9 @@ Submodules are not necessary to pull, them are just listed for FOSSA to analyse 
 * libhdf5-dev 1.10 and newer 
 * CMake >= 3.11
 
+### Install CUDA
+Follow the documentation at https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html
+
 ### Build the code
 For deb systems, like Debian or Ubuntu
 ```bash
@@ -35,13 +38,13 @@ sudo yum groupinstall "Development Tools"
 sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm # or epel-release-latest-<your_version>.noarch.rpm  
 #endif
 sudo yum install pkg-config python3-protobuf openssl-devel python3-devel 
-sudo dnf install protobuf-devel texinfo hdf5-devel 
+sudo dnf install protobuf-devel texinfo hdf5-devel gengetopt 
 #If centos or redhat
 # Download [nanomsg](https://nanomsg.org/), [gengetopt](http://www.gnu.org/software/gengetopt/), [cmake >=3.14](https://github.com/Kitware/CMake/releases/download/v3.17.4/cmake-3.17.4.tar.gz) and install them.
-# gtest-devel sqlite-devel lapack-devel and dlib-devel etc... are needed by unit tests, if you don't build with ctest, you can ignore them.
+# gtest-devel sqlite-devel lapack-devel and dlib-devel etc... are needed by unit tests, if you don't build with ctest (add -DBUILD_TESTS=OFF when cmake), you can ignore them.
 #endif
 #if fedora
-sudo dnf install nanomsg-devel gengetopt cmake gtest-devel sqlite-devel lapack-devel dlib-devel
+sudo dnf install nanomsg-devel cmake gtest-devel sqlite-devel lapack-devel dlib-devel
 #endif
 ```
 

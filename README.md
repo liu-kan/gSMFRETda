@@ -29,7 +29,7 @@ More help can be obtained by
 ./gSMFRETda -h
 python3 pySMFRETda/serv_pdaga/pdaServ.py -h
 ```
-Or refering [USAGE.md](USAGE.md).
+Or refering [doc/USAGE.md](doc/USAGE.md).
 
 ## Trouble shooting
 Do not run this GPU computing program for very long time on machines with poor heat dissipation, especially on non-gaming notebooks like ultra-thin laptops. Otherwise, the program may encounter runtime errors or even bring irreversible damages to your computer hardware.

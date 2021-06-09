@@ -4,6 +4,7 @@
 *.ico binary
 *.png binary
 *.psd binary
+*.pptx binary
 resources/*.png filter=lfs diff=lfs merge=lfs -text
 resources/*.psd filter=lfs diff=lfs merge=lfs -text
 resources/*.xcf filter=lfs diff=lfs merge=lfs -text
