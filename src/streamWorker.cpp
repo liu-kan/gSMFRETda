@@ -10,6 +10,7 @@
 using namespace std::chrono_literals;
 #include <boost/histogram.hpp>
 #include <vector>
+#include <numeric>
 using namespace boost::histogram;
 streamWorker::streamWorker(mc* _pdamc,string* _url,std::vector<float>* _d,int _fretHistNum,
   std::mutex *m, std::condition_variable *cv,int *_dataready,int *_sn,
@@ -35,7 +36,7 @@ auto streamWorker::mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float 
         h(*(it++));
     return h;
 }
-void streamWorker::run(int sid,int sz_burst){  
+void streamWorker::run(int sid,int sz_burst, int leftPad){  
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" start connecting "<<url->c_str()<<"\n";  
     int sock;    //local
     bool send_sHist=false;
@@ -58,12 +59,15 @@ void streamWorker::run(int sid,int sz_burst){
     std::string gpuNodeId;
     genuid(&gpuNodeId,pdamc->devid, sid,pdamc->gpuuuid);
     // AtomicWriter(debug,debugLevel::net) <<"net th#"<<sid<<" genuid "<<gpuNodeId.c_str()<<" gotten\n";
-    // int countcalc=0;
     auto fretHist=mkhist(SgDivSr,fretHistNum,0,1);
     vector<float> vOEHist(fretHistNum);
     int ihistO=0;
+    // float sumOHist=0;
     for (auto&& x : indexed(fretHist, coverage::inner))
       vOEHist[ihistO++]=*x;
+    // sumOHist=std::accumulate (vOEHist.begin()+leftPad, vOEHist.end(), 0.0);
+    // for(std::vector<float>::iterator it = vOEHist.begin(); it != vOEHist.end(); ++it)
+    //   *it/=sumOHist;
     bool ending=false;
     int32_t params_idx;
     do {        
@@ -103,13 +107,13 @@ void streamWorker::run(int sid,int sz_burst){
         gSMFRETda::pb::p_str gpuidStr;
         gpuidStr.set_str(gpuNodeId);
         if(/*send_sHist &&*/ !sent_oHist){
-          gpuidStr.set_hist(true);
+          gpuidStr.set_histnum(fretHistNum);
           sent_oHist=true;
           for(float o : vOEHist)
             gpuidStr.add_ohist(o);
         }
         else
-          gpuidStr.set_hist(false);
+          gpuidStr.set_histnum(0);
         string sgpuid;
         gpuidStr.SerializeToString(&sgpuid);
         sgpuid="p"+sgpuid;
@@ -124,7 +128,7 @@ void streamWorker::run(int sid,int sz_burst){
         bytes = nn_recv (sock, &rbuf, NN_MSG, 0);  
         ga.ParseFromArray(rbuf,bytes); 
         int pidx=ga.idx();
-        msg_bestcs=ga.hist();
+        msg_bestcs=ga.bestfv();
         if (pidx<0){
           lck.unlock();
           continue;
@@ -180,13 +184,16 @@ void streamWorker::run(int sid,int sz_burst){
           vector<float> vMcHist(fretHistNum);
           int ihist=0;
           for (auto&& x : indexed(mcHist, coverage::inner))
-            vMcHist[ihist++]=*x;      
-          int effN=fretHistNum;           
+            vMcHist[ihist++]=*x;
+          // float sumMcHist=std::accumulate (vMcHist.begin()+leftPad, vMcHist.end(), 0.0);
+          // for(std::vector<float>::iterator it = vMcHist.begin(); it != vMcHist.end(); ++it)
+          //   *it/=sumMcHist;            
+          int effN=fretHistNum-leftPad;
           float chisqr=0;
-          for(ihist=0;ihist<fretHistNum;ihist++){
+          for(ihist=leftPad;ihist<fretHistNum;ihist++){
             if(vMcHist[ihist]>0)
               chisqr+=pow((float(vOEHist[ihist]-vMcHist[ihist]/pdamc->reSampleTimes)),2)
-                /float(vMcHist[ihist]);
+                /(float(vMcHist[ihist])/pdamc->reSampleTimes);
             else
               effN--;      
           }
@@ -200,7 +207,7 @@ void streamWorker::run(int sid,int sz_burst){
           if(chisqr<msg_bestcs){
             send_sHist=true;        
             for (float s : vMcHist)
-              chi2res.add_shist(s);
+              chi2res.add_shist(s/pdamc->reSampleTimes);
           }
           else
             send_sHist=false;   

@@ -51,12 +51,18 @@ find_package(Boost 1.71.0 COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
 
-set(link_stdc__fs "")
-if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
-  message( FATAL_ERROR "g++ need >=8, CMake will exit." )
-elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
-  message( STATUS "g++ 8.x, add -lstdc++fs" )
-  set(link_stdc__fs "stdc++fs")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(link_stdc__fs "")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
+        message( FATAL_ERROR "g++ need >=8, CMake will exit." )
+    elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8 AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+        message( STATUS "g++ 8.x, add -lstdc++fs" )
+        set(link_stdc__fs "stdc++fs")
+    elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 11)
+        message( STATUS "g++ 11, use g++-10" )
+        set(CMAKE_C_COMPILER gcc-10 CACHE PATH "" FORCE)
+        set(CMAKE_CXX_COMPILER g++-10 CACHE PATH "" FORCE)  
+    endif()
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -82,7 +88,7 @@ FetchContent_Populate(
 if(pserver)
 FetchContent_Populate(
   pySMFRETda
-  GIT_REPOSITORY  https://github.com/liu-kan/pySMFRETda.git
+  GIT_REPOSITORY  https://gitlab.com/liu-kan/pySMFRETda.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/pySMFRETda
   GIT_SHALLOW 1
   GIT_TAG        origin/main
@@ -92,7 +98,7 @@ FetchContent_Populate(
 endif()
 FetchContent_Populate(
   HighFive
-  GIT_REPOSITORY  https://github.com/BlueBrain/HighFive.git
+  GIT_REPOSITORY  https://gitlab.com/liu-kan/HighFive.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/HighFive
   GIT_SHALLOW 1
   GIT_PROGRESS 1

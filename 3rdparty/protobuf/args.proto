@@ -8,7 +8,7 @@ message p_ga {
     /**
     *  indicate current best fit value
     */
-    float hist = 4;
+    float bestfv = 4;
     repeated float params = 5 [packed=true];
 }
 
@@ -31,7 +31,7 @@ message p_cap {
 }
 
 message p_str {
-    bool hist = 1;
+    int32 histNum = 1;
     string str = 2;
     repeated float ohist = 3 [packed=true];
 }

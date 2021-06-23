@@ -37,4 +37,5 @@ class AtomicWriter {
        // write(2,s.c_str(),s.size());
       }
     }
- };
+};
+

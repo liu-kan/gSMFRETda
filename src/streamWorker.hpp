@@ -11,7 +11,7 @@ public:
   streamWorker(mc* pdamc,string* _url,std::vector<float> *d,int fretHistNum,
     std::mutex *m, std::condition_variable *cv,int *dataready,int *sn,
     std::vector<float> *params, int *ga_start, int *ga_stop,int *N,unsigned char debugbool);
-  void run(int sid,int sz_burst);
+  void run(int sid,int sz_burst,int leftPad);
   auto mkhist(std::vector<float>* SgDivSr,int binnum,float lv,float uv);
 private:
   mc* pdamc;

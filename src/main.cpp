@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
     std::cout<<"workers created\n";
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
-      threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst));
+      threads.push_back(std::thread(&streamWorker::run,&worker,i,pdamc.sz_burst,2));
     }
     std::cout<<"net threads looped\n";
     std::this_thread::sleep_for(2s);
