@@ -20,6 +20,19 @@ TEST_P(GenRandTest, drawDisIdx) {
   gr.free_randstate();
 }
 
+
+TEST_P(GenRandTest, drawTau) {
+  GenRand gr;
+  int N = std::get<0>(GetParam());
+  int n = 4;
+  float f = std::get<2>(GetParam());
+  gr.init_randstate(N);
+  gr.init_mem(N,n); 
+  gr.test_drawTau(f);
+  gr.free_mem();
+  gr.free_randstate();
+}
+
 TEST_P(GenRandTest, drawJ_Si2Sj) {
     GenRand gr;
     int N = std::get<0>(GetParam());
@@ -34,7 +47,9 @@ TEST_P(GenRandTest, drawJ_Si2Sj) {
 INSTANTIATE_TEST_CASE_P(CombinBurstSizeAndParams,
   GenRandTest,
   ::testing::Combine(::testing::ValuesIn(ints_N),
-                     ::testing::ValuesIn(ints_n)));
+                     ::testing::ValuesIn(ints_n),
+                     ::testing::ValuesIn(floats)));
+
 
 int main(int argc, char **argv) {
     ints_n.push_back(2);
@@ -45,7 +60,10 @@ int main(int argc, char **argv) {
     ints_N.push_back(10000);
     ints_N.push_back(20000);
     ints_N.push_back(30000);
-    floats.push_back(3.12);
+    floats.push_back(32.6);
+    floats.push_back(312);
+    floats.push_back(3125);
+    floats.push_back(23125.7);
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
   }

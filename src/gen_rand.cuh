@@ -53,7 +53,7 @@ __device__ float drawTau(float k,curandStateScrambledSobol64* state,int randN=10
     curandStateScrambledSobol64 s=*state;
     float pv=curand_uniform(&s);
     *state=s;
-    float r=logf(1-pv)/(-k);
+    float r=logf(pv)/(-k);
     if (r<precision && randN>0){
         float rd=curand_uniform(&s);
         r+=ceilf(randN*rd)*precision;

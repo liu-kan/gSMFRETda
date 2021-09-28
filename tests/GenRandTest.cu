@@ -8,6 +8,7 @@
 #include <dlib/statistics.h>
 #include "ParamsTest.hpp"
 #include "eigenhelper.hpp"
+#include <algorithm>
 
 void GenRandTest::SetUp(){
   printf("GenRandTest SetUp()\n");
@@ -26,6 +27,7 @@ GenRand::GenRand() {
     devDirectionVectors64=NULL;
     devScrambleConstants64=NULL;   
     int_res=NULL;
+    float_res=NULL;
 }
 GenRand::~GenRand() {
     cudaDeviceReset();
@@ -56,7 +58,7 @@ void GenRand::init_randstate(int N){
   int tNN = NN;
   while (tNN > 0) {
       int size = (tNN > 20000) ? 20000 : tNN;
-      std::cout << "n= " << n << std::endl;
+      std::cout << "hostScrambleConstants64 n= " << n << std::endl;
       CUDA_CHECK_RETURN(cudaMemcpy(devScrambleConstants64 + n * 20000, hostScrambleConstants64,
                                         size * sizeof(unsigned long long),
                                         cudaMemcpyHostToDevice));
@@ -82,6 +84,8 @@ void GenRand::init_mem(int N,int n){
     ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";
     e = cudaMalloc((void **)&int_res, N * sizeof(int));
     ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";
+    e = cudaMalloc((void **)&float_res, N * sizeof(float));
+    ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";    
     randstateN = N;
 }
 void GenRand::free_mem() {    
@@ -103,6 +107,16 @@ test_drawDisIdx_kernel(int n,float* p, int N, int* int_res,
   int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   if (tidx < N) {
       int_res[tidx] = drawDisIdx(n, p, devQStates + tidx);
+  }
+}
+
+__global__ void
+test_drawTau_kernel(float k, float* float_res, int N,
+          curandStateScrambledSobol64* devQStates) 
+{
+  int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tidx < N) {
+    float_res[tidx] = drawTau(k, devQStates + tidx, 0);
   }
 }
 
@@ -199,6 +213,49 @@ void GenRand::test_drawDisIdx(int n){
     EXPECT_GE(r2, 0.711);
   delete[] p;
   delete[] rawp;
-  delete[] res_c;
-  
+  delete[] res_c;  
 }
+
+//https://www.math.pku.edu.cn/teachers/lidf/docs/statcomp/html/_statcompbook/intro-graph.html
+void GenRand::test_drawTau(float k){
+    // using namespace boost::histogram;
+    std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    std::exponential_distribution<float> dis(k);  
+    int scount = randstateN;
+    float *rawp=new float[scount];
+    float* res_c = new float[randstateN];    
+    for (int i = 0; i < scount; i++) {
+      rawp[i]=dis(gen);
+    }  
+    float minp=*std::min_element(rawp,rawp+scount);
+    float maxp=*std::max_element(rawp,rawp+scount);
+    int n=100;
+    std::ostringstream os;
+    float* p = new float[n];
+
+    test_drawTau_kernel<<<gridSize, blockSize>>>(k,float_res,randstateN,devQStates);
+    CUDA_CHECK_RETURN(cudaMemcpy(res_c, float_res, randstateN * sizeof(float), cudaMemcpyDeviceToHost));
+    CUDA_CHECK_RETURN(cudaDeviceSynchronize());  
+
+    float minpc=*std::min_element(res_c,res_c+scount);
+    float maxpc=*std::max_element(res_c,res_c+scount);
+    float minpp=std::max(minp,minpc);
+    float maxpp=std::min(maxp,maxpc);
+    getoss(rawp, scount, n,os,p,minpp,maxpp);
+    std::vector<float> tp(p, p+n);
+    std::cout << os.str() << std::flush;  
+    os.str("");
+    os.clear();
+    getoss(res_c, scount, n,os,p,minpp,maxpp);
+    std::cout << os.str() << std::flush;
+    std::vector<float> sp(p, p + n);  
+    float r2 = dlib::r_squared(sp, tp);
+    std::cout << "test_drawTau r2: " << r2 << std::endl;
+    if(randstateN>10000)
+      EXPECT_GE(r2, 0.711);
+    delete[] p;
+    delete[] rawp;
+    delete[] res_c;  
+  }
+  

@@ -109,7 +109,7 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
             // if(si==0 && sj==2&& tidx<100)
             //     printf("s_n=%d,sj=%d,gpp=%f, %f, %f,
             //     tidx=%d\n",s_n,sj,gpp[0],gpp[1],gpp[2],tidx);
-            float st = drawTau(matKmp(si, sj), devQStates + tidx, 0);
+            float st = drawTau(matKmp(sj, si), devQStates + tidx, 0);
             // if(si==0 && sj==2&& tidx<100)
             //     printf("drawTau=%f\n",st);
             mcSpendTime = mcSpendTime + st;
@@ -123,7 +123,7 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
             }
             // [bin0clk_t bin1clk_t) is the clk timing range,
             // Then try to get the ad and dd count in this range.
-            bool sdd = false, sad = false, bdd = false, bad = false;
+            bool sdd = false, sad = false;//, bdd = false, bad = false;
             int f_id = 0, f_ia = 0;
             int64_t ddx, adx;
             long ai = 0;
@@ -155,7 +155,7 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
                         f_i = floorf(f_if - bg_d - bg_a + 0.5);
                     }
                     float de = drawE(gpe[si], r0, gpv[si], devQStates + tidx);
-                    ai = drawA_fi_e(devStates + tidx, f_i, de);
+                    ai = rk_binomial(devStates + tidx, f_i, de);
                     break;
                 }
                 if (ddx > 0)
@@ -164,9 +164,9 @@ mc_kernel(int64_t *start, int64_t *stop, int64_t *g_burst_ad, int64_t *g_burst_d
                     sad = true;
                 if (sad && sdd)
                     continue;
-                if (sad && !bad)
+                if (sad /*&& !bad*/)
                     f_ia++;
-                if (sdd && !bdd)
+                if (sdd /*&& !bdd*/)
                     f_id++;
             }
             mcE[tidx] += ai;

@@ -169,7 +169,7 @@ __device__ long rk_binomial_inversion(rk_state *state, int n, double p) {
 }
 
 //rk_binomial
-__device__ long drawA_fi_e(rk_state *state, int n, double p) {
+__device__ long rk_binomial(rk_state *state, int n, double p) {
     double q;
     if (p <= 0.5) {
         if (p*n <= 30.0) {
@@ -197,5 +197,41 @@ __device__ void rk_seed(unsigned long long s, rk_state *state) {
 }
 
 
+__device__ void
+cg_multinomial (rk_state * r, const size_t K,
+                     const unsigned int N, const double p[], unsigned int n[])
+{
+  size_t k;
+  double norm = 0.0;
+  double sum_p = 0.0;
+
+  unsigned int sum_n = 0;
+
+  /* p[k] may contain non-negative weights that do not sum to 1.0.
+   * Even a probability distribution will not exactly sum to 1.0
+   * due to rounding errors. 
+   */
+
+  for (k = 0; k < K; k++)
+    {
+      norm += p[k];
+    }
+
+  for (k = 0; k < K; k++)
+    {
+      if (p[k] > 0.0)
+        {
+          n[k] = rk_binomial (r,  N - sum_n, p[k] / (norm - sum_p));
+        }
+      else
+        {
+          n[k] = 0;
+        }
+
+      sum_p += p[k];
+      sum_n += n[k];
+    }
+
+}
 
 #endif

@@ -41,7 +41,9 @@ sudo yum install pkg-config python3-protobuf openssl-devel python3-devel
 sudo dnf install protobuf-devel texinfo hdf5-devel gengetopt 
 #If centos or redhat
 # Download [nanomsg](https://nanomsg.org/), [gengetopt](http://www.gnu.org/software/gengetopt/), [cmake >=3.14](https://github.com/Kitware/CMake/releases/download/v3.17.4/cmake-3.17.4.tar.gz) and install them.
-# gtest-devel sqlite-devel lapack-devel and dlib-devel etc... are needed by unit tests, if you don't build with ctest (add -DBUILD_TESTS=OFF when cmake), you can ignore them.
+# If build with ctest, install [remi-release-<version>.rpm](https://rpms.remirepo.net/), then 
+sudo dnf install libXext-devel libpng-devel libjpeg-turbo-devel openblas-devel gtest-devel sqlite-devel lapack-devel dlib-devel
+# if you don't build with ctest (add -DBUILD_TESTS=OFF when cmake), you can ignore them.
 #endif
 #if fedora
 sudo dnf install nanomsg-devel cmake gtest-devel sqlite-devel lapack-devel dlib-devel
