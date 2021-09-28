@@ -209,8 +209,8 @@ void GenRand::test_drawDisIdx(int n){
   std::vector<float> sp(p, p + n);  
   float r2 = dlib::r_squared(sp, tp);
   std::cout << "test_drawDisIdx r2: " << r2 << std::endl;
-  if(randstateN>10000)
-    EXPECT_GE(r2, 0.711);
+  if(randstateN>1000 && n>2)
+    EXPECT_GE(r2, 0.6);
   delete[] p;
   delete[] rawp;
   delete[] res_c;  
