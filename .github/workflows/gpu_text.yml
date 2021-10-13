@@ -36,6 +36,10 @@ jobs:
 
     - name: deps
       run: sudo apt-get install -y build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev libpng-dev
+
+    - name: cuda
+      run: |
+        sudo apt-get install -y cuda-nvprof-11-4  nvidia-headless-470 cuda-cudart-dev-11-4 cuda-minimal-build-11-4 cuda-nvrtc-dev-11-4 libcurand-dev-11-4
     
     - uses: actions/checkout@v2
       with:
@@ -51,7 +55,7 @@ jobs:
 
     - name: build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 1
 
     - name: gpu_test
       working-directory: ${{github.workspace}}/build
