@@ -6,13 +6,13 @@ on:
       ref_sha:
         description: 'SHA of ref'
         required: true
-        
+
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
-  gputest:
+  job_gpu:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -40,8 +40,8 @@ jobs:
 
     - name: cuda
       run: |
-        sudo apt-get install -y software-properties-common
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
+        sudo apt-get install -y software-properties-common curl
+        curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
         sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
         sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
         sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
@@ -70,3 +70,12 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure -R gen_rand_tests
       
+  job_exit:
+    if: always()
+    needs: job_gpu
+    steps:
+    - name: exit_notification      
+      uses: actions/upload-artifact@v1
+      with:
+        name: test-results
+        path: app/build
