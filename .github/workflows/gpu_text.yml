@@ -73,9 +73,26 @@ jobs:
   job_exit:
     if: always()
     needs: job_gpu
+    runs-on: ubuntu-latest
     steps:
-    - name: exit_notification      
-      uses: actions/upload-artifact@v1
+    - uses: actions/checkout@v2
       with:
-        name: test-results
-        path: app/build
+        # The branch, tag or SHA to checkout. When checking out the repository that
+        # triggered a workflow, this defaults to the reference or SHA for that event.
+        # Otherwise, uses the default branch.
+        ref: '${{github.event.inputs.ref_sha}}'    
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    - name: Send the Notification to end GPU Node
+      env:
+        BASE_URL: ${{ secrets.WORKFLOWNOTIFICATION_BASE }} 
+        SIG_KEY: ${{ secrets.WORKFLOWNOTIFICATION_SIGKEY }} 
+      run: |
+        python -m pip install --upgrade pip
+        pip install httpx
+        pip install pydantic
+        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python scripts/workFlowCtrl.py -u "$BASE_URL" -e gputest_end -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" > output.txt
+        echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"

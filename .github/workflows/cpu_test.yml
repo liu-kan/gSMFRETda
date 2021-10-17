@@ -63,7 +63,7 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - name: Send the Notification
+    - name: Send the Notification to start GPU Node
       env:
         BASE_URL: ${{ secrets.WORKFLOWNOTIFICATION_BASE }} 
         SIG_KEY: ${{ secrets.WORKFLOWNOTIFICATION_SIGKEY }} 
@@ -71,14 +71,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install httpx
         pip install pydantic
-        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi  
-        # https://api-xy.de.r.appspot.com/gpubuild/workflow_notification
+        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" > output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
 
     - name: Archive production artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: test
+        name: cpu_test
         path: output.txt
       
