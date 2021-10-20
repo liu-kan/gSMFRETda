@@ -47,6 +47,7 @@ class Workflow_End_With_SHA(BaseModel):
     sha: str
     ref: str
     repository_uri: str
+    id: Optional[int] = None
     conclusion: Optional[str] = None
     outputs: Optional[str] = None
 
@@ -63,14 +64,17 @@ def cmdargs():
     parser.add_argument('--repo', required=True)
     parser.add_argument('-c','--conclusion', default='')
     parser.add_argument('-o','--output', default='')
+    parser.add_argument('-t','--trigger_id', default=0, type=int, \
+                        help="Workflow job id that triggered this Job")
     
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = cmdargs()
     workFlowCtrl = WorkFlowCtrl(args.url, args.sig_key)
-    workflowMessg=Workflow_End_With_SHA(name=args.name,sha=args.sha,ref=args.ref,
-        repository_uri=args.repo,conclusion=args.conclusion,output=args.output)
+    workflowMessg=Workflow_End_With_SHA(name=args.name,sha=args.sha,\
+        ref=args.ref,repository_uri=args.repo,conclusion=args.conclusion,\
+        output=args.output, id=args.trigger_id)
     jsonData=json.loads(workflowMessg.json())
     workFlowCtrl.sendWorkFlowNotification(args.end_point,jsonData)
 

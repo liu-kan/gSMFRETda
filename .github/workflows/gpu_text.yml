@@ -6,6 +6,9 @@ on:
       ref_sha:
         description: 'SHA of ref'
         required: true
+      trigger_wf_id:
+        description: 'Workflow job id that triggered this Job'
+        required: true
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -94,5 +97,5 @@ jobs:
         pip install httpx
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python scripts/workFlowCtrl.py -u "$BASE_URL" -e gputest_end -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" > output.txt
+        python scripts/workFlowCtrl.py -u "$BASE_URL" -e gputest_end -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "${{github.event.inputs.ref_sha}}" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -t "${{github.event.inputs.trigger_wf_id}}" > output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
