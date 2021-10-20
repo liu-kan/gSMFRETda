@@ -16,6 +16,10 @@ on:
       - 'scripts/**'
       - '**.md'
   workflow_dispatch:
+    inputs:
+      ref_sha:
+        description: 'SHA of ref'
+        required: false  
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -41,7 +45,15 @@ jobs:
     - name: deps
       run: sudo apt-get install -y build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev
 
-    - uses: actions/checkout@v2
+    - name: checkout head
+      if: ${{ ! github.event.inputs.ref_sha}}
+      uses: actions/checkout@v2
+
+    - name: checkout with sha
+      if: ${{ github.event.inputs.ref_sha}}
+      uses: actions/checkout@v2
+      with:
+        ref: '${{github.event.inputs.ref_sha}}'
 
     - name: configure_cmake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -63,7 +75,8 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - name: Send the Notification to start GPU Node
+    - name: Send the Notification to start GPU Node HEAD
+      if: ${{ ! github.event.inputs.ref_sha}}
       env:
         BASE_URL: ${{ secrets.WORKFLOWNOTIFICATION_BASE }} 
         SIG_KEY: ${{ secrets.WORKFLOWNOTIFICATION_SIGKEY }} 
@@ -72,8 +85,22 @@ jobs:
         pip install httpx
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        echo "$GITHUB_SHA"
         python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" > output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
+    - name: Send the Notification to start GPU Node SHA
+      if: ${{ github.event.inputs.ref_sha}}
+      env:
+        BASE_URL: ${{ secrets.WORKFLOWNOTIFICATION_BASE }} 
+        SIG_KEY: ${{ secrets.WORKFLOWNOTIFICATION_SIGKEY }} 
+      run: |
+        python -m pip install --upgrade pip
+        pip install httpx
+        pip install pydantic
+        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "${{github.event.inputs.ref_sha}}" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" > output.txt
+        echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
+
 
     - name: Archive production artifacts
       uses: actions/upload-artifact@v2
