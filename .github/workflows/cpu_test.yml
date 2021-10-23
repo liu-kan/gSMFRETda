@@ -86,7 +86,7 @@ jobs:
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         echo "$GITHUB_SHA"
-        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" > output.txt
+        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
     - name: Send the Notification to start GPU Node SHA
       if: ${{ github.event.inputs.ref_sha}}
@@ -98,7 +98,7 @@ jobs:
         pip install httpx
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "${{github.event.inputs.ref_sha}}" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" > output.txt
+        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "${{github.event.inputs.ref_sha}}" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
 
 

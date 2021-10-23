@@ -47,7 +47,7 @@ class Workflow_End_With_SHA(BaseModel):
     sha: str
     ref: str
     repository_uri: str
-    id: Optional[int] = None
+    id: int
     conclusion: Optional[str] = None
     outputs: Optional[str] = None
 
