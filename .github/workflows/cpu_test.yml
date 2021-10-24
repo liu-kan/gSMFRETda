@@ -33,6 +33,9 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
 
+    env:
+      CUDA_HOME: "/usr/local/cuda"
+    
     steps:
     # - uses: Jimver/cuda-toolkit@v0.2.4
     #   id: cuda-toolkit
@@ -48,6 +51,10 @@ jobs:
         sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
         sudo apt-get update
         sudo apt-get install -y cuda-nvprof-11-4  nvidia-headless-470 cuda-cudart-dev-11-4 cuda-minimal-build-11-4 cuda-nvrtc-dev-11-4 libcurand-dev-11-4
+    - name: Set CUDA ENV
+      run: |
+        echo "$CUDA_HOME/bin" >> $GITHUB_PATH
+        echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64:$CUDA_HOME/extras/CUPTI/lib64" >> $GITHUB_ENV
 
     - name: deps
       run: sudo apt-get install -y build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev libpng-dev
