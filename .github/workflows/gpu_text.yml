@@ -5,10 +5,10 @@ on:
     inputs:
       ref_sha:
         description: 'SHA of ref'
-        required: true
+        required: false
       trigger_run_id:
         description: 'Workflow job id that triggered this Job'
-        required: true
+        required: false
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -51,11 +51,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y cuda-nvprof-11-4  nvidia-headless-470 cuda-cudart-dev-11-4 cuda-minimal-build-11-4 cuda-nvrtc-dev-11-4 libcurand-dev-11-4
     
-    - uses: actions/checkout@v2
+    - name: checkout head
+      if: ${{ ! github.event.inputs.ref_sha}}
+      uses: actions/checkout@v2
+
+    - name: checkout with sha
+      if: ${{ github.event.inputs.ref_sha}}
+      uses: actions/checkout@v2
       with:
-        # The branch, tag or SHA to checkout. When checking out the repository that
-        # triggered a workflow, this defaults to the reference or SHA for that event.
-        # Otherwise, uses the default branch.
         ref: '${{github.event.inputs.ref_sha}}'
         
     - name: configure_cmake
@@ -78,17 +81,36 @@ jobs:
     needs: job_gpu
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: checkout head
+      if: ${{ ! github.event.inputs.ref_sha}}
+      uses: actions/checkout@v2
+
+    - name: checkout with sha
+      if: ${{ github.event.inputs.ref_sha}}
+      uses: actions/checkout@v2
       with:
-        # The branch, tag or SHA to checkout. When checking out the repository that
-        # triggered a workflow, this defaults to the reference or SHA for that event.
-        # Otherwise, uses the default branch.
-        ref: '${{github.event.inputs.ref_sha}}'    
+        ref: '${{github.event.inputs.ref_sha}}'
+
     - uses: actions/setup-python@v2
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - name: Send the Notification to end GPU Node
+
+    - name: Send the Notification to end GPU Node HEAD
+      if: ${{ (! github.event.inputs.ref_sha) && github.event.inputs.trigger_run_id}} 
+      env:
+        BASE_URL: ${{ secrets.WORKFLOWNOTIFICATION_BASE }} 
+        SIG_KEY: ${{ secrets.WORKFLOWNOTIFICATION_SIGKEY }} 
+      run: |
+        python -m pip install --upgrade pip
+        pip install httpx
+        pip install pydantic
+        # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python scripts/workFlowCtrl.py -u "$BASE_URL" -e gputest_end -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -t "${{github.event.inputs.trigger_run_id}}" > output.txt
+        echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
+
+    - name: Send the Notification to end GPU Node SHA
+      if: ${{ github.event.inputs.ref_sha && github.event.inputs.trigger_run_id}}
       env:
         BASE_URL: ${{ secrets.WORKFLOWNOTIFICATION_BASE }} 
         SIG_KEY: ${{ secrets.WORKFLOWNOTIFICATION_SIGKEY }} 

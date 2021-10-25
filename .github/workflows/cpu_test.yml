@@ -89,6 +89,7 @@ jobs:
       with:
         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+    
     - name: Send the Notification to start GPU Node HEAD
       if: ${{ ! github.event.inputs.ref_sha}}
       env:
@@ -100,8 +101,9 @@ jobs:
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         echo "$GITHUB_SHA"
-        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
+        python scripts/workFlowCtrl.py -s "$GITHUB_SHA" -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}" > output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
+
     - name: Send the Notification to start GPU Node SHA
       if: ${{ github.event.inputs.ref_sha}}
       env:
@@ -112,7 +114,7 @@ jobs:
         pip install httpx
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python scripts/workFlowCtrl.py -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "${{github.event.inputs.ref_sha}}" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
+        python scripts/workFlowCtrl.py -s "${{github.event.inputs.ref_sha}}" -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
 
 
