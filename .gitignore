@@ -3,3 +3,4 @@
 .clangd
 commit.log
 scripts/mirrorsURL.csv
+.VSCodeCounter

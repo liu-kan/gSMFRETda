@@ -71,11 +71,21 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 1
 
     - name: gpu_test
+      id: gpu_test
       working-directory: ${{github.workspace}}/build
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure -R gen_rand_tests
-      
+
+    - name: GitHub Checks
+      uses: LouisBrunner/checks-action@v1.2.0
+      if: always()
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: gpu check
+        conclusion: action_required
+        details_url: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
   job_exit:
     if: always()
     needs: job_gpu
@@ -106,7 +116,7 @@ jobs:
         pip install httpx
         pip install pydantic
         # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        python scripts/workFlowCtrl.py -u "$BASE_URL" -e gputest_end -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -s "$GITHUB_SHA" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -t "${{github.event.inputs.trigger_run_id}}" > output.txt
+        python scripts/workFlowCtrl.py  -s "$GITHUB_SHA" -u "$BASE_URL" -e gputest_end -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -t "${{github.event.inputs.trigger_run_id}}" > output.txt
         echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
 
     - name: Send the Notification to end GPU Node SHA
