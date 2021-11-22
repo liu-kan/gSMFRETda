@@ -55,6 +55,7 @@ jobs:
   #         cuda: '${{env.CUDA_VERSION}}'
 
   #     - name: Cache cuda packages
+  #     - name: Cache cuda packages
   #       id: cache_save
   #       uses: actions/cache@v2
   #       if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
@@ -70,66 +71,66 @@ jobs:
   #       run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
 
 
-  conan_windows:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: windows-2019
+  # conan_windows:
+  #   # The CMake configure and build commands are platform agnostic and should work equally
+  #   # well on Windows or Mac.  You can convert this to a matrix build if you need
+  #   # cross-platform coverage.
+  #   # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  #   runs-on: windows-2019
     
-    steps:
-      - name: Find Cache conan
-        if: ${{ (! github.event.inputs.update_cache)}}
-        id: cache_hits_conan
-        uses: actions/cache@v2
-        continue-on-error: true
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            c:/conan_p
-            c:/conan_s
-            c:/conan_c
-          key: ${{ runner.os }}-file-conan
+  #   steps:
+  #     - name: Find Cache conan
+  #       if: ${{ (! github.event.inputs.update_cache)}}
+  #       id: cache_hits_conan
+  #       uses: actions/cache@v2
+  #       continue-on-error: true
+  #       env:
+  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+  #       with:
+  #         path: |
+  #           c:/conan_p
+  #           c:/conan_s
+  #           c:/conan_c
+  #         key: ${{ runner.os }}-file-conan
 
-      - name: install conan 
-        if: ${{(! steps.cache_hits_conan.outputs.cache-hit) || github.event.inputs.update_cache}}
-        run: |
-          pip install conan
-          conan config set general.retry=4
-          conan config set general.retry_wait=9
-          conan config set storage.path=c:/conan_p
-          conan config set general.user_home_short=c:/conan_s
-          conan config set storage.download_cache=c:/conan_c          
+  #     - name: install conan 
+  #       if: ${{(! steps.cache_hits_conan.outputs.cache-hit) || github.event.inputs.update_cache}}
+  #       run: |
+  #         pip install conan
+  #         conan config set general.retry=4
+  #         conan config set general.retry_wait=9
+  #         conan config set storage.path=c:/conan_p
+  #         conan config set general.user_home_short=c:/conan_s
+  #         conan config set storage.download_cache=c:/conan_c          
 
-      - name: checkout head      
-        if: ${{ ! github.event.inputs.ref_sha}}
-        uses: actions/checkout@v2
+  #     - name: checkout head      
+  #       if: ${{ ! github.event.inputs.ref_sha}}
+  #       uses: actions/checkout@v2
 
-      - name: checkout with sha
-        if: ${{ github.event.inputs.ref_sha}}
-        uses: actions/checkout@v2
-        with:
-          ref: '${{github.event.inputs.ref_sha}}'
+  #     - name: checkout with sha
+  #       if: ${{ github.event.inputs.ref_sha}}
+  #       uses: actions/checkout@v2
+  #       with:
+  #         ref: '${{github.event.inputs.ref_sha}}'
 
-      - name: conan install
-        if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
-        run: conan install . --profile conan_release_profile.txt --build=missing -if build
+  #     - name: conan install
+  #       if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
+  #       run: conan install . --profile conan_release_profile.txt --build=missing -if build
 
-      - name: Cache conan packages
-        if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
-        id: conan_save
-        uses: actions/cache@v2        
-        env:
-          cache-name: cache-conan
-        with:
-          path: |
-            c:/conan_p
-            c:/conan_s
-            c:/conan_c
-          key: ${{ runner.os }}-file-conan
+  #     - name: Cache conan packages
+  #       if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
+  #       id: conan_save
+  #       uses: actions/cache@v2        
+  #       env:
+  #         cache-name: cache-conan
+  #       with:
+  #         path: |
+  #           c:/conan_p
+  #           c:/conan_s
+  #           c:/conan_c
+  #         key: ${{ runner.os }}-file-conan
 
-  build_windows:
+  windows:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -146,6 +147,7 @@ jobs:
         id: cache_hits_conan
         uses: actions/cache@v2
         continue-on-error: true
+        if: ${{!  github.event.inputs.update_cache}}
         env:
           cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
         with:
@@ -177,6 +179,19 @@ jobs:
       - name: conan install
         run: conan install . --profile conan_release_profile.txt --build=missing -if build
 
+      - name: Cache conan packages
+        if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
+        id: conan_save
+        uses: actions/cache@v2        
+        env:
+          cache-name: cache-conan
+        with:
+          path: |
+            c:/conan_p
+            c:/conan_s
+            c:/conan_c
+          key: ${{ runner.os }}-file-conan
+
       # - name: Find Cache cuda packages
       #   id: cache_hits
       #   uses: actions/cache@v2
@@ -200,13 +215,32 @@ jobs:
       #   run: |
       #     start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_%CUDA_VERSION%.exe -s
       #     echo ("CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%") >> $env:GITHUB_ENV
-      
+      - name: load cuda packages
+        id: cache_hits
+        uses: actions/cache@v2
+        if: ${{ !  github.event.inputs.update_cache}}
+        env:
+          cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
+        with:
+          path: |
+            ${{github.workspace}}/choco
+          key: ${{ runner.os }}-file-${{ env.cache-name }}
+
       - name: cuda install choco
         run: |
+          choco config set cacheLocation ${{github.workspace}}/choco
           choco install cuda -y
-          $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
-          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-          refreshenv
+
+      - name: Cache cuda packages
+        id: cache_save
+        uses: actions/cache@v2
+        if: ${{ (! steps.cache_hits.outputs.cache-hit)}}
+        env:
+          cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
+        with:
+          path: |
+            ${{github.workspace}}/choco
+          key: ${{ runner.os }}-file-${{ env.cache-name }}
 
       - uses: msys2/setup-msys2@v2
         with:
@@ -216,6 +250,11 @@ jobs:
 
       - name: configure_cmake
         run: |
+          C:\msys64\usr\bin\gengetopt -i 3rdparty/gengetopt/cmdline.ggo --file-name=src/3rdparty/gengetopt/cmdline
+          C:\msys64\usr\bin\gengetopt -i 3rdparty/gengetopt/call_gSMFRETda.ggo --file-name=src/3rdparty/gengetopt/call_gSMFRETda
+          $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
           cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64 -Dproto=ON
 
       - name: build

@@ -1,0 +1,38 @@
+name: ci_test
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref_sha:
+        description: 'SHA of ref'
+        required: false
+      update_cache:
+        description: 'update cache'
+        required: false        
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  CUDA_VERSION: 11.2.2
+  cuda_version_major_minor: 11.2
+
+jobs:
+
+  windows:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: windows-2019
+    
+    steps:
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          release: false
+          msystem: MSYS
+          install: gengetopt
+
+      - name: build        
+        run: C:\msys64\usr\bin\gengetopt -v
+
