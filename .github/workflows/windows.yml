@@ -1,4 +1,4 @@
-name: ci_win
+name: ci_build
 
 on:
   push:
@@ -31,45 +31,45 @@ env:
 
 jobs:
 
-  cuda:
-    runs-on: windows-2019
-    steps:
-      - name: Find Cache cuda packages
-        id: cache_hits
-        if: ${{ (! github.event.inputs.update_cache)}}
-        uses: actions/cache@v2
-        continue-on-error: true
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+  # cuda:
+  #   runs-on: windows-2019
+  #   steps:
+  #     - name: Find Cache cuda packages
+  #       id: cache_hits
+  #       if: ${{ (! github.event.inputs.update_cache)}}
+  #       uses: actions/cache@v2
+  #       continue-on-error: true
+  #       env:
+  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+  #       with:
+  #         path: |
+  #           C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+  #         key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - name: cuda-toolkit
-        uses: Jimver/cuda-toolkit@v0.2.4
-        if: ${{( ! steps.cache_hits.outputs.cache-hit ) || github.event.inputs.update_cache}}
-        id: cuda-toolkit
-        with:
-          cuda: '${{env.CUDA_VERSION}}'
+  #     - name: cuda-toolkit
+  #       uses: Jimver/cuda-toolkit@v0.2.4
+  #       if: ${{( ! steps.cache_hits.outputs.cache-hit ) || github.event.inputs.update_cache}}
+  #       id: cuda-toolkit
+  #       with:
+  #         cuda: '${{env.CUDA_VERSION}}'
 
-      - name: Cache cuda packages
-        id: cache_save
-        uses: actions/cache@v2
-        if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+  #     - name: Cache cuda packages
+  #       id: cache_save
+  #       uses: actions/cache@v2
+  #       if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
+  #       env:
+  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+  #       with:
+  #         path: |
+  #           C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+  #         key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - name: dir file
-        if: ${{ steps.cache_save.outputs.cache-hit }}
-        run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+  #     - name: dir file
+  #       if: ${{ steps.cache_save.outputs.cache-hit }}
+  #       run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
 
 
-  conan:
+  conan_windows:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -128,7 +128,7 @@ jobs:
             c:/conan_c
           key: ${{ runner.os }}-file-conan
 
-  build:
+  build_windows:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -176,27 +176,28 @@ jobs:
       - name: conan install
         run: conan install . --profile conan_release_profile.txt --build=missing -if build
 
-      - name: Find Cache cuda packages
-        id: cache_hits
-        uses: actions/cache@v2
-        continue-on-error: true
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+      # - name: Find Cache cuda packages
+      #   id: cache_hits
+      #   uses: actions/cache@v2
+      #   continue-on-error: true
+      #   env:
+      #     cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+      #   with:
+      #     path: |
+      #       C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - uses: Jimver/cuda-toolkit@v0.2.4
-        id: cuda-toolkit
-        if: ${{! steps.cache_hits.outputs.cache-hit}}
-        with:
-          cuda: '${{env.CUDA_VERSION}}'
+      # - uses: Jimver/cuda-toolkit@v0.2.4
+      #   id: cuda-toolkit
+      #   if: ${{! steps.cache_hits.outputs.cache-hit}}
+      #   with:
+      #     cuda: '${{env.CUDA_VERSION}}'
     
       - name: cuda install
-        if: ${{ steps.cache_hits.outputs.cache-hit}}
-        shell: cmd
-        run: start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
+        # if: ${{ steps.cache_hits.outputs.cache-hit}}
+        run: |
+          choco install cuda -y
+          refreshenv
           
         #  7z x C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -o${{github.workspace}}\cuda_${{env.CUDA_VERSION}}
         #  cd cuda_${{env.CUDA_VERSION}}
@@ -207,9 +208,11 @@ jobs:
         #C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
 
       - name: configure_cmake
-        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64 -Dproto=ON
+        run: |
+          $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64 -Dproto=ON
 
       - name: build
         # Build your program with the given configuration
