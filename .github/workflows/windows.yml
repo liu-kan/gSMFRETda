@@ -19,31 +19,144 @@ on:
     inputs:
       ref_sha:
         description: 'SHA of ref'
-        required: false  
+        required: false
+      update_cache:
+        description: 'update cache'
+        required: false        
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
+  CUDA_VERSION: 11.2.2
 
 jobs:
-  winbuild:
+
+  cuda:
+    runs-on: windows-2019
+    steps:
+      - name: Find Cache cuda packages
+        id: cache_hits
+        if: ${{ (! github.event.inputs.update_cache)}}
+        uses: actions/cache@v2
+        continue-on-error: true
+        env:
+          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+        with:
+          path: |
+            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+          key: ${{ runner.os }}-file-${{ env.cache-name }}
+
+      - name: cuda-toolkit
+        uses: Jimver/cuda-toolkit@v0.2.4
+        if: ${{( ! steps.cache_hits.outputs.cache-hit ) || github.event.inputs.update_cache}}
+        id: cuda-toolkit
+        with:
+          cuda: '${{env.CUDA_VERSION}}'
+
+      - name: Cache cuda packages
+        id: cache_save
+        uses: actions/cache@v2
+        if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
+        env:
+          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+        with:
+          path: |
+            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+          key: ${{ runner.os }}-file-${{ env.cache-name }}
+
+      - name: dir file
+        if: ${{ steps.cache_save.outputs.cache-hit }}
+        run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+
+
+  conan:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: windows-2019
-
-    # env:
-      # CUDA_HOME: "/usr/local/cuda"
     
     steps:
-      - uses: Jimver/cuda-toolkit@v0.2.4
-        id: cuda-toolkit
+      - name: Find Cache conan
+        if: ${{ (! github.event.inputs.update_cache)}}
+        id: cache_hits_conan
+        uses: actions/cache@v2
+        continue-on-error: true
+        env:
+          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
         with:
-          cuda: '11.2.2'
+          path: |
+            c:/conan_p
+            c:/conan_s
+            c:/conan_c
+          key: ${{ runner.os }}-file-conan
+
+      - name: install conan 
+        if: ${{(! steps.cache_hits_conan.outputs.cache-hit) || github.event.inputs.update_cache}}
+        run: |
+          pip install conan
+          conan config set general.retry=4
+          conan config set general.retry_wait=9
+          conan config set storage.path=c:/conan_p
+          conan config set general.user_home_short=c:/conan_s
+          conan config set storage.download_cache=c:/conan_c          
+
+      - name: checkout head      
+        if: ${{ ! github.event.inputs.ref_sha}}
+        uses: actions/checkout@v2
+
+      - name: checkout with sha
+        if: ${{ github.event.inputs.ref_sha}}
+        uses: actions/checkout@v2
+        with:
+          ref: '${{github.event.inputs.ref_sha}}'
+
+      - name: conan install
+        if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
+        run: conan install . --profile conan_release_profile.txt --build=missing -if build
+
+      - name: Cache conan packages
+        if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
+        id: conan_save
+        uses: actions/cache@v2        
+        env:
+          cache-name: cache-conan
+        with:
+          path: |
+            c:/conan_p
+            c:/conan_s
+            c:/conan_c
+          key: ${{ runner.os }}-file-conan
+
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: windows-2019
     
-      - name: conan
-        run: pip install conan
+    steps:
+      - name: Find Cache conan
+        id: cache_hits_conan
+        uses: actions/cache@v2
+        continue-on-error: true
+        env:
+          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+        with:
+          path: |
+            c:/conan_p
+            c:/conan_s
+            c:/conan_c
+          key: ${{ runner.os }}-file-conan
+
+      - name: install conan
+        run: |
+          pip install conan
+          conan config set general.retry=4
+          conan config set general.retry_wait=9
+          conan config set storage.path=c:/conan_p
+          conan config set general.user_home_short=c:/conan_s
+          conan config set storage.download_cache=c:/conan_c          
 
       - name: checkout head
         if: ${{ ! github.event.inputs.ref_sha}}
@@ -56,7 +169,36 @@ jobs:
           ref: '${{github.event.inputs.ref_sha}}'
 
       - name: conan install
-        run: conan install . --profile conan_release_profile.txt --build=missing
+        run: conan install . --profile conan_release_profile.txt --build=missing -if build
+
+      - name: Find Cache cuda packages
+        id: cache_hits
+        uses: actions/cache@v2
+        continue-on-error: true
+        env:
+          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+        with:
+          path: |
+            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+          key: ${{ runner.os }}-file-${{ env.cache-name }}
+
+      - uses: Jimver/cuda-toolkit@v0.2.4
+        id: cuda-toolkit
+        if: ${{! steps.cache_hits.outputs.cache-hit}}
+        with:
+          cuda: '${{env.CUDA_VERSION}}'
+    
+      - name: cuda install
+        if: ${{ steps.cache_hits.outputs.cache-hit}}
+        run: start /wait C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
+          
+        #  7z x C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -o${{github.workspace}}\cuda_${{env.CUDA_VERSION}}
+        #  cd cuda_${{env.CUDA_VERSION}}
+        #  mkdir cuda_install_logs
+        #  ./setup.exe -s -loglevel:6 -log:"$(pwd)/cuda_install_logs"
+        #  dir
+          
+        #C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
 
       - name: configure_cmake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -77,6 +219,6 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: cpu_test_win
-          path: output.txt
+          name: windowsBuild
+          path: bin/*
         
