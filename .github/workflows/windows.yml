@@ -136,6 +136,11 @@ jobs:
     runs-on: windows-2019
     
     steps:
+      - name: Sleep for 20 min
+        run: Start-Sleep -s 1200
+        shell: powershell
+        if: ${{  github.event.inputs.update_cache }}
+
       - name: Find Cache conan
         id: cache_hits_conan
         uses: actions/cache@v2
@@ -190,7 +195,8 @@ jobs:
     
       - name: cuda install
         if: ${{ steps.cache_hits.outputs.cache-hit}}
-        run: start /b /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
+        shell: cmd
+        run: start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
           
         #  7z x C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -o${{github.workspace}}\cuda_${{env.CUDA_VERSION}}
         #  cd cuda_${{env.CUDA_VERSION}}
