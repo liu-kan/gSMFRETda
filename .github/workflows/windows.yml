@@ -198,8 +198,8 @@ jobs:
         if: ${{ steps.cache_hits.outputs.cache-hit}}
         shell: cmd
         run: |
-          start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
-          set CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%
+          start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_%CUDA_VERSION%.exe -s
+          echo ("CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%") >> $env:GITHUB_ENV
       
       # - name: cuda install choco
       #   run: |
