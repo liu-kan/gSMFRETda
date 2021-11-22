@@ -57,7 +57,7 @@ jobs:
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64:$CUDA_HOME/extras/CUPTI/lib64" >> $GITHUB_ENV
 
       - name: deps
-        run: sudo apt-get install -y build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev libpng-dev libgsl-dev
+        run: sudo apt-get install -y build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnng-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev libpng-dev libgsl-dev
 
       - name: checkout head
         if: ${{ ! github.event.inputs.ref_sha}}

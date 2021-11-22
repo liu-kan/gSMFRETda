@@ -4,7 +4,7 @@
 * Change rmm to a simple self written mem pool .
 
 ## 2020-10-16 added
-* Change nanomsg to ZMQ.
+* ~~Change nanomsg to NNG.~~
 
 ## 2020-10-13 added
 * Use Cap'n Proto or flatbuffers instead of Protobuf.

@@ -1,3 +1,6 @@
+// #define ENABLE_ASSERTS
+// #define DLIB_NO_GUI_SUPPORT
+
 #include <cuda_runtime_api.h>
 #include "GenRandTest.hpp"
 #include "binom.cuh"
@@ -9,10 +12,6 @@
 #include "ParamsTest.hpp"
 #include "eigenhelper.hpp"
 #include <algorithm>
-
-#define ENABLE_ASSERTS
-#define DLIB_NO_GUI_SUPPORT
-#define DLIB_ISO_CPP_ONLY
 
 void GenRandTest::SetUp(){
   printf("GenRandTest SetUp()\n");

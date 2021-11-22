@@ -1,8 +1,8 @@
 #include "streamWorker.hpp"
 #include <assert.h>
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
-#include <nanomsg/tcp.h>
+#include <nng/compat/nanomsg/nn.h>
+#include <nng/compat/nanomsg/reqrep.h>
+// #include <nanomsg/tcp.h>
 #include "args.pb.h"
 #include "tools.hpp"
 #include <iostream>

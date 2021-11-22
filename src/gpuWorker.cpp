@@ -1,9 +1,6 @@
 #include "gpuWorker.hpp"
 #include <assert.h>
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
-#include <nanomsg/pair.h>
-#include <nanomsg/tcp.h>
+
 #include "args.pb.h"
 #include "tools.hpp"
 #include <iostream>
