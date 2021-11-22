@@ -32,42 +32,42 @@ env:
 
 jobs:
 
-  cuda:
-    runs-on: windows-2019
-    steps:
-      - name: Find Cache cuda packages
-        id: cache_hits
-        if: ${{ (! github.event.inputs.update_cache)}}
-        uses: actions/cache@v2
-        continue-on-error: true
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+  # cuda:
+  #   runs-on: windows-2019
+  #   steps:
+  #     - name: Find Cache cuda packages
+  #       id: cache_hits
+  #       if: ${{ (! github.event.inputs.update_cache)}}
+  #       uses: actions/cache@v2
+  #       continue-on-error: true
+  #       env:
+  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+  #       with:
+  #         path: |
+  #           C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+  #         key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - name: cuda-toolkit
-        uses: Jimver/cuda-toolkit@v0.2.4
-        if: ${{( ! steps.cache_hits.outputs.cache-hit ) || github.event.inputs.update_cache}}
-        id: cuda-toolkit
-        with:
-          cuda: '${{env.CUDA_VERSION}}'
+  #     - name: cuda-toolkit
+  #       uses: Jimver/cuda-toolkit@v0.2.4
+  #       if: ${{( ! steps.cache_hits.outputs.cache-hit ) || github.event.inputs.update_cache}}
+  #       id: cuda-toolkit
+  #       with:
+  #         cuda: '${{env.CUDA_VERSION}}'
 
-      - name: Cache cuda packages
-        id: cache_save
-        uses: actions/cache@v2
-        if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+  #     - name: Cache cuda packages
+  #       id: cache_save
+  #       uses: actions/cache@v2
+  #       if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
+  #       env:
+  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+  #       with:
+  #         path: |
+  #           C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+  #         key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - name: dir file
-        if: ${{ steps.cache_save.outputs.cache-hit }}
-        run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+  #     - name: dir file
+  #       if: ${{ steps.cache_save.outputs.cache-hit }}
+  #       run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
 
 
   conan_windows:
@@ -177,36 +177,36 @@ jobs:
       - name: conan install
         run: conan install . --profile conan_release_profile.txt --build=missing -if build
 
-      - name: Find Cache cuda packages
-        id: cache_hits
-        uses: actions/cache@v2
-        continue-on-error: true
-        env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+      # - name: Find Cache cuda packages
+      #   id: cache_hits
+      #   uses: actions/cache@v2
+      #   continue-on-error: true
+      #   env:
+      #     cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+      #   with:
+      #     path: |
+      #       C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
+      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - uses: Jimver/cuda-toolkit@v0.2.4
-        id: cuda-toolkit
-        if: ${{! steps.cache_hits.outputs.cache-hit}}
-        with:
-          cuda: '${{env.CUDA_VERSION}}'
+      # - uses: Jimver/cuda-toolkit@v0.2.4
+      #   id: cuda-toolkit
+      #   if: ${{! steps.cache_hits.outputs.cache-hit}}
+      #   with:
+      #     cuda: '${{env.CUDA_VERSION}}'
 
-      - name: cuda install
-        if: ${{ steps.cache_hits.outputs.cache-hit}}
-        shell: cmd
-        run: |
-          start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_%CUDA_VERSION%.exe -s
-          echo ("CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%") >> $env:GITHUB_ENV
-      
-      # - name: cuda install choco
+      # - name: cuda install
+      #   if: ${{ steps.cache_hits.outputs.cache-hit}}
+      #   shell: cmd
       #   run: |
-      #     choco install cuda -y
-      #     $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
-      #     Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-      #     refreshenv
+      #     start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_%CUDA_VERSION%.exe -s
+      #     echo ("CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%") >> $env:GITHUB_ENV
+      
+      - name: cuda install choco
+        run: |
+          choco install cuda -y
+          $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+          Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+          refreshenv
 
       - uses: msys2/setup-msys2@v2
         with:
