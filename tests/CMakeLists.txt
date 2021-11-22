@@ -18,12 +18,13 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 else()
     FIND_PACKAGE(dlib REQUIRED)
+    find_package(GSL REQUIRED)    
     find_package(Boost)
 endif()
 if (NOT CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT Boost_FOUND)
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 endif()
-
+   
 ###################################################################################################
 # - compiler function
 function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
@@ -33,9 +34,7 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     ### include_directories
     include_directories(${CUDA_INCLUDE_DIRS})
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-        target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_DLIB})
-        target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_GTEST})
-        target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_BOOST})
+        target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS})
     elseif(NOT Boost_FOUND)
         target_include_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_INCLUDE_DIRS_BOOST})
     else()
@@ -44,9 +43,7 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     ### link_directories
     target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/compat)
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_DLIB})
-        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_GTEST})
-        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_BOOST})
+        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS})
     elseif(NOT Boost_FOUND)
         target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_BOOST})        
     endif()
@@ -56,13 +53,13 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
                          ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})    
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         target_link_libraries(${CMAKE_TEST_NAME} 
-            ${CONAN_LIBS_GTEST} ${Boost_LIBRARIES} ${CONAN_LIBS_DLIB} ${CONAN_SYSTEM_LIBS_DLIB})
+            ${CONAN_LIBS} ${CONAN_SYSTEM_LIBS} ${CONAN_LIBS_BOOST})
     elseif(NOT Boost_FOUND)
         target_link_libraries(${CMAKE_TEST_NAME} 
             gtest gtest_main dl pthread ${CONAN_LIBS_BOOST} dlib::dlib)
     else()
         TARGET_LINK_LIBRARIES(${CMAKE_TEST_NAME} 
-            gtest gtest_main dl pthread ${Boost_LIBRARIES} dlib::dlib)             
+            gtest gtest_main dl pthread ${Boost_LIBRARIES} dlib::dlib)
     endif()
 
     set_target_properties(${CMAKE_TEST_NAME} PROPERTIES
@@ -94,13 +91,16 @@ ConfigureTest(gen_rand_tests "${gen_rand_tests_SRC}")
 add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.cpp ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.hpp
         hist.cpp hist.hpp) # boost histogram need to be compiled by gcc, no nvcc
 target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ParamsTest)
-target_link_libraries(gen_rand_tests genRand)
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    target_link_libraries(gen_rand_tests genRand ${CONAN_LIBS_GSL})
+else()
+    target_link_libraries(gen_rand_tests genRand GSL::gsl GSL::gslcblas)
+endif()
 
 set(paraMatCheck_SRC
 	"${gSMFRETda_SOURCE_DIR}/tests/paraMatCheck.cpp" 
     )
 ConfigureTest(paraMatCheck_tests "${paraMatCheck_SRC}")
-
 add_library(ParamsTest STATIC ParamsTest.hpp ParamsTest.cpp ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.cpp ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.hpp)
 target_link_libraries(paraMatCheck_tests ParamsTest)
 

@@ -6,6 +6,15 @@ getopt-for-visual-studio/20200201
 nanomsg/1.1.2@bincrafters/stable
 dlib/19.21
 gtest/1.10.0
+gsl/2.7
 
 [generators]
 cmake
+
+[options]
+boost:without_test=True
+boost:without_mpi=True
+boost:without_wave=True
+boost:without_graph=True
+boost:without_graph_parallel=True
+boost:without_python=True

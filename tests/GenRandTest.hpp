@@ -31,6 +31,7 @@ class GenRand{
         void free_randstate();
         void test_drawJ_Si2Sj(int n);
         void test_drawTau(float k);
+        void test_binomial(int n, float p);
         GenRand();
         ~GenRand();
     private:        

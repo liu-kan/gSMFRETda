@@ -198,8 +198,8 @@ __device__ void rk_seed(unsigned long long s, rk_state *state) {
 
 
 __device__ void
-cg_multinomial (rk_state * r, const size_t K,
-                     const unsigned int N, const double p[], unsigned int n[])
+csd_multinomial (rk_state * r, const size_t K,
+                    const unsigned int N, const double p[], unsigned int n[])
 {
   size_t k;
   double norm = 0.0;

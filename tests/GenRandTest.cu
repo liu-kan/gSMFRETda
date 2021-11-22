@@ -10,6 +10,10 @@
 #include "eigenhelper.hpp"
 #include <algorithm>
 
+#define ENABLE_ASSERTS
+#define DLIB_NO_GUI_SUPPORT
+#define DLIB_ISO_CPP_ONLY
+
 void GenRandTest::SetUp(){
   printf("GenRandTest SetUp()\n");
   int nDevices=0;
@@ -182,6 +186,8 @@ void GenRand::test_drawJ_Si2Sj(int n) {
  * @param n Number of states use in hist
  */
 void GenRand::test_drawDisIdx(int n){
+  if (n<4)
+    return;
   // using namespace boost::histogram;
   std::random_device rd;  //Will be used to obtain a seed for the random number engine
   std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -192,7 +198,7 @@ void GenRand::test_drawDisIdx(int n){
   int* res_c = new int[randstateN];
   float* p = new float[n];
   for (int i = 0; i < scount; i++) {
-    rawp[i]=dis(gen);
+    rawp[i]=dis(gen);    
   }  
   std::ostringstream os;
   getoss(rawp, scount, n,os,p);
@@ -218,6 +224,8 @@ void GenRand::test_drawDisIdx(int n){
 
 //https://www.math.pku.edu.cn/teachers/lidf/docs/statcomp/html/_statcompbook/intro-graph.html
 void GenRand::test_drawTau(float k){
+  if (k<0.2)
+    return;  
     // using namespace boost::histogram;
     std::random_device rd;  //Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -257,5 +265,147 @@ void GenRand::test_drawTau(float k){
     delete[] p;
     delete[] rawp;
     delete[] res_c;  
+}
+ 
+__global__ void
+test_binomial_kernel(int n, float p, int* int_res, int N, rk_state* devStates) 
+{
+  int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tidx < N) {
+      int_res[tidx] = (int)rk_binomial(devStates + tidx, n, p);
   }
+}
+
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+
+void GenRand::test_binomial(int n, float p){  
+  if (p>1)
+    p=1/p;
+  if (p<0.2)
+    return;
+  const gsl_rng_type * rngT;
+  gsl_rng * rng ;
+  /* create a generator chosen by the
+     environment variable GSL_RNG_TYPE */
+  gsl_rng_env_setup();
+  rngT = gsl_rng_default;
+  rng = gsl_rng_alloc (rngT);
+
+  float* pp = new float[n];
+  int scount = randstateN;
+  int *rawp  = new int[scount];
+  int *res_c = new int[scount];
+
+  for (int i = 0; i < scount; i++) {
+    rawp[i]=gsl_ran_binomial(rng, p, n);
+  }
+
+  // std::cout<<std::endl << "rawp:" <<std::endl;
+  // for (int i=0;i<scount;i++)
+  //   std::cout << rawp[i] << ' ';    
+  // std::cout<<std::endl;
+
+  std::ostringstream os;
+  getoss_i(rawp, scount, n, os, pp);
+  std::cout << os.str() << std::flush;
+  os.str("");
+  os.clear();
+  std::vector<float> tp(pp, pp + n );
+
+  test_binomial_kernel<<<gridSize, blockSize>>>(n,p,int_res,scount,devStates);
+  CUDA_CHECK_RETURN(cudaMemcpy(res_c, int_res, scount * sizeof(int), cudaMemcpyDeviceToHost));
+  CUDA_CHECK_RETURN(cudaDeviceSynchronize());  
   
+  // std::cout<<std::endl << "res_c:" <<std::endl;
+  // for (int i=0;i<scount;i++)
+  //   std::cout << res_c[i] << ' ';    
+  // std::cout<<std::endl;  
+
+  getoss_i(res_c, scount, n, os, pp);
+  std::cout << os.str() << std::flush;  
+  std::vector<float> sp(pp, pp + n );
+  std::cout << "sp:" <<std::endl;
+  for (auto i: sp)
+    std::cout << i << ' ';
+  std::cout<<std::endl<< "tp:" <<std::endl;
+  for (auto i: tp)
+    std::cout << i << ' ';    
+  std::cout<<std::endl;
+  float r2 = dlib::r_squared(sp, tp);
+  std::cout << "test_binomial r2: " << r2 << std::endl;
+  // if(randstateN>10000)
+    EXPECT_GE(r2, 0.711);
+  delete[] pp;
+  delete[] rawp;
+  delete[] res_c;  
+}
+
+/*
+void GenRand::test_multinomial(int K, float p){  
+  if (p>1)
+    p=1/p;
+  if (p<0.2)
+    return;
+  std::default_random_engine generator;
+  std::uniform_real_distribution<double> distribution(0.2,3);
+  double number = distribution(generator);
+  //K->N p->gp[K]
+
+  const gsl_rng_type * rngT;
+  gsl_rng * rng ;
+  // create a generator chosen by the
+  // environment variable GSL_RNG_TYPE
+  gsl_rng_env_setup();
+  rngT = gsl_rng_default;
+  rng = gsl_rng_alloc (rngT);
+
+  float* pp = new float[n];
+  int scount = randstateN;
+  int *rawp  = new int[scount];
+  int *res_c = new int[scount];
+
+  for (int i = 0; i < scount; i++) {
+    rawp[i]=gsl_ran_binomial(rng, p, n);
+  }
+
+  // std::cout<<std::endl << "rawp:" <<std::endl;
+  // for (int i=0;i<scount;i++)
+  //   std::cout << rawp[i] << ' ';    
+  // std::cout<<std::endl;
+
+  std::ostringstream os;
+  getoss_i(rawp, scount, n, os, pp);
+  std::cout << os.str() << std::flush;
+  os.str("");
+  os.clear();
+  std::vector<float> tp(pp, pp + n );
+
+  test_binomial_kernel<<<gridSize, blockSize>>>(n,p,int_res,scount,devStates);
+  CUDA_CHECK_RETURN(cudaMemcpy(res_c, int_res, scount * sizeof(int), cudaMemcpyDeviceToHost));
+  CUDA_CHECK_RETURN(cudaDeviceSynchronize());  
+  
+  // std::cout<<std::endl << "res_c:" <<std::endl;
+  // for (int i=0;i<scount;i++)
+  //   std::cout << res_c[i] << ' ';    
+  // std::cout<<std::endl;  
+
+  getoss_i(res_c, scount, n, os, pp);
+  std::cout << os.str() << std::flush;  
+  std::vector<float> sp(pp, pp + n );
+  std::cout << "sp:" <<std::endl;
+  for (auto i: sp)
+    std::cout << i << ' ';
+  std::cout<<std::endl<< "tp:" <<std::endl;
+  for (auto i: tp)
+    std::cout << i << ' ';    
+  std::cout<<std::endl;
+  float r2 = dlib::r_squared(sp, tp);
+  std::cout << "test_binomial r2: " << r2 << std::endl;
+  // if(randstateN>10000)
+    EXPECT_GE(r2, 0.711);
+  delete[] pp;
+  delete[] rawp;
+  delete[] res_c;  
+}
+*/

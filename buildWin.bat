@@ -4,7 +4,7 @@ rem echo %pwd%
 
 SET srcpath=%~dp0
 set src_dir=%srcpath:~0,-1%
-conan install %src_dir% -r conan-gSMFRETda --profile %src_dir%\conan_release_profile.txt
+conan install %src_dir% --profile %src_dir%\conan_release_profile.txt --build=missing
 
 set proto=OFF
 set arg1=%1

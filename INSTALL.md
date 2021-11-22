@@ -24,7 +24,7 @@ Follow the documentation at https://docs.nvidia.com/cuda/cuda-installation-guide
 ### Build the code
 For deb systems, like Debian or Ubuntu
 ```bash
-sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev
+sudo apt install build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnanomsg-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev libgsl-dev
 ```
 For rpm systems, like Fedora, Centos or Redhat
 ```bash
@@ -42,11 +42,11 @@ sudo dnf install protobuf-devel texinfo hdf5-devel gengetopt
 #If centos or redhat
 # Download [nanomsg](https://nanomsg.org/), [gengetopt](http://www.gnu.org/software/gengetopt/), [cmake >=3.14](https://github.com/Kitware/CMake/releases/download/v3.17.4/cmake-3.17.4.tar.gz) and install them.
 # If build with ctest, install [remi-release-<version>.rpm](https://rpms.remirepo.net/), then 
-sudo dnf install libXext-devel libpng-devel libjpeg-turbo-devel openblas-devel gtest-devel sqlite-devel lapack-devel dlib-devel
+sudo dnf install libXext-devel libpng-devel libjpeg-turbo-devel openblas-devel gtest-devel sqlite-devel lapack-devel dlib-devel gsl-devel
 # if you don't build with ctest (add -DBUILD_TESTS=OFF when cmake), you can ignore them.
 #endif
 #if fedora
-sudo dnf install nanomsg-devel cmake gtest-devel sqlite-devel lapack-devel dlib-devel
+sudo dnf install nanomsg-devel cmake gtest-devel sqlite-devel lapack-devel dlib-devel gsl-devel
 #endif
 ```
 

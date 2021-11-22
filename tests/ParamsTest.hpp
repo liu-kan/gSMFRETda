@@ -1,4 +1,5 @@
 #pragma once
+#define BOOST_TEST_MODULE 
 #include <gtest/gtest.h>
 #include <vector>
 class ParamsTest : public ::testing::TestWithParam<int> {
