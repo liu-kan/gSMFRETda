@@ -190,7 +190,7 @@ jobs:
     
       - name: cuda install
         if: ${{ steps.cache_hits.outputs.cache-hit}}
-        run: start "" /wait C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
+        run: start /b /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -s
           
         #  7z x C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe -o${{github.workspace}}\cuda_${{env.CUDA_VERSION}}
         #  cd cuda_${{env.CUDA_VERSION}}
