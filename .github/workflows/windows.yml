@@ -149,13 +149,16 @@ jobs:
         continue-on-error: true
         if: ${{! github.event.inputs.update_cache}}
         env:
-          cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
+          cache-name: cache-conan
         with:
           path: |
             c:/conan_p
             c:/conan_s
             c:/conan_c
-          key: ${{ runner.os }}-file-conan
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.cache-name }}-${{github.sha}}-
+            ${{ runner.os }}-${{ env.cache-name }}-
 
       - name: install conan
         run: |
@@ -182,7 +185,7 @@ jobs:
       - name: Cache conan packages
         if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
         id: conan_save
-        uses: actions/cache@v2        
+        uses: actions/cache@v2
         env:
           cache-name: cache-conan
         with:
@@ -190,7 +193,7 @@ jobs:
             c:/conan_p
             c:/conan_s
             c:/conan_c
-          key: ${{ runner.os }}-file-conan
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
 
       # - name: Find Cache cuda packages
       #   id: cache_hits

@@ -3,9 +3,18 @@ os=Windows
 os_build=Windows
 arch=x86_64
 arch_build=x86_64
-compiler=Visual Studio
-compiler.version=16
+compiler=msvc
+compiler.version=19.29
+# https://github.com/conan-io/conan/pull/8201
+# https://github.com/conan-io/conan/issues/3311
 build_type=Release
+#compiler=Visual Studio
+#compiler.version=16
+compiler.cppstd=14
+compiler.runtime=static
+
 [options]
+
 [build_requires]
+
 [env]
