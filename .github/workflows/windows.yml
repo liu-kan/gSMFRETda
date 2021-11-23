@@ -177,7 +177,7 @@ jobs:
           ref: '${{github.event.inputs.ref_sha}}'
 
       - name: conan install
-        run: conan install . --profile conan_release_profile.txt --build=missing -if build
+        run: conan install . --profile conan_release_profile.txt --build=missing --build=protobuf -if build 
 
       - name: Cache conan packages
         if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
