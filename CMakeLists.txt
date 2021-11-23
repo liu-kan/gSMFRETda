@@ -3,10 +3,11 @@ cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 project(gSMFRETda 
         VERSION 0.8.7.201204
         LANGUAGES CXX C CUDA)
-#set(CMAKE_CXX_STANDARD 17) # enable std::byte
-# gcc now has bug if -std=c++17 is used with Boost::histogram
+#set(CMAKE_CXX_STANDARD 14) # enable std::byte
+# gcc now has bug if -std=c++17 is used with Boost::histogram Oct. 2020
 # https://github.com/boostorg/histogram/issues/290
-set(CMAKE_CXX_STANDARD 14)
+# fixed in 1.75@boostorg/histogram
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
