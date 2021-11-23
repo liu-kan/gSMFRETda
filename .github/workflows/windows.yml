@@ -138,16 +138,16 @@ jobs:
     runs-on: windows-2019
     
     steps:
-      - name: Sleep for 20 min
-        run: Start-Sleep -s 1200
-        shell: powershell
-        if: ${{  github.event.inputs.update_cache }}
+      # - name: Sleep for 20 min
+      #   run: Start-Sleep -s 1200
+      #   shell: powershell
+      #   if: ${{  github.event.inputs.update_cache }}
 
       - name: Find Cache conan
         id: cache_hits_conan
         uses: actions/cache@v2
         continue-on-error: true
-        if: ${{!  github.event.inputs.update_cache}}
+        if: ${{! github.event.inputs.update_cache}}
         env:
           cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
         with:
@@ -203,11 +203,11 @@ jobs:
       #       C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
       #     key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      # - uses: Jimver/cuda-toolkit@v0.2.4
-      #   id: cuda-toolkit
-      #   if: ${{! steps.cache_hits.outputs.cache-hit}}
-      #   with:
-      #     cuda: '${{env.CUDA_VERSION}}'
+      - uses: Jimver/cuda-toolkit@v0.2.4
+        id: cuda-toolkit
+        if: ${{! steps.cache_hits.outputs.cache-hit}}
+        with:
+          cuda: '${{env.CUDA_VERSION}}'
 
       # - name: cuda install
       #   if: ${{ steps.cache_hits.outputs.cache-hit}}
@@ -215,32 +215,33 @@ jobs:
       #   run: |
       #     start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_%CUDA_VERSION%.exe -s
       #     echo ("CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%") >> $env:GITHUB_ENV
-      - name: load cuda packages
-        id: cache_hits
-        uses: actions/cache@v2
-        if: ${{ !  github.event.inputs.update_cache}}
-        env:
-          cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            ${{github.workspace}}/choco
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - name: cuda install choco
-        run: |
-          choco config set cacheLocation ${{github.workspace}}/choco
-          choco install cuda -y
+      # - name: load cuda packages
+      #   id: cache_hits
+      #   uses: actions/cache@v2
+      #   if: ${{ !  github.event.inputs.update_cache}}
+      #   env:
+      #     cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
+      #   with:
+      #     path: |
+      #       ${{github.workspace}}/choco
+      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
 
-      - name: Cache cuda packages
-        id: cache_save
-        uses: actions/cache@v2
-        if: ${{ (! steps.cache_hits.outputs.cache-hit)}}
-        env:
-          cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
-        with:
-          path: |
-            ${{github.workspace}}/choco
-          key: ${{ runner.os }}-file-${{ env.cache-name }}
+      # - name: cuda install choco
+      #   run: |
+      #     choco config set cacheLocation ${{github.workspace}}/choco
+      #     choco install cuda -y
+
+      # - name: Cache cuda packages
+      #   id: cache_save
+      #   uses: actions/cache@v2
+      #   if: ${{ (! steps.cache_hits.outputs.cache-hit)}}
+      #   env:
+      #     cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
+      #   with:
+      #     path: |
+      #       ${{github.workspace}}/choco
+      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
 
       - uses: msys2/setup-msys2@v2
         with:
