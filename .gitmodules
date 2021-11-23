@@ -8,12 +8,12 @@
 [submodule "3rdparty/src/boost"]
 	path = 3rdparty/src/boost
 	url = https://github.com/boostorg/boost.git
-[submodule "3rdparty/src/nanomsg"]
-	path = 3rdparty/src/nanomsg
-	url = https://github.com/nanomsg/nanomsg.git
 [submodule "3rdparty/src/protobuf"]
 	path = 3rdparty/src/protobuf
 	url = https://github.com/protocolbuffers/protobuf.git
 [submodule "3rdparty/src/hdf5"]
 	path = 3rdparty/src/hdf5
 	url = https://github.com/HDFGroup/hdf5.git
+[submodule "3rdparty/src/nng"]
+	path = 3rdparty/src/nng
+	url = https://github.com/nanomsg/nng.git

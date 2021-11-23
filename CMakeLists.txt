@@ -7,7 +7,7 @@ project(gSMFRETda
 # gcc now has bug if -std=c++17 is used with Boost::histogram Oct. 2020
 # https://github.com/boostorg/histogram/issues/290
 # fixed in 1.75@boostorg/histogram
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

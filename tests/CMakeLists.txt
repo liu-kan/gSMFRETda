@@ -56,10 +56,10 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
             ${CONAN_LIBS} ${CONAN_SYSTEM_LIBS} ${CONAN_LIBS_BOOST})
     elseif(NOT Boost_FOUND)
         target_link_libraries(${CMAKE_TEST_NAME} 
-            gtest gtest_main dl pthread ${CONAN_LIBS_BOOST} dlib::dlib)
+            gtest gtest_main dl pthread ${CONAN_LIBS_BOOST} )
     else()
         TARGET_LINK_LIBRARIES(${CMAKE_TEST_NAME} 
-            gtest gtest_main dl pthread ${Boost_LIBRARIES} dlib::dlib)
+            gtest gtest_main dl pthread ${Boost_LIBRARIES} )
     endif()
 
     set_target_properties(${CMAKE_TEST_NAME} PROPERTIES
@@ -90,11 +90,11 @@ ConfigureTest(gen_rand_tests "${gen_rand_tests_SRC}")
 
 add_library(genRand STATIC GenRandTest.hpp GenRandTest.cu ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.cpp ${gSMFRETda_SOURCE_DIR}/src/eigenhelper.hpp
         hist.cpp hist.hpp) # boost histogram need to be compiled by gcc, no nvcc
-target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} dlib ParamsTest)
+target_link_libraries(genRand ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY} ParamsTest)
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     target_link_libraries(gen_rand_tests genRand ${CONAN_LIBS_GSL})
 else()
-    target_link_libraries(gen_rand_tests genRand GSL::gsl GSL::gslcblas)
+    target_link_libraries(gen_rand_tests genRand GSL::gsl GSL::gslcblas dlib::dlib)
 endif()
 
 set(paraMatCheck_SRC
