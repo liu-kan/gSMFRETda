@@ -1,5 +1,7 @@
 getopt 
 protobuf 
+boost-core
+boost-config
 boost-dll 
 boost-filesystem 
 boost-uuid 
