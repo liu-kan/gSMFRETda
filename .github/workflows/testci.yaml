@@ -33,28 +33,19 @@ jobs:
         if: ${{ ! github.event.inputs.ref_sha}}
         uses: actions/checkout@v2
 
-      - name: configure_cmake
-        continue-on-error: true
-        run: |
-          vcpkg install --triplet x64-windows getopt
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
-
       - name: vcpkg
         run: |
           vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"
 
       - name: Save Cache VCPKG
-        id: cache_hits_vcpkg
+        id: cache_save_vcpkg
         uses: actions/cache@v2
         continue-on-error: true
-        if: ${{! github.event.inputs.update_cache}}
+        if: ${{ github.event.inputs.update_cache}}
         env:
           cache-name: cache-vcpkg
         with:
           path: |
-            $env:VCPKG_INSTALLATION_ROOT
-            !$env:VCPKG_INSTALLATION_ROOT\buildtrees
-          key: runner.os−{{ env.cache-name }}-github.sha−{{ github.event.inputs.ref_sha}}
-          restore-keys: |
-            runner.os−{{ env.cache-name }}-${{github.sha}}-
-            runner.os−{{ env.cache-name }}-
+            C:/vcpkg
+            !C:/vcpkg/buildtrees
+          key: ${{ runner.os }}−${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}

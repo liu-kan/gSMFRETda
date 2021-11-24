@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(gSMFRETda 
         VERSION 0.8.7.201204
@@ -124,6 +124,7 @@ execute_process(
 )
 endif()
 if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
+#[[
   if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     if(CMAKE_TOOLCHAIN_FILE)
         message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
@@ -134,11 +135,15 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
         execute_process(
             COMMAND ${VCPKG_INSTALLATION_ROOT}/installed/x64-windows/tools/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            ECHO_OUTPUT_VARIABLE
+            ECHO_ERROR_VARIABLE
         )
     else()
         execute_process(            
             COMMAND ${CONAN_BIN_DIRS_PROTOBUF/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto            
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            ECHO_OUTPUT_VARIABLE
+            ECHO_ERROR_VARIABLE
         )    
     endif()
   else()
@@ -147,7 +152,9 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       )
   endif()
-  file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
+]]
+  #file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
+  file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
     if(EXISTS ${CMAKE_SOURCE_DIR}/../pySMFRETda/serv_pdaga AND proto)
         file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/../pySMFRETda/serv_pdaga)
     endif()  
