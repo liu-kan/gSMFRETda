@@ -31,5 +31,5 @@ jobs:
 
       - name: configure_cmake
         run: |
-          echo $env:VCPKG_INSTALLATION_ROOT\\scripts\\buildsystems\\vcpkg.cmake
+          echo \"$env:VCPKG_INSTALLATION_ROOT\\scripts\\buildsystems\\vcpkg.cmake\"
 
