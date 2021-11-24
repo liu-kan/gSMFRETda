@@ -180,7 +180,11 @@ jobs:
           ref: '${{github.event.inputs.ref_sha}}'
 
       - name: conan install
-        run: conan install . --profile conan_release_profile.txt --build=missing --build=protobuf -if build 
+        run: conan install . --profile conan_release_profile.txt --build=missing -if build 
+
+      - name: vcpkg
+        run: |
+          vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"          
 
       - name: Cache conan packages
         if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
@@ -259,7 +263,7 @@ jobs:
           $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=\"$env:VCPKG_INSTALLATION_ROOT\\scripts\\buildsystems\\vcpkg.cmake\" -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
 
       - name: build
         # Build your program with the given configuration

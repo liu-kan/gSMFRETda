@@ -1,0 +1,7 @@
+getopt 
+protobuf 
+boost-dll 
+boost-filesystem 
+boost-uuid 
+boost-histogram 
+boost-format

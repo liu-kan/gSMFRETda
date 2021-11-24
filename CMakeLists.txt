@@ -125,10 +125,19 @@ execute_process(
 endif()
 if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
   if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-      execute_process(
-          COMMAND ${CONAN_BIN_DIRS_PROTOBUF}/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      )
+    if(CMAKE_TOOLCHAIN_FILE)
+        message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
+        string(FIND ${CMAKE_TOOLCHAIN_FILE} "\\scripts\\buildsystems\\vcpkg.cmake" VCPKG_INSTALLATION_ROOT_len)
+        message(STATUS "VCPKG_INSTALLATION_ROOT_len: ${VCPKG_INSTALLATION_ROOT_len}")
+        string(SUBSTRING ${CMAKE_TOOLCHAIN_FILE} 0 ${VCPKG_INSTALLATION_ROOT_len} VCPKG_INSTALLATION_ROOT)
+        message(STATUS "VCPKG_INSTALLATION_ROOT: ${VCPKG_INSTALLATION_ROOT}")
+    endif()  
+    execute_process(
+        COMMAND ${VCPKG_INSTALLATION_ROOT}/installed/x64-windows/tools/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
+        #COMMAND ${CONAN_BIN_DIRS_PROTOBUF/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
+        
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
   else()
       execute_process(
           COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
