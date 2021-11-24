@@ -32,17 +32,19 @@ jobs:
       - name: checkout head
         if: ${{ ! github.event.inputs.ref_sha}}
         uses: actions/checkout@v2
-#vcpkg install --triplet x64-windows getopt
-      - name: configure_cmake
-        run: |          
-          echo $env:VCPKG_INSTALLATION_ROOT
-          $vpkg_root0 = $env:VCPKG_INSTALLATION_ROOT+'\scripts\buildsystems\vcpkg.cmake'
-          echo $vpkg_root0
-          $vpkg_root = $vpkg_root0 -replace "\\", "/"
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=${{vpkg_root}} -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
 
-      - name: Find Cache VCPKG
-        id: cache_hits_conan
+      - name: configure_cmake
+        continue-on-error: true
+        run: |
+          vcpkg install --triplet x64-windows getopt
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
+
+      - name: vcpkg
+        run: |
+          vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"
+
+      - name: Save Cache VCPKG
+        id: cache_hits_vcpkg
         uses: actions/cache@v2
         continue-on-error: true
         if: ${{! github.event.inputs.update_cache}}

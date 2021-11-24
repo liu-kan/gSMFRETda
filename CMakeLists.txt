@@ -127,17 +127,20 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
   if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     if(CMAKE_TOOLCHAIN_FILE)
         message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
-        string(FIND ${CMAKE_TOOLCHAIN_FILE} "\\scripts\\buildsystems\\vcpkg.cmake" VCPKG_INSTALLATION_ROOT_len)
+        string(FIND ${CMAKE_TOOLCHAIN_FILE} "/scripts/buildsystems/vcpkg.cmake" VCPKG_INSTALLATION_ROOT_len)
         message(STATUS "VCPKG_INSTALLATION_ROOT_len: ${VCPKG_INSTALLATION_ROOT_len}")
         string(SUBSTRING ${CMAKE_TOOLCHAIN_FILE} 0 ${VCPKG_INSTALLATION_ROOT_len} VCPKG_INSTALLATION_ROOT)
-        message(STATUS "VCPKG_INSTALLATION_ROOT: ${VCPKG_INSTALLATION_ROOT}")
-    endif()  
-    execute_process(
-        COMMAND ${VCPKG_INSTALLATION_ROOT}/installed/x64-windows/tools/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
-        #COMMAND ${CONAN_BIN_DIRS_PROTOBUF/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
-        
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    )
+        message(STATUS "VCPKG_INSTALLATION_ROOT: ${VCPKG_INSTALLATION_ROOT}")    
+        execute_process(
+            COMMAND ${VCPKG_INSTALLATION_ROOT}/installed/x64-windows/tools/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+    else()
+        execute_process(            
+            COMMAND ${CONAN_BIN_DIRS_PROTOBUF/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto            
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )    
+    endif()
   else()
       execute_process(
           COMMAND protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
@@ -187,7 +190,7 @@ else()
 endif()
 
 #if(MSVC)
-#            set(CMAKE_EXE_LINKER_FLAGS
+#           set(CMAKE_EXE_LINKER_FLAGS
 #          "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:msvcrt.lib")
 #endif()
 

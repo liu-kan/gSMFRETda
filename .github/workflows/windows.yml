@@ -163,7 +163,7 @@ jobs:
 
       - name: vcpkg
         run: |
-          vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"          
+          vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"
 
       - uses: Jimver/cuda-toolkit@v0.2.4
         id: cuda-toolkit
@@ -183,9 +183,7 @@ jobs:
           $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
-          $vpkg_root0 = $env:VCPKG_INSTALLATION_ROOT+'\scripts\buildsystems\vcpkg.cmake'
-          $vpkg_root = $vpkg_root0 -replace "\\", "/"
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=$vpkg_root -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON          
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON          
 
       - name: build
         # Build your program with the given configuration
