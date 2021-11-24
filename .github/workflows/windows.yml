@@ -138,27 +138,6 @@ jobs:
     runs-on: windows-2019
     
     steps:
-      # - name: Sleep for 20 min
-      #   run: Start-Sleep -s 1200
-      #   shell: powershell
-      #   if: ${{  github.event.inputs.update_cache }}
-
-      - name: Find Cache conan
-        id: cache_hits_conan
-        uses: actions/cache@v2
-        continue-on-error: true
-        if: ${{! github.event.inputs.update_cache}}
-        env:
-          cache-name: cache-conan
-        with:
-          path: |
-            c:/conan_p
-            c:/conan_s
-            c:/conan_c
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-${{github.sha}}-
-            ${{ runner.os }}-${{ env.cache-name }}-
 
       - name: install conan
         run: |
@@ -186,69 +165,10 @@ jobs:
         run: |
           vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"          
 
-      - name: Cache conan packages
-        if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
-        id: conan_save
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-conan
-        with:
-          path: |
-            c:/conan_p
-            c:/conan_s
-            c:/conan_c
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
-
-      # - name: Find Cache cuda packages
-      #   id: cache_hits
-      #   uses: actions/cache@v2
-      #   continue-on-error: true
-      #   env:
-      #     cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-      #   with:
-      #     path: |
-      #       C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
-
       - uses: Jimver/cuda-toolkit@v0.2.4
         id: cuda-toolkit
-        if: ${{! steps.cache_hits.outputs.cache-hit}}
         with:
           cuda: '${{env.CUDA_VERSION}}'
-
-      # - name: cuda install
-      #   if: ${{ steps.cache_hits.outputs.cache-hit}}
-      #   shell: cmd
-      #   run: |
-      #     start /wait "" C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_%CUDA_VERSION%.exe -s
-      #     echo ("CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v%cuda_version_major_minor%") >> $env:GITHUB_ENV
-
-      # - name: load cuda packages
-      #   id: cache_hits
-      #   uses: actions/cache@v2
-      #   if: ${{ !  github.event.inputs.update_cache}}
-      #   env:
-      #     cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
-      #   with:
-      #     path: |
-      #       ${{github.workspace}}/choco
-      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
-
-      # - name: cuda install choco
-      #   run: |
-      #     choco config set cacheLocation ${{github.workspace}}/choco
-      #     choco install cuda -y
-
-      # - name: Cache cuda packages
-      #   id: cache_save
-      #   uses: actions/cache@v2
-      #   if: ${{ (! steps.cache_hits.outputs.cache-hit)}}
-      #   env:
-      #     cache-name: cache-cuda-choco-installer-${{env.CUDA_VERSION}}
-      #   with:
-      #     path: |
-      #       ${{github.workspace}}/choco
-      #     key: ${{ runner.os }}-file-${{ env.cache-name }}
 
       - uses: msys2/setup-msys2@v2
         with:
@@ -263,7 +183,9 @@ jobs:
           $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
+          $vpkg_root0 = $env:VCPKG_INSTALLATION_ROOT+'\scripts\buildsystems\vcpkg.cmake'
+          $vpkg_root = $vpkg_root0 -replace "\\", "/"
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=$vpkg_root -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON          
 
       - name: build
         # Build your program with the given configuration

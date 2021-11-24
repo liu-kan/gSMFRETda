@@ -29,7 +29,28 @@ jobs:
     
     steps:
 
+      - name: checkout head
+        if: ${{ ! github.event.inputs.ref_sha}}
+        uses: actions/checkout@v2
+
       - name: configure_cmake
         run: |
-          echo $env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake
+          $vpkg_root0 = $env:VCPKG_INSTALLATION_ROOT+'\scripts\buildsystems\vcpkg.cmake'
+          $vpkg_root = $vpkg_root0 -replace "\\", "/"
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=$vpkg_root -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON
 
+      - name: Find Cache VCPKG
+        id: cache_hits_conan
+        uses: actions/cache@v2
+        continue-on-error: true
+        if: ${{! github.event.inputs.update_cache}}
+        env:
+          cache-name: cache-vcpkg
+        with:
+          path: |
+            $env:VCPKG_INSTALLATION_ROOT
+            !$env:VCPKG_INSTALLATION_ROOT\buildtrees
+          key: runner.os−{{ env.cache-name }}-github.sha−{{ github.event.inputs.ref_sha}}
+          restore-keys: |
+            runner.os−{{ env.cache-name }}-${{github.sha}}-
+            runner.os−{{ env.cache-name }}-
