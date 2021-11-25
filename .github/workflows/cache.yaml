@@ -6,9 +6,9 @@ on:
       ref_sha:
         description: 'SHA of ref'
         required: false
-  #8:07:49 
+  
   schedule:
-    - cron:  '7 8 * * *'
+    - cron:  '7 20 * * *'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)

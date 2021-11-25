@@ -90,7 +90,7 @@ jobs:
         id: build_gputest_check
         with:
           token: ${{ secrets.GITHUB_TOKEN }}          
-          #name: GPU TEST_linux
+          check_id: GPU_Linux_CI
           #use name will let the check gourp into other yaml file.
           conclusion: ${{ steps.gpu_test.outcome }}
           output: |
@@ -99,7 +99,7 @@ jobs:
   
   job_exit:
     if: always()
-    needs: job_gpu
+    needs: build_gputest
     runs-on: ubuntu-latest
     steps:
       - name: checkout head

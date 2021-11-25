@@ -50,6 +50,7 @@ class Workflow_End_With_SHA(BaseModel):
     id: int
     conclusion: Optional[str] = None
     outputs: Optional[str] = None
+    gpu_yaml: Optional[str] = None    
 
 def cmdargs():
     parser = argparse.ArgumentParser(description='A github workFlowCtrl tool',
@@ -64,6 +65,7 @@ def cmdargs():
     parser.add_argument('--repo', required=True)
     parser.add_argument('-c','--conclusion', default='')
     parser.add_argument('-o','--output', default='')
+    parser.add_argument('-f','--gpu_yaml', default='gpu_test.yml')
     parser.add_argument('-t','--trigger_id', default=0, type=int, \
                         help="Workflow job id that triggered this Job")
     
@@ -74,7 +76,7 @@ if __name__ == '__main__':
     workFlowCtrl = WorkFlowCtrl(args.url, args.sig_key)
     workflowMessg=Workflow_End_With_SHA(name=args.name,sha=args.sha,\
         ref=args.ref,repository_uri=args.repo,conclusion=args.conclusion,\
-        output=args.output, id=args.trigger_id)
+        output=args.output, id=args.trigger_id, gpu_yaml=args.gpu_yaml)
     jsonData=json.loads(workflowMessg.json())
     workFlowCtrl.sendWorkFlowNotification(args.end_point,jsonData)
 
