@@ -123,9 +123,9 @@ execute_process(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 endif()
-if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
-#[[
+if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga AND proto)
   if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    #[[
     if(CMAKE_TOOLCHAIN_FILE)
         message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
         string(FIND ${CMAKE_TOOLCHAIN_FILE} "/scripts/buildsystems/vcpkg.cmake" VCPKG_INSTALLATION_ROOT_len)
@@ -139,6 +139,8 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
             ECHO_ERROR_VARIABLE
         )
     else()
+    ]]
+    if(EXISTS ${CONAN_BIN_DIRS_PROTOBUF})
         execute_process(            
             COMMAND ${CONAN_BIN_DIRS_PROTOBUF/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto            
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -152,14 +154,15 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       )
   endif()
-]]
-  #file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
-  file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
+
+  file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga)
+  
     if(EXISTS ${CMAKE_SOURCE_DIR}/../pySMFRETda/serv_pdaga AND proto)
         file(COPY ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty/protobuf DESTINATION ${CMAKE_SOURCE_DIR}/../pySMFRETda/serv_pdaga)
     endif()  
   file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga/3rdparty)
 endif()
+
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
   include_directories(${CONAN_INCLUDE_DIRS})  
 else()

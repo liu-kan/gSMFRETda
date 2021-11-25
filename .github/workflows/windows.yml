@@ -23,7 +23,10 @@ on:
       update_cache:
         description: 'update cache'
         required: false        
-
+      debug_enabled:
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'     
+        required: false
+        default: false
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
@@ -31,104 +34,6 @@ env:
   cuda_version_major_minor: 11.2
 
 jobs:
-
-  # cuda:
-  #   runs-on: windows-2019
-  #   steps:
-  #     - name: Find Cache cuda packages
-  #       id: cache_hits
-  #       if: ${{ (! github.event.inputs.update_cache)}}
-  #       uses: actions/cache@v2
-  #       continue-on-error: true
-  #       env:
-  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-  #       with:
-  #         path: |
-  #           C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-  #         key: ${{ runner.os }}-file-${{ env.cache-name }}
-
-  #     - name: cuda-toolkit
-  #       uses: Jimver/cuda-toolkit@v0.2.4
-  #       if: ${{( ! steps.cache_hits.outputs.cache-hit ) || github.event.inputs.update_cache}}
-  #       id: cuda-toolkit
-  #       with:
-  #         cuda: '${{env.CUDA_VERSION}}'
-
-  #     - name: Cache cuda packages
-  #     - name: Cache cuda packages
-  #       id: cache_save
-  #       uses: actions/cache@v2
-  #       if: ${{ (! steps.cache_hits.outputs.cache-hit) || github.event.inputs.update_cache}}
-  #       env:
-  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-  #       with:
-  #         path: |
-  #           C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-  #         key: ${{ runner.os }}-file-${{ env.cache-name }}
-
-  #     - name: dir file
-  #       if: ${{ steps.cache_save.outputs.cache-hit }}
-  #       run: dir C:\hostedtoolcache\windows\cuda_installer-windows\${{env.CUDA_VERSION}}\x64\cuda_installer_${{env.CUDA_VERSION}}.exe
-
-
-  # conan_windows:
-  #   # The CMake configure and build commands are platform agnostic and should work equally
-  #   # well on Windows or Mac.  You can convert this to a matrix build if you need
-  #   # cross-platform coverage.
-  #   # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-  #   runs-on: windows-2019
-    
-  #   steps:
-  #     - name: Find Cache conan
-  #       if: ${{ (! github.event.inputs.update_cache)}}
-  #       id: cache_hits_conan
-  #       uses: actions/cache@v2
-  #       continue-on-error: true
-  #       env:
-  #         cache-name: cache-cuda-installer-${{env.CUDA_VERSION}}
-  #       with:
-  #         path: |
-  #           c:/conan_p
-  #           c:/conan_s
-  #           c:/conan_c
-  #         key: ${{ runner.os }}-file-conan
-
-  #     - name: install conan 
-  #       if: ${{(! steps.cache_hits_conan.outputs.cache-hit) || github.event.inputs.update_cache}}
-  #       run: |
-  #         pip install conan
-  #         conan config set general.retry=4
-  #         conan config set general.retry_wait=9
-  #         conan config set storage.path=c:/conan_p
-  #         conan config set general.user_home_short=c:/conan_s
-  #         conan config set storage.download_cache=c:/conan_c          
-
-  #     - name: checkout head      
-  #       if: ${{ ! github.event.inputs.ref_sha}}
-  #       uses: actions/checkout@v2
-
-  #     - name: checkout with sha
-  #       if: ${{ github.event.inputs.ref_sha}}
-  #       uses: actions/checkout@v2
-  #       with:
-  #         ref: '${{github.event.inputs.ref_sha}}'
-
-  #     - name: conan install
-  #       if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
-  #       run: conan install . --profile conan_release_profile.txt --build=missing -if build
-
-  #     - name: Cache conan packages
-  #       if: ${{(! steps.cache_hits_conan.outputs.cache-hit)|| github.event.inputs.update_cache}}
-  #       id: conan_save
-  #       uses: actions/cache@v2        
-  #       env:
-  #         cache-name: cache-conan
-  #       with:
-  #         path: |
-  #           c:/conan_p
-  #           c:/conan_s
-  #           c:/conan_c
-  #         key: ${{ runner.os }}-file-conan
 
   windows:
     # The CMake configure and build commands are platform agnostic and should work equally
@@ -159,7 +64,8 @@ jobs:
           ref: '${{github.event.inputs.ref_sha}}'
 
       - name: conan install
-        run: conan install . --profile conan_release_profile.txt --build=missing -if build 
+        run: |
+          conan install . --profile conan_release_profile.txt --build=missing -if build 
 
       - name: Load Cache VCPKG
         id: cache_hits_vcpkg
@@ -172,6 +78,7 @@ jobs:
           path: |
             C:/vcpkg
             !C:/vcpkg/buildtrees
+            !C:/vcpkg/.git
           key: ${{ runner.os }}−${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
           restore-keys: |
             ${{ runner.os }}−${{ env.cache-name }}-${{github.sha}}-
@@ -199,11 +106,23 @@ jobs:
           $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=ON          
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=OFF
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3.7
+        if: ${{ github.event.inputs.debug_enabled && failure() }}
+        with:
+          limit-access-to-actor: true
 
       - name: build
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j -- /p:CharacterSet=Unicode
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3.7
+        if: ${{ github.event.inputs.debug_enabled && failure() }}
+        with:
+          limit-access-to-actor: true
 
       - name: cpu_test
         id: cpu-test
@@ -223,6 +142,7 @@ jobs:
           path: |
             C:/vcpkg
             !C:/vcpkg/buildtrees
+            !C:/vcpkg/.git
           key: ${{ runner.os }}−${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
 
       - name: Archive production artifacts

@@ -16,6 +16,7 @@ message(STATUS "Building TESTs with GPU Architectures: ${CMAKE_CUDA_ARCHITECTURE
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    find_package(Boost)
 else()
     FIND_PACKAGE(dlib REQUIRED)
     find_package(GSL REQUIRED)    

@@ -1,4 +1,4 @@
-name: ci_test
+name: ci_cache
 
 on:
 
@@ -19,8 +19,7 @@ env:
 
 jobs:
 
-
-  windows:
+  build-vcpkgs:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -32,6 +31,11 @@ jobs:
       - name: checkout head
         if: ${{ ! github.event.inputs.ref_sha}}
         uses: actions/checkout@v2
+      - name: checkout with sha
+        if: ${{ github.event.inputs.ref_sha}}
+        uses: actions/checkout@v2
+        with:
+          ref: '${{github.event.inputs.ref_sha}}'
 
       - name: vcpkg
         run: |
@@ -48,4 +52,5 @@ jobs:
           path: |
             C:/vcpkg
             !C:/vcpkg/buildtrees
+            !C:/vcpkg/.git
           key: ${{ runner.os }}−${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
