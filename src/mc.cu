@@ -38,7 +38,7 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
             printf("Device Index: %d\n", i);
             if (gpuuid) {
 #if (CUDART_VERSION < 10000)
-                boost::uuids::uuid a_uuid = boost::uuids::random_generator()();
+                s::uuid a_uuid = s::random_generator()();
                 memcpy(gpuuid, &a_uuid, 16);
 #else
                 memcpy(gpuuid, &(prop.uuid.bytes[0]), 16);

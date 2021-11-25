@@ -1,15 +1,14 @@
 name: ci_cache
 
 on:
-
   workflow_dispatch:
     inputs:
       ref_sha:
         description: 'SHA of ref'
         required: false
-      update_cache:
-        description: 'update cache'
-        required: false        
+  #8:07:49 
+  schedule:
+    - cron:  '7 8 * * *'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -44,8 +43,7 @@ jobs:
       - name: Save Cache VCPKG
         id: cache_save_vcpkg
         uses: actions/cache@v2
-        continue-on-error: true
-        if: ${{ github.event.inputs.update_cache}}
+        continue-on-error: true        
         env:
           cache-name: cache-vcpkg
         with:

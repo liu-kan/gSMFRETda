@@ -24,8 +24,8 @@ namespace fs = boost::filesystem;
     #include <Processthreadsapi.h>
     #include <Psapi.h>
     #include <Synchapi.h>
-#include <strsafe.h>
-#include <atlstr.h>
+// #include <strsafe.h>
+// #include <atlstr.h>
     #pragma comment (lib,"Psapi.lib")
     #pragma comment (lib,"Kernel32.lib")
 #endif

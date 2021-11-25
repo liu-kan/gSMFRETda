@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
 project(gSMFRETda 
         VERSION 0.8.7.201204
@@ -49,7 +49,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         set(win_patch "C:/Program Files/Git/usr/bin/patch.exe")
     endif()  
 endif()
-find_package(Boost 1.71.0 COMPONENTS filesystem)
+find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(CUDA REQUIRED)
 message(STATUS "Setting CUDA_curand_LIBRARY to '${CUDA_curand_LIBRARY}' .")
 
@@ -135,8 +135,8 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga AND proto)
         execute_process(
             COMMAND ${VCPKG_INSTALLATION_ROOT}/installed/x64-windows/tools/protoc --python_out=${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga 3rdparty/protobuf/args.proto
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            ECHO_OUTPUT_VARIABLE
-            ECHO_ERROR_VARIABLE
+            ECHO_OUTPUT_VARIABLE #cmake 3.18
+            ECHO_ERROR_VARIABLE #cmake 3.18
         )
     else()
     ]]
@@ -164,7 +164,10 @@ if(EXISTS ${CMAKE_BINARY_DIR}/pySMFRETda/serv_pdaga AND proto)
 endif()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-  include_directories(${CONAN_INCLUDE_DIRS})  
+  include_directories(${CONAN_INCLUDE_DIRS})
+  #find_path(getopt_INCLUDE_DIR getopt.h)
+  #include_directories(${getopt_INCLUDE_DIR})  
+  include_directories(${CMAKE_SOURCE_DIR}/src/3rdparty/gengetopt)
 else()
   find_package(HDF5 REQUIRED)
   include_directories(${HDF5_INCLUDE_DIRS})
@@ -179,7 +182,9 @@ include_directories(${CMAKE_BINARY_DIR}/third/HighFive/include)
 include_directories(${CMAKE_SOURCE_DIR})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    include_directories(${CONAN_INCLUDE_DIRS_BOOST})    
+    find_path(boost_INCLUDE_DIR boost/filesystem/path.hpp)
+    message(STATUS boost_INCLUDE_DIR: ${boost_INCLUDE_DIR})
+    include_directories(${boost_INCLUDE_DIR})  
 elseif(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})    
     include_directories(/usr/local/include)
@@ -204,6 +209,14 @@ endif()
 #          "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:msvcrt.lib")
 #endif()
 
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    link_directories(${CONAN_LIB_DIRS})
+    #find_library(getopt_LIBRARY getopt)
+    #link_libraries(${getopt_LIBRARY})
+elseif(NOT Boost_FOUND)
+    link_directories(${CONAN_LIB_DIRS_BOOST})
+endif()
+
 add_executable(call_${PROJECT_NAME}
     src/3rdparty/gengetopt/call_gSMFRETda.c
     src/3rdparty/gengetopt/call_gSMFRETda.h
@@ -211,8 +224,8 @@ add_executable(call_${PROJECT_NAME}
     resources/gSMFRETda.rc
     )
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    target_link_libraries(call_${PROJECT_NAME} 
-        ${CONAN_LIBS_BOOST} ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY})
+    target_link_libraries(call_${PROJECT_NAME} PRIVATE 
+           ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} Boost::boost Boost::filesystem)
 elseif(Boost_FOUND)
     target_link_libraries(call_${PROJECT_NAME} 
         ${Boost_LIBRARIES} boost_filesystem dl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} pthread) 
@@ -221,11 +234,6 @@ else()
         ${CONAN_LIBS_BOOST} dl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} pthread) 
 endif()
 
-if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    link_directories(${CONAN_LIB_DIRS})
-elseif(NOT Boost_FOUND)
-    link_directories(${CONAN_LIB_DIRS_BOOST})    
-endif()
 
 add_executable(${PROJECT_NAME}
     src/3rdparty/gengetopt/cmdline.c
@@ -258,13 +266,15 @@ set_property(TARGET call_${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CU
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS_HDF5} ${CONAN_LIBS_BOOST} ${CONAN_LIBS_NNG})
+    target_link_libraries(${PROJECT_NAME}  
+           ${CONAN_LIBS_HDF5} ${CONAN_LIBS_NNG} Boost::boost Boost::filesystem ${CONAN_LIBS_ZLIB})
 elseif(Boost_FOUND)
-    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} boost_filesystem 
+    target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES}  
           pthread nng::nng ${link_stdc__fs} ${Boost_LIBRARIES})
 else()
     target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS_BOOST} ${link_stdc__fs} pthread nng::nng)
 endif()
+
 target_link_libraries(${PROJECT_NAME} proto)
 target_link_libraries(${PROJECT_NAME} 
      ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})

@@ -1,4 +1,4 @@
-name: ci_build
+name: Windows_CI
 
 on:
   push:
@@ -35,7 +35,7 @@ env:
 
 jobs:
 
-  windows:
+  build_cputest:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -108,19 +108,14 @@ jobs:
           refreshenv
           cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTS=ON -G "Visual Studio 16" -T host=x64,version=14.25 -Dproto=OFF
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3.7
-        if: ${{ github.event.inputs.debug_enabled && failure() }}
-        with:
-          limit-access-to-actor: true
-
       - name: build
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j -- /p:CharacterSet=Unicode
 
       - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3.7
-        if: ${{ github.event.inputs.debug_enabled && failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 50
+        if: ${{ failure() }}
         with:
           limit-access-to-actor: true
 
@@ -149,5 +144,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: windowsBuild
-          path: bin/*
+          path: ${{github.workspace}}/build/bin
         

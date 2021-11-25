@@ -16,7 +16,7 @@ message(STATUS "Building TESTs with GPU Architectures: ${CMAKE_CUDA_ARCHITECTURE
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    find_package(Boost)
+    find_package(Boost REQUIRED)
 else()
     FIND_PACKAGE(dlib REQUIRED)
     find_package(GSL REQUIRED)    
@@ -44,7 +44,7 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
     ### link_directories
     target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/compat)
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS})
+        target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS} )
     elseif(NOT Boost_FOUND)
         target_link_directories(${CMAKE_TEST_NAME} PRIVATE ${CONAN_LIB_DIRS_BOOST})        
     endif()
@@ -54,7 +54,7 @@ function(ConfigureTest CMAKE_TEST_NAME CMAKE_TEST_SRC)
                          ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})    
     if (CMAKE_SYSTEM_NAME MATCHES "Windows")
         target_link_libraries(${CMAKE_TEST_NAME} 
-            ${CONAN_LIBS} ${CONAN_SYSTEM_LIBS} ${CONAN_LIBS_BOOST})
+            ${CONAN_LIBS} ${CONAN_SYSTEM_LIBS}  )
     elseif(NOT Boost_FOUND)
         target_link_libraries(${CMAKE_TEST_NAME} 
             gtest gtest_main dl pthread ${CONAN_LIBS_BOOST} )

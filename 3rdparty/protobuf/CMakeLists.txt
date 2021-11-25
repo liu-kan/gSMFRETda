@@ -1,5 +1,5 @@
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
-    find_package(protobuf CONFIG REQUIRED)
+    find_package(Protobuf CONFIG REQUIRED)
 else()    
     find_package(Protobuf REQUIRED)
 endif()

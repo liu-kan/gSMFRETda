@@ -1,4 +1,4 @@
-name: gpuci
+name: GPU_Linux_CI
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  job_gpu:
+  build_gputest:
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -85,12 +85,13 @@ jobs:
           name: gpu_test
           path: ${{github.workspace}}/build/output.txt
 
-      - name: gpu_test Conclusion
+      - uses: LouisBrunner/checks-action@v1.2.0
         if: always()
-        uses: LouisBrunner/checks-action@v1.2.0
+        id: build_gputest_check
         with:
           token: ${{ secrets.GITHUB_TOKEN }}          
-          name: GPU_Test
+          #name: GPU TEST_linux
+          #use name will let the check gourp into other yaml file.
           conclusion: ${{ steps.gpu_test.outcome }}
           output: |
             {"summary":"${{ steps.gpu_test.outcome }}"}
