@@ -9,6 +9,9 @@ on:
       trigger_run_id:
         description: 'Workflow job id that triggered this Job'
         required: false
+      gpu_checksid:
+        description: 'GPU checks id that inited in cpu workflow'
+        required: false        
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -26,17 +29,29 @@ jobs:
     env:
       CUDA_HOME: "/usr/local/cuda"
 
-    steps:    
+    steps:
+      - name: get check detail url
+        run: |
+          curl "https://api.github.com/repos/liu-kan/gSMFRETda/actions/runs/$GITHUB_RUN_ID/jobs"|python3 -c "import sys, json, os; os.system('echo d_url='+json.load(sys.stdin)['jobs'][0]['html_url']+' >> $GITHUB_ENV')"
+
+      - uses: LouisBrunner/checks-action@v1.2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{  github.event.inputs.gpu_checksid}}
+          status: in_progress
+          details_url: ${{ env.d_url }}
+
       - name: Set CUDA ENV
         run: |
           echo "$CUDA_HOME/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64:$CUDA_HOME/extras/CUPTI/lib64" >> $GITHUB_ENV
 
-      - name: showPath
+      - name: show env
         shell: bash
         run: |
           echo $PATH
           echo $LD_LIBRARY_PATH
+          echo ${{ env.d_url }}
 
       - name: deps
         run: sudo apt-get install -y build-essential libhdf5-dev pkg-config protobuf-compiler libprotobuf-dev libnng-dev libboost-dev doxygen libboost-system-dev libboost-serialization-dev cmake gengetopt libboost-filesystem-dev libdlib-dev libgtest-dev libblas-dev liblapack-dev libsqlite3-dev libpng-dev libgsl-dev
@@ -87,12 +102,11 @@ jobs:
 
       - uses: LouisBrunner/checks-action@v1.2.0
         if: always()
-        id: build_gputest_check
         with:
           token: ${{ secrets.GITHUB_TOKEN }}          
-          check_id: GPU_Linux_CI
-          #use name will let the check gourp into other yaml file.
+          check_id: ${{  github.event.inputs.gpu_checksid}}
           conclusion: ${{ steps.gpu_test.outcome }}
+          details_url: ${{ env.d_url }}
           output: |
             {"summary":"${{ steps.gpu_test.outcome }}"}
           output_text_description_file: ${{github.workspace}}/build/output.txt

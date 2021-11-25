@@ -51,6 +51,7 @@ class Workflow_End_With_SHA(BaseModel):
     conclusion: Optional[str] = None
     outputs: Optional[str] = None
     gpu_yaml: Optional[str] = None    
+    gpu_checksid: Optional[str] = None
 
 def cmdargs():
     parser = argparse.ArgumentParser(description='A github workFlowCtrl tool',
@@ -58,7 +59,7 @@ def cmdargs():
     parser.add_argument('-u','--url',help='Set the base URL')
     parser.add_argument('-k','--sig_key', help="Set the signature key")
     parser.add_argument('-e','--end_point', help="Action")
-
+    parser.add_argument('-i','--id_gpucheck', help="gpu checks id")
     parser.add_argument('-n','--name', required=True, help="Workflow name")
     parser.add_argument('-s','--sha', required=True , help="Commit SHA processed in  Workflow")
     parser.add_argument('-r','--ref', default='master', help="Branch or tag processed in  Workflow")
@@ -76,7 +77,7 @@ if __name__ == '__main__':
     workFlowCtrl = WorkFlowCtrl(args.url, args.sig_key)
     workflowMessg=Workflow_End_With_SHA(name=args.name,sha=args.sha,\
         ref=args.ref,repository_uri=args.repo,conclusion=args.conclusion,\
-        output=args.output, id=args.trigger_id, gpu_yaml=args.gpu_yaml)
+        output=args.output, id=args.trigger_id, gpu_yaml=args.gpu_yaml, gpu_checksid=args.id_gpucheck)
     jsonData=json.loads(workflowMessg.json())
     workFlowCtrl.sendWorkFlowNotification(args.end_point,jsonData)
 

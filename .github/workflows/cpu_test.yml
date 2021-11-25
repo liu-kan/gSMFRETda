@@ -1,4 +1,4 @@
-name: CPU_Linux_CI
+name: Linux_CI
 
 on:
   push:
@@ -37,11 +37,13 @@ jobs:
       CUDA_HOME: "/usr/local/cuda"
     
     steps:
-    # - uses: Jimver/cuda-toolkit@v0.2.4
-    #   id: cuda-toolkit
-    #   with:
-    #     cuda: '11.2.2'
-    
+      - uses: LouisBrunner/checks-action@v1.2.0
+        id: init_gputest_check
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: GPU_Build_Test_Linux
+          status: queued
+
       - name: cuda
         run: |
           sudo apt-get install -y software-properties-common curl
@@ -51,7 +53,7 @@ jobs:
           sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
           sudo apt-get update
           sudo apt-get install -y cuda-nvprof-11-4  nvidia-headless-470 cuda-cudart-dev-11-4 cuda-minimal-build-11-4 cuda-nvrtc-dev-11-4 libcurand-dev-11-4
-      - name: Set CUDA ENV
+      - name: Set ENV
         run: |
           echo "$CUDA_HOME/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_HOME/lib64:$CUDA_HOME/extras/CUPTI/lib64" >> $GITHUB_ENV
@@ -74,9 +76,27 @@ jobs:
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTS=ON
 
+      - name: cancel gpu check
+        uses: LouisBrunner/checks-action@v1.2.0
+        if: ${{ failure() }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init_gputest_check.outputs.check_id }}
+          status: completed
+          conclusion: cancelled
+
       - name: build
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - name: cancel gpu check
+        uses: LouisBrunner/checks-action@v1.2.0
+        if: ${{ failure() }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init_gputest_check.outputs.check_id }}
+          status: completed
+          conclusion: cancelled
 
       - name: cpu_test
         id: cpu-test
@@ -84,6 +104,15 @@ jobs:
         # Execute tests defined by the CMake configuration.  
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ctest -C ${{env.BUILD_TYPE}} -R paraMatCheck_tests
+
+      - name: cancel gpu check
+        uses: LouisBrunner/checks-action@v1.2.0
+        if: ${{ failure() }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          check_id: ${{ steps.init_gputest_check.outputs.check_id }}
+          status: completed
+          conclusion: cancelled
 
       - uses: actions/setup-python@v2
         with:
@@ -101,7 +130,7 @@ jobs:
           pip install pydantic
           # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           echo "$GITHUB_SHA"
-          python scripts/workFlowCtrl.py -s "$GITHUB_SHA" -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}" > output.txt
+          python scripts/workFlowCtrl.py -i "${{ steps.init_gputest_check.outputs.check_id }}" -s "$GITHUB_SHA" -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}" > output.txt
           echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
 
       - name: Send the Notification to start GPU Node SHA
@@ -114,7 +143,7 @@ jobs:
           pip install httpx
           pip install pydantic
           # if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          python scripts/workFlowCtrl.py -s "${{github.event.inputs.ref_sha}}" -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
+          python scripts/workFlowCtrl.py -i "${{ steps.init_gputest_check.outputs.check_id }}" -s "${{github.event.inputs.ref_sha}}" -u "$BASE_URL" -e cputest_pass -k "$SIG_KEY" -n "$GITHUB_WORKFLOW" -r "$GITHUB_REF" --repo "$GITHUB_REPOSITORY" -c "${{steps.cpu-test.conclusion}}" -o "${{steps.cpu-test.outputs}}" -t "${{github.run_id}}"> output.txt
           echo "::set-output name=Workflow_End_With_SHA::$(cat output.txt)"
 
 
