@@ -99,13 +99,14 @@ jobs:
       - name: tail long output
         if: ${{ failure() }}
         run: |
-          tail -c 4096 build/output.txt > outputShort.txt
+          cp build/output.txt build/outputLong.txt
+          tail -c 4096 build/outputLong.txt > build/output.txt
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
           name: gpu_test_output
-          path: ${{github.workspace}}/build/output.txt
+          path: ${{github.workspace}}/build/*.txt
 
       - uses: LouisBrunner/checks-action@v1.2.0
         if: ${{ steps.gpu_test.outcome == 'skipped' }}
@@ -116,7 +117,7 @@ jobs:
           details_url: ${{ env.d_url }}
           output: |
             {"summary":"${{ steps.gpu_test.outcome }}"}
-          output_text_description_file: ${{github.workspace}}/outputShort.txt
+          output_text_description_file: ${{github.workspace}}/build/output.txt
 
       - uses: LouisBrunner/checks-action@v1.2.0
         if: ${{ steps.gpu_test.outcome != 'skipped' }}
@@ -127,7 +128,7 @@ jobs:
           details_url: ${{ env.d_url }}
           output: |
             {"summary":"${{ steps.gpu_test.outcome }}"}
-          output_text_description_file: ${{github.workspace}}/outputShort.txt
+          output_text_description_file: ${{github.workspace}}/build/output.txt
   
   job_exit:
     if: always()
