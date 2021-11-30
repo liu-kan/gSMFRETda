@@ -32,6 +32,7 @@ class GenRand{
         void test_drawJ_Si2Sj(int n);
         void test_drawTau(float k);
         void test_binomial(int n, float p);
+        void test_multinomial(int K, double p);
         GenRand();
         ~GenRand();
     private:        

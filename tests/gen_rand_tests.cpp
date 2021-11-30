@@ -33,17 +33,17 @@ TEST_P(GenRandTest, binomial) {
   gr.free_randstate();
 }
 
-// TEST_P(GenRandTest, multinomial) {
-//   GenRand gr;
-//   int N = std::get<0>(GetParam());
-//   int K = std::get<1>(GetParam());
-//   float p = std::get<2>(GetParam());
-//   gr.init_randstate(N);
-//   gr.init_mem(N,K); 
-//   gr.test_multinomial(K,p);
-//   gr.free_mem();
-//   gr.free_randstate();
-// }
+TEST_P(GenRandTest, multinomial) {
+  GenRand gr;
+  int N = std::get<0>(GetParam());
+  int K = std::get<1>(GetParam());
+  float p = std::get<2>(GetParam());
+  gr.init_randstate(N);
+  gr.init_mem(N,K); 
+  gr.test_multinomial(K,p);
+  gr.free_mem();
+  gr.free_randstate();
+}
 
 TEST_P(GenRandTest, drawTau) {
   GenRand gr;

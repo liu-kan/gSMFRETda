@@ -8,7 +8,7 @@ on:
         required: false
   
   schedule:
-    - cron:  '7 20 * * *'
+    - cron:  '7 20 * * 2,4'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)

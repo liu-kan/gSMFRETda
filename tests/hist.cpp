@@ -58,3 +58,29 @@ void getoss_i(int* rawp, int size, int n, std::ostringstream& os, float* p,float
     os << boost::format("\n");
 
 }
+
+auto mkhist_d(double* SgDivSr, int size, int binnum, double lv, double uv) {
+    auto h = make_histogram(axis::regular<>(binnum, lv, uv, "x"));
+    for (int i = 0; i < size; i++) {
+        double it = SgDivSr[i];
+        h(it);
+    }
+    return h;
+}
+
+void getoss_d(double* rawp, int size, int n, std::ostringstream& os, double* p,double low,double up){
+       
+    auto h = mkhist_d(rawp, size, n, low, up);
+    int i = 0, sum = 0;
+    for (auto&& x : indexed(h, coverage::inner)) {
+        // os << boost::format("bin %2i [%4.1f, %4.1f): %i\n") % x.index() % x.bin().lower() % x.bin().upper() % *x;
+        sum += x;
+        p[i++] = x;
+    }
+    for (; i > 0;) {
+        p[--i] /= sum;
+        // os << boost::format("p[%i]=%f ") % i % p[i];
+    }
+    os << boost::format("\n");
+
+}

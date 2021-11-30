@@ -7,6 +7,7 @@
 #include "gen_rand.cuh"
 #include <random>
 #include "hist.hpp"
+#include <stdio.h>
 #include <vector>
 #include <dlib/statistics.h>
 #include "ParamsTest.hpp"
@@ -163,6 +164,7 @@ void GenRand::test_drawJ_Si2Sj(int n) {
         os.clear();
         CUDA_CHECK_RETURN(cudaMemcpy(res_c, int_res, randstateN * sizeof(int), cudaMemcpyDeviceToHost));
         getoss_i(res_c, randstateN, n, os, p);
+        // getoss<int,float>(res_c, randstateN, n, os, p, (float)0.0, (float)n);
         std::vector<float> sp(p, p + n);
         std::vector<float> tp(matP_i2jmp.data()+ni*n, matP_i2jmp.data() + ni * n + n);
         float r2 = dlib::r_squared(sp, tp);
@@ -210,6 +212,7 @@ void GenRand::test_drawDisIdx(int n){
   os.str("");
   os.clear();
   getoss_i(res_c, randstateN, n, os, p);
+  // getoss<int,float>(res_c, randstateN, n, os, p,(float)0.0, (float)n);
   std::cout << os.str() << std::flush;
   std::vector<float> sp(p, p + n);  
   float r2 = dlib::r_squared(sp, tp);
@@ -275,6 +278,14 @@ test_binomial_kernel(int n, float p, int* int_res, int N, rk_state* devStates)
   }
 }
 
+__global__ void
+test_multinomial_kernel(int N,int K,double *pp,long *g_n_res,int scount,rk_state* devStates){
+  int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tidx < scount) {
+      csd_multinomial (devStates+tidx, K, N, pp, g_n_res+K*tidx);
+  }
+}
+
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
@@ -307,6 +318,7 @@ void GenRand::test_binomial(int n, float p){
 
   std::ostringstream os;
   getoss_i(rawp, scount, n, os, pp);
+  // getoss<int,float>(rawp, scount, n, os, pp,(float)0.0, (float)n);
   std::cout << os.str() << std::flush;
   os.str("");
   os.clear();
@@ -322,6 +334,7 @@ void GenRand::test_binomial(int n, float p){
   // std::cout<<std::endl;  
 
   getoss_i(res_c, scount, n, os, pp);
+  // getoss<int,float>(res_c, scount, n, os, pp,(float)0, (float)n);
   std::cout << os.str() << std::flush;  
   std::vector<float> sp(pp, pp + n );
   std::cout << "sp:" <<std::endl;
@@ -340,71 +353,73 @@ void GenRand::test_binomial(int n, float p){
   delete[] res_c;  
 }
 
-/*
-void GenRand::test_multinomial(int K, float p){  
-  if (p>1)
-    p=1/p;
-  if (p<0.2)
+#include <cmath>
+#include <algorithm> 
+#include <gsl/gsl_statistics_int.h> 
+void GenRand::test_multinomial(int K, double p){  
+  if (p<2 )
     return;
   std::default_random_engine generator;
-  std::uniform_real_distribution<double> distribution(0.2,3);
-  double number = distribution(generator);
-  //K->N p->gp[K]
-
-  const gsl_rng_type * rngT;
-  gsl_rng * rng ;
-  // create a generator chosen by the
-  // environment variable GSL_RNG_TYPE
-  gsl_rng_env_setup();
-  rngT = gsl_rng_default;
-  rng = gsl_rng_alloc (rngT);
-
-  float* pp = new float[n];
+  std::uniform_real_distribution<double> uni_dist(0,p);
+  std::uniform_real_distribution<double> uni_dist_N(0.7,30);
   int scount = randstateN;
-  int *rawp  = new int[scount];
-  int *res_c = new int[scount];
-
-  for (int i = 0; i < scount; i++) {
-    rawp[i]=gsl_ran_binomial(rng, p, n);
+  double mu=uni_dist(generator)*K;
+  std::random_device rd{};
+  std::mt19937 gen{rd()};
+  std::normal_distribution<> d{mu,mu/2};
+  double *p0  = new double[scount];
+  for (int i=0;i<scount;i++){
+    p0[i] = std::round(d(gen));
   }
 
-  // std::cout<<std::endl << "rawp:" <<std::endl;
-  // for (int i=0;i<scount;i++)
-  //   std::cout << rawp[i] << ' ';    
-  // std::cout<<std::endl;
+  double minp=*std::min_element(p0,p0+scount);
+  double maxp=*std::max_element(p0,p0+scount);
 
+  int N=std::ceil(uni_dist_N(generator)*K);
   std::ostringstream os;
-  getoss_i(rawp, scount, n, os, pp);
-  std::cout << os.str() << std::flush;
+  double* pp = new double[K];
+
+  getoss_d(p0, scount, K,os,pp,minp,maxp);
+  std::cout << os.str() << std::flush;  
   os.str("");
   os.clear();
-  std::vector<float> tp(pp, pp + n );
-
-  test_binomial_kernel<<<gridSize, blockSize>>>(n,p,int_res,scount,devStates);
-  CUDA_CHECK_RETURN(cudaMemcpy(res_c, int_res, scount * sizeof(int), cudaMemcpyDeviceToHost));
-  CUDA_CHECK_RETURN(cudaDeviceSynchronize());  
   
-  // std::cout<<std::endl << "res_c:" <<std::endl;
-  // for (int i=0;i<scount;i++)
-  //   std::cout << res_c[i] << ' ';    
-  // std::cout<<std::endl;  
-
-  getoss_i(res_c, scount, n, os, pp);
-  std::cout << os.str() << std::flush;  
-  std::vector<float> sp(pp, pp + n );
-  std::cout << "sp:" <<std::endl;
-  for (auto i: sp)
-    std::cout << i << ' ';
-  std::cout<<std::endl<< "tp:" <<std::endl;
-  for (auto i: tp)
-    std::cout << i << ' ';    
-  std::cout<<std::endl;
-  float r2 = dlib::r_squared(sp, tp);
-  std::cout << "test_binomial r2: " << r2 << std::endl;
-  // if(randstateN>10000)
-    EXPECT_GE(r2, 0.711);
+  // printf("K=%d, scount=%d\n",K,scount);
+  long* g_n_res=NULL;
+  double* gpp=NULL;
+  cudaError_t e = cudaMalloc((void**)&g_n_res, K * sizeof(long)*scount);
+  ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";
+  e = cudaMalloc((void**)&gpp, K * sizeof(double));
+  ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";
+  CUDA_CHECK_RETURN(cudaMemcpy(gpp, pp, K*sizeof(double), cudaMemcpyHostToDevice));
+  test_multinomial_kernel<<<gridSize, blockSize>>>(N,K,gpp,g_n_res,scount,devStates);
+  CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+  int *c_n_res=new int[ K *scount];
+  long *cg_n_res=new long[ K *scount];
+  
+  CUDA_CHECK_RETURN(cudaMemcpy(cg_n_res, g_n_res, scount * K*sizeof(long), cudaMemcpyDeviceToHost));
+  
+  std::transform(cg_n_res, cg_n_res + K*scount, c_n_res, [](long d) {return (int)d;});
+  if(scount>1000){
+    for(int i=0;i<K;i++){
+      double meansp=gsl_stats_int_mean(c_n_res+i,K,scount);
+      double varsp=gsl_stats_int_variance(c_n_res+i,K,scount);
+      double mean=N*pp[i];
+      double var=N*pp[i]*(1-pp[i]);
+      printf("meanki=%lf,np=%lf,N=%d,pp[%d]=%lf\n",meansp,mean,N,i,pp[i]);
+      EXPECT_LE(abs(meansp-mean)/mean,0.3);
+      EXPECT_LE(abs(varsp-var)/var,0.3);
+      for(int j=i+1;j<K;j++){
+        double covarsp=gsl_stats_int_covariance(c_n_res+i,K,c_n_res+j,K,scount);
+        double covar=-N*pp[i]*pp[j];
+        EXPECT_LE(abs(covarsp-covar)/covar,0.3);
+      }
+    }
+  }
+  delete [] p0;
   delete[] pp;
-  delete[] rawp;
-  delete[] res_c;  
+  delete[] c_n_res;
+  delete[] cg_n_res;
+  CUDA_CHECK_RETURN(cudaFree(g_n_res));     
+  CUDA_CHECK_RETURN(cudaFree(gpp));
 }
-*/
