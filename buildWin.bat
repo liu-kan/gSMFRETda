@@ -14,5 +14,5 @@ if "%1"=="" goto Continue
     shift
     goto getarg
 :Continue
-cmake -G "Visual Studio 16" -Dproto=%proto% -DBUILD_TESTS=ON %src_dir%
+cmake -G "Visual Studio 16" -Dproto=%proto% -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake %src_dir%
 cmake --build . --config Release -j -- /p:CharacterSet=Unicode

@@ -230,4 +230,37 @@ __device__ void csd_multinomial (rk_state * r, int K, int N, double *p, long *n)
 
 }
 
+__device__ void csd_int_multinomial (rk_state * r, int K, int N, float *p, int *n)
+{
+  int k;
+  float norm = 0.0;
+  float sum_p = 0.0;
+
+  int sum_n = 0;
+
+  /* p[k] may contain non-negative weights that do not sum to 1.0.
+   * Even a probability distribution will not exactly sum to 1.0
+   * due to rounding errors. 
+   */
+
+  for (k = 0; k < K; k++){
+    norm += p[k];
+  }
+
+  for (k = 0; k < K; k++){
+    if (p[k] > 0.0)
+    {
+      n[k] = (int)rk_binomial (r,  N - sum_n, p[k] / (norm - sum_p));
+    }
+    else
+    {
+      n[k] = 0;
+    }
+
+    sum_p += p[k];
+    sum_n += n[k];
+  }
+
+}
+
 #endif

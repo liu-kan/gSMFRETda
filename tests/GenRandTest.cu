@@ -279,10 +279,10 @@ test_binomial_kernel(int n, float p, int* int_res, int N, rk_state* devStates)
 }
 
 __global__ void
-test_multinomial_kernel(int N,int K,double *pp,long *g_n_res,int scount,rk_state* devStates){
+test_multinomial_kernel(int N,int K,float *pp,int *g_n_res,int scount,rk_state* devStates){
   int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   if (tidx < scount) {
-      csd_multinomial (devStates+tidx, K, N, pp, g_n_res+K*tidx);
+      csd_int_multinomial (devStates+tidx, K, N, pp, g_n_res+K*tidx);
   }
 }
 
@@ -356,7 +356,7 @@ void GenRand::test_binomial(int n, float p){
 #include <cmath>
 #include <algorithm> 
 #include <gsl/gsl_statistics_int.h> 
-void GenRand::test_multinomial(int K, double p){  
+void GenRand::test_multinomial(int K, float p){  
   if (p<2 )
     return;
   std::default_random_engine generator;
@@ -377,29 +377,30 @@ void GenRand::test_multinomial(int K, double p){
 
   int N=std::ceil(uni_dist_N(generator)*K);
   std::ostringstream os;
-  double* pp = new double[K];
-
-  getoss_d(p0, scount, K,os,pp,minp,maxp);
+  double* ppd = new double[K];
+  float* pp = new float[K];
+  getoss_d(p0, scount, K,os,ppd,minp,maxp);
+  std::transform(ppd, ppd + K, pp, [](double d) {return (float)d;});
   std::cout << os.str() << std::flush;  
   os.str("");
   os.clear();
   
   // printf("K=%d, scount=%d\n",K,scount);
-  long* g_n_res=NULL;
-  double* gpp=NULL;
-  cudaError_t e = cudaMalloc((void**)&g_n_res, K * sizeof(long)*scount);
+  int* g_n_res=NULL;
+  float* gpp=NULL;
+  cudaError_t e = cudaMalloc((void**)&g_n_res, K * sizeof(int)*scount);
   ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";
-  e = cudaMalloc((void**)&gpp, K * sizeof(double));
+  e = cudaMalloc((void**)&gpp, K * sizeof(float));
   ASSERT_EQ(e, cudaSuccess) << "cudaMalloc failed!";
-  CUDA_CHECK_RETURN(cudaMemcpy(gpp, pp, K*sizeof(double), cudaMemcpyHostToDevice));
+  CUDA_CHECK_RETURN(cudaMemcpy(gpp, pp, K*sizeof(float), cudaMemcpyHostToDevice));
   test_multinomial_kernel<<<gridSize, blockSize>>>(N,K,gpp,g_n_res,scount,devStates);
   CUDA_CHECK_RETURN(cudaDeviceSynchronize());
   int *c_n_res=new int[ K *scount];
-  long *cg_n_res=new long[ K *scount];
+  // long *cg_n_res=new long[ K *scount];
   
-  CUDA_CHECK_RETURN(cudaMemcpy(cg_n_res, g_n_res, scount * K*sizeof(long), cudaMemcpyDeviceToHost));
+  CUDA_CHECK_RETURN(cudaMemcpy(c_n_res, g_n_res, scount * K*sizeof(int), cudaMemcpyDeviceToHost));
   
-  std::transform(cg_n_res, cg_n_res + K*scount, c_n_res, [](long d) {return (int)d;});
+  // std::transform(cg_n_res, cg_n_res + K*scount, c_n_res, [](long d) {return (int)d;});
   if(scount>1000){
     for(int i=0;i<K;i++){
       double meansp=gsl_stats_int_mean(c_n_res+i,K,scount);
@@ -418,8 +419,9 @@ void GenRand::test_multinomial(int K, double p){
   }
   delete [] p0;
   delete[] pp;
+  delete[] ppd;
   delete[] c_n_res;
-  delete[] cg_n_res;
+  // delete[] cg_n_res;
   CUDA_CHECK_RETURN(cudaFree(g_n_res));     
   CUDA_CHECK_RETURN(cudaFree(gpp));
 }

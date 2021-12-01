@@ -79,11 +79,15 @@ in build directory before you run ```cmake ..```  .
 The program can be compiled on Windows natively. And if you wish, it can also run on [WSL2 with CUDA](https://docs.nvidia.com/cuda/wsl-user-guide/index.html) with compiling method of Linux mentioned above.
 
 ### Compiling natively from source
-Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with **C++, CMake for Windows, CMake for Linux & English language pack Component** installation. It's highly recommended that installing VS to default path.), CUDA for Windows, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
+Compiling under Windows depends on [conan](http://conan.io/downloads.html), in sequence, install [Visual Studio](https://visualstudio.microsoft.com/downloads/) (with **C++, CMake for Windows, CMake for Linux & English language pack Component** installation. It's highly recommended that installing VS to default path.), CUDA for Windows, VCpkg, CONAN (Add conan to user path), [Git for Windows](https://git-scm.com/download/win). Open a "x64 Native Tools Command Prompt for VS 2019" console form Windows Start Menu.
+
+Assume your vcpkg is installed in c:\vcpkg
 
 ```bash
 cd \path\to\build\dir
 git clone https://github.com/liu-kan/gSMFRETda.git
+cd gSMFRETda
+vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"
 mkdir build
 cd build
 ..\gSMFRETda\buildWin.bat
