@@ -97,7 +97,7 @@ jobs:
           ctest -C ${{env.BUILD_TYPE}} --output-on-failure -R gen_rand_tests -O output.txt
 
       - name: tail long output
-        if: ${{ failure() }}
+        if: ${{ steps.gpu_test.outcome == 'failure' }}
         run: |
           cp build/output.txt build/outputLong.txt
           tail -c 4096 build/outputLong.txt > build/output.txt
