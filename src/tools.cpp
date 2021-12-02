@@ -169,3 +169,22 @@ void genuid(std::string* id,int gid, int sid,char *gpuuid){
     ss <<sss.str() <<'-' << pid <<"-"<< tid <<"-"<<std::to_string(gid)<<"-"<<std::to_string(sid);
     *id=ss.str();
 }
+
+std::string addThousandSeparators(std::string value, char thousandSep , char decimalSep , char sourceDecimalSep )
+{
+    int len = value.length();
+    int negative = ((len && value[0] == '-') ? 1: 0);
+    int dpos = value.find_last_of(sourceDecimalSep);
+    int dlen = 3 + (dpos == std::string::npos ? 0 : (len - dpos));
+
+    if (dpos != std::string::npos && decimalSep != sourceDecimalSep) {
+        value[dpos] = decimalSep;
+    }
+
+    while ((len - negative) > dlen) {
+        value.insert(len - dlen, 1, thousandSep);
+        dlen += 4;
+        len += 1;
+    }
+    return value;
+}

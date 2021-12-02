@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-void genuid(std::string* id,int gid,int sid,char *gpuuid);
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -39,3 +38,5 @@ class AtomicWriter {
     }
 };
 
+void genuid(std::string* id,int gid,int sid,char *gpuuid);
+std::string addThousandSeparators(std::string value, char thousandSep = ',', char decimalSep = '.', char sourceDecimalSep = '.');

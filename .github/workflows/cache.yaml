@@ -36,11 +36,26 @@ jobs:
         with:
           ref: '${{github.event.inputs.ref_sha}}'
 
+      - name: Match Cache VCPKG
+        id: cache_match_vcpkg
+        uses: actions/cache@v2
+        continue-on-error: true        
+        env:
+          cache-name: cache-vcpkg
+        with:
+          path: |
+            C:/vcpkg
+            !C:/vcpkg/buildtrees
+            !C:/vcpkg/.git
+          key: ${{ runner.os }}−${{ env.cache-name }}-${{github.sha}}-${{ github.event.inputs.ref_sha}}
+
       - name: vcpkg
+        if: ${{! steps.cache_match_vcpkg.outputs.cache-hit}}
         run: |
           vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"
 
       - name: Save Cache VCPKG
+        if: ${{! steps.cache_match_vcpkg.outputs.cache-hit}}
         id: cache_save_vcpkg
         uses: actions/cache@v2
         continue-on-error: true        

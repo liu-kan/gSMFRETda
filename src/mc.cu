@@ -1,6 +1,7 @@
 #include "cuda_tools.hpp"
 #include "mc.hpp"
 #include <cstddef>
+#include <string>
 #include <time.h>
 
 #define VECTOR_SIZE 64
@@ -32,6 +33,8 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
         n_Devices = nDevices;
     }
     if (dn < nDevices) {
+        int pgid;
+        cudaGetDevice( &pgid );
         for (; i < n_Devices; i++) {
             cudaDeviceProp prop;
             CUDA_CHECK_RETURN(cudaGetDeviceProperties(&prop, i));
@@ -50,7 +53,7 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
                 printf("%hhx", prop.uuid.bytes[i]);
             }
 #endif
-            printf("\n  Concurrent copy and kernel execution:          %s with "
+            printf("\n  Concurrent copy and kernel execution: \t %s with "
                    "%d copy "
                    "engine(s)\n",
                    (prop.deviceOverlap ? "Yes" : "No"), prop.asyncEngineCount);
@@ -61,9 +64,15 @@ int showGPUsInfo(int dn, char *gpuuid, int *streamCount) {
                     *streamCount = prop.asyncEngineCount * 2;
             }
             printf("  Device name: %s\n", prop.name);
-            printf("  GPU global memory = %lu GBytes\n",
-                   (prop.totalGlobalMem >> 30) + 1);
+            // printf("  GPU global memory = %lu GBytes\n",
+            //        (prop.totalGlobalMem >> 30) + 1);
+            cudaSetDevice( i );
+            size_t free, total;
+            cudaMemGetInfo( &free, &total );
+            cout << "GPU " << i << " memory: free=" << addThousandSeparators(std::to_string((free>>20))) << " MB, total=" 
+                << addThousandSeparators(std::to_string((total>>20))) <<" MB"<< std::endl;
         }
+        cudaSetDevice( pgid );
     }
     return nDevices;
 }

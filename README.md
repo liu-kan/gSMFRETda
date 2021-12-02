@@ -3,6 +3,7 @@
 [![build status](https://github.com/liu-kan/gSMFRETda/actions/workflows/cpu_test.yml/badge.svg)](https://github.com/liu-kan/gSMFRETda/actions/workflows/cpu_test.yml)
 [![gpu test status](https://github.com/liu-kan/gSMFRETda/actions/workflows/gpu_test.yml/badge.svg)](https://github.com/liu-kan/gSMFRETda/actions/workflows/gpu_test.yml)
 [![windows build status](https://github.com/liu-kan/gSMFRETda/actions/workflows/windows.yml/badge.svg)](https://github.com/liu-kan/gSMFRETda/actions/workflows/windows.yml)
+[![codecov](https://codecov.io/gh/liu-kan/gSMFRETda/branch/master/graph/badge.svg?token=T6XKP99802)](https://codecov.io/gh/liu-kan/gSMFRETda)
 
 gSMFRETda is a single molecule fluorescence resonance energy transfer (or smFRET) probability distribution analysis (PDA) program written under C++/CUDA. It can use GPUs to accelerate Monte Carlo simulations of PDA. And because it drastically reduces the calculation time, people can sample dwell time and other parameters more densely, it enable PDA to analyse very fast dynamic interconversion of the system or some other complex TCSPC setup forms requesting lots of PDA calculation.
 

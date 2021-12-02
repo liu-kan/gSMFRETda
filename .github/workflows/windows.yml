@@ -23,10 +23,7 @@ on:
       update_cache:
         description: 'update cache'
         required: false        
-      debug_enabled:
-        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'     
-        required: false
-        default: false
+
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release

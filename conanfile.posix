@@ -1,5 +1,6 @@
 [requires]
 boost/[>=1.70.0]
+nng/1.5.2
 
 [generators]
 cmake
