@@ -11,7 +11,10 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(codeql_analysis "codeql-analysis" OFF)
+if(NOT codeql_analysis)
 add_definitions(-w)
+endif()
 
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

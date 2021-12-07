@@ -107,12 +107,12 @@ jobs:
           lcov --list coverage.info
           bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
-        if: ${{ failure() }}
-        with:
-          limit-access-to-actor: true
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
+      #   timeout-minutes: 15
+      #   if: ${{ failure() }}
+      #   with:
+      #     limit-access-to-actor: true
 
       - name: tail long output
         if: ${{ steps.gpu_test.outcome == 'failure' }}
