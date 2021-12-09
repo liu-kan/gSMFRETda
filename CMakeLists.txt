@@ -96,7 +96,7 @@ FetchContent_Populate(
   GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
   SOURCE_DIR ${CMAKE_BINARY_DIR}/third/eigen
   GIT_SHALLOW    1
-  GIT_TAG        3.3
+  GIT_TAG        3.4
   GIT_PROGRESS 1
   UPDATE_DISCONNECTED true
 )
@@ -250,37 +250,66 @@ else()
         ${CONAN_LIBS_BOOST} dl ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} pthread) 
 endif()
 
-
-add_executable(${PROJECT_NAME}
-    src/3rdparty/gengetopt/cmdline.c
-    src/3rdparty/gengetopt/cmdline.h
-    src/binom.cuh
-    src/cuda_tools.hpp
-    src/eigenhelper.cpp
-    src/eigenhelper.hpp
-    src/gen_rand.cuh
-    src/gpuWorker.cpp
-    src/gpuWorker.hpp
-    src/loadHdf5.cpp
-    src/loadHdf5.hpp
-    src/main.cpp
-    src/mc.cu
-    src/mc.hpp
-    src/streamWorker.cpp
-    src/streamWorker.hpp
-    src/tools.cpp
-    src/tools.hpp
-    src/mrImp.cpp
-    src/mrImp.hpp
-    resources/gSMFRETda.rc
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    add_executable(${PROJECT_NAME}
+        src/3rdparty/gengetopt/cmdline.c
+        src/3rdparty/gengetopt/cmdline.h
+        src/binom.cuh
+        src/cuda_tools.hpp
+        src/eigenhelper.cpp
+        src/eigenhelper.hpp
+        src/gen_rand.cuh
+        src/gpuWorker.cpp
+        src/gpuWorker.hpp
+        src/loadHdf5.cpp
+        src/loadHdf5.hpp
+        src/main.cpp
+        src/mc.cu
+        src/mc.hpp
+        src/streamWorker.cpp
+        src/streamWorker.hpp
+        src/tools.cpp
+        src/tools.hpp
+        src/mrImp.cpp
+        src/mrImp.hpp
+        resources/gSMFRETda.rc
+        )
+    set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+else()
+    add_library(mclibcuda STATIC     
+        src/mc.cu
+        src/mc.hpp
+        src/gen_rand.cuh
+        src/binom.cuh
     )
-set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(call_${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
-set_property(TARGET call_${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
-#set_property(TARGET proto PROPERTY CUDA_ARCHITECTURES 61 70 75 72-virtual)
-add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
-
+    set_target_properties(mclibcuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_property(TARGET mclibcuda PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+    target_compile_options(mclibcuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+    target_link_libraries(mclibcuda
+        ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})
+    add_executable(${PROJECT_NAME}
+        src/3rdparty/gengetopt/cmdline.c
+        src/3rdparty/gengetopt/cmdline.h
+        src/cuda_tools.hpp
+        src/eigenhelper.cpp
+        src/eigenhelper.hpp
+        src/gpuWorker.cpp
+        src/gpuWorker.hpp
+        src/loadHdf5.cpp
+        src/loadHdf5.hpp
+        src/main.cpp
+        src/streamWorker.cpp
+        src/streamWorker.hpp
+        src/tools.cpp
+        src/tools.hpp
+        src/mrImp.cpp
+        src/mrImp.hpp
+        resources/gSMFRETda.rc
+    )
+    target_link_libraries(${PROJECT_NAME} mclibcuda)
+endif()
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     target_link_libraries(${PROJECT_NAME}  
            ${CONAN_LIBS_HDF5} ${CONAN_LIBS_NNG} Boost::boost Boost::filesystem ${CONAN_LIBS_ZLIB})
@@ -292,13 +321,7 @@ else()
 endif()
 
 target_link_libraries(${PROJECT_NAME} proto)
-target_link_libraries(${PROJECT_NAME} 
-     ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})
-
-#if (HighFive_FOUND)
-#  target_link_libraries(${PROJECT_NAME} HighFive)
-#endif()
-  add_dependencies(${PROJECT_NAME} third)
+add_dependencies(${PROJECT_NAME} third)
 
 option(BUILD_TESTS "Configure CMake to build tests" OFF)
 if(BUILD_TESTS)

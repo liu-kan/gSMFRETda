@@ -1,3 +1,5 @@
 ignore:
   - "src/3rdparty"  # ignore folders and all its contents
   - "3rdparty"
+  - "HighFive"
+  - "eigen"
