@@ -109,12 +109,12 @@ jobs:
         # Build your program with the given configuration
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j -- /p:CharacterSet=Unicode
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 50
-        if: ${{ failure() }}
-        with:
-          limit-access-to-actor: true
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
+      #   timeout-minutes: 50
+      #   if: ${{ failure() }}
+      #   with:
+      #     limit-access-to-actor: true
 
       - name: cpu_test
         id: cpu-test

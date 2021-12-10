@@ -181,6 +181,7 @@ include_directories(${CUDA_INCLUDE_DIRS})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR}/third/HighFive/include)
+include_directories(${CMAKE_BINARY_DIR}/3rdparty/protobuf)
 include_directories(${CMAKE_SOURCE_DIR})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
@@ -251,32 +252,40 @@ else()
 endif()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    add_library(mclibcuda STATIC     
+        src/mc.cu
+        src/mc.hpp
+        src/gen_rand.cuh
+        src/binom.cuh
+        src/mrImp.cpp
+        src/mrImp.hpp    
+        src/eigenhelper.cpp
+        src/eigenhelper.hpp    
+        src/tools.cpp
+        src/tools.hpp    
+        src/cuda_tools.hpp
+        src/gpuWorker.cpp
+        src/gpuWorker.hpp     
+        src/streamWorker.cpp
+        src/streamWorker.hpp   
+    )
+    set_target_properties(mclibcuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_property(TARGET mclibcuda PROPERTY POSITION_INDEPENDENT_CODE ON)
+    set_target_properties(mclibcuda PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+    set_property(TARGET mclibcuda PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+    target_compile_options(mclibcuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+    target_link_libraries(mclibcuda
+    ${CUDA_LIBRARIES} ${CUDA_cudart_static_LIBRARY} ${CUDA_curand_LIBRARY})
+    target_link_libraries(mclibcuda proto ${CONAN_LIBS_NNG})
     add_executable(${PROJECT_NAME}
         src/3rdparty/gengetopt/cmdline.c
         src/3rdparty/gengetopt/cmdline.h
-        src/binom.cuh
-        src/cuda_tools.hpp
-        src/eigenhelper.cpp
-        src/eigenhelper.hpp
-        src/gen_rand.cuh
-        src/gpuWorker.cpp
-        src/gpuWorker.hpp
         src/loadHdf5.cpp
         src/loadHdf5.hpp
         src/main.cpp
-        src/mc.cu
-        src/mc.hpp
-        src/streamWorker.cpp
-        src/streamWorker.hpp
-        src/tools.cpp
-        src/tools.hpp
-        src/mrImp.cpp
-        src/mrImp.hpp
         resources/gSMFRETda.rc
-        )
-    set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-    set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
-    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+    )
+    target_link_libraries(${PROJECT_NAME} mclibcuda)
 else()
     add_library(mclibcuda STATIC     
         src/mc.cu
@@ -309,10 +318,11 @@ else()
         resources/gSMFRETda.rc
     )
     target_link_libraries(${PROJECT_NAME} mclibcuda)
+    target_link_libraries(${PROJECT_NAME} proto)
 endif()
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     target_link_libraries(${PROJECT_NAME}  
-           ${CONAN_LIBS_HDF5} ${CONAN_LIBS_NNG} Boost::boost Boost::filesystem ${CONAN_LIBS_ZLIB})
+           ${CONAN_LIBS_HDF5} Boost::boost Boost::filesystem ${CONAN_LIBS_ZLIB})
 elseif(Boost_FOUND AND NNG_INCLUDE_DIRS)
     target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES}  
           pthread ${NNG_LIBRARY} ${link_stdc__fs} ${Boost_LIBRARIES})
@@ -320,7 +330,7 @@ else()
     target_link_libraries(${PROJECT_NAME} ${HDF5_C_LIBRARIES} ${CONAN_LIBS} ${link_stdc__fs} pthread)
 endif()
 
-target_link_libraries(${PROJECT_NAME} proto)
+
 add_dependencies(${PROJECT_NAME} third)
 
 option(BUILD_TESTS "Configure CMake to build tests" OFF)
