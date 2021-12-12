@@ -129,9 +129,15 @@ void streamWorker::run(int sid,int sz_burst, int leftPad){
         ga.ParseFromArray(rbuf,bytes); 
         int pidx=ga.idx();
         msg_bestcs=ga.bestfv();
-        if (pidx<0){
+        if (pidx==-1){
           lck.unlock();
+          nn_freemsg (rbuf);
           continue;
+        }
+        else if(pidx==-2){
+          lck.unlock();
+          nn_freemsg (rbuf);
+          break;          
         }
         params_idx=pidx;
         ps_n=s_n[sid]*(s_n[sid]+1);
