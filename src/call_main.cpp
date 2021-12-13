@@ -11,7 +11,7 @@ namespace fs = boost::filesystem;
 #include <thread>
 #include <csignal>
 #include <stdio.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <fstream>
 #include <vector>
 #include <algorithm>
@@ -44,7 +44,7 @@ void signal_handler(int signal)
 void modArg(std::string& cmdline, gengetopt_args_info& args_info){ 
     if(args_info.inputs_num<1 && !args_info.input_given ){
       std::cout<<"You need either appoint -i or add hdf5 filename in the end of cmdline!"<<std::endl;
-      exit(1);
+      std::exit(EXIT_FAILURE);
     }
     if (args_info.url_given)
         cmdline=cmdline+" -u "+args_info.url_arg;
@@ -139,7 +139,7 @@ std::signal(SIGINT, signal_handler);
     gSMFRETda_path/="gSMFRETda";
     gengetopt_args_info args_info;
     if (cmdline_parser (argc, argv, &args_info) != 0)
-      exit(1) ;
+      std::exit(EXIT_FAILURE);
     std::string cmdline=gSMFRETda_path.string();
     modArg(cmdline, args_info);
     int minGid=99999;
@@ -157,7 +157,7 @@ std::signal(SIGINT, signal_handler);
     int nDevices;
     CUDA_CHECK_RETURN(cudaGetDeviceCount(&nDevices));
     if(nDevices<=0)
-        exit(-1);
+        std::exit(EXIT_FAILURE);
     
     if (useAll){
         for (int igi =0;igi<nDevices;igi++){            

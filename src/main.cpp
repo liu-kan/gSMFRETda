@@ -11,6 +11,7 @@
 #include <condition_variable>
 #include "args.pb.h"
 #include <chrono>
+#include <cstdlib>
 using namespace std::chrono_literals;
 using namespace std;
 #include "tools.hpp"
@@ -67,7 +68,7 @@ int main(int argc, char* argv[])
     // auto result = parse(argc, argv);
     gengetopt_args_info args_info;
     if (cmdline_parser (argc, argv, &args_info) != 0)
-      exit(1) ;   
+      std::exit(EXIT_FAILURE);
     if(args_info.pid_given)
       writepid(args_info.pid_arg); 
     if ( args_info.gpuinfo_flag ){      
@@ -77,11 +78,11 @@ int main(int argc, char* argv[])
         showGPUsInfo(args_info.gpuid_arg);
       else
         showGPUsInfo();
-      exit(1);
+      std::exit(EXIT_SUCCESS);
     }
     if(args_info.inputs_num<1 && !args_info.input_given ){
       std::cout<<"You need either appoint -i or add hdf5 filename in the end of cmdline!"<<std::endl;
-      exit(1);
+      std::exit(EXIT_FAILURE);
     }
     string H5FILE_NAME;
     if (args_info.input_given)

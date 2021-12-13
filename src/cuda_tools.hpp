@@ -4,6 +4,7 @@
 #include <cuda.h>
 #include <memory>
 #include <iostream>
+#include <cstdlib>
 //static void HandleError( cudaError_t err )
 //{
 //	// CUDA error handeling from the "CUDA by example" book
@@ -23,7 +24,7 @@ static void CheckCudaErrorAux (const char *file, unsigned line, const char *stat
 	if (err == cudaSuccess)
 		return;
 	std::cerr << statement<<" returned " << cudaGetErrorString(err) << "("<<err<< ") at "<<file<<":"<<line << std::endl;
-	exit (1);
+	std::exit(EXIT_FAILURE);
 }
 
 #define CUDA_CALL(x) do { if((x) != cudaSuccess) { \
