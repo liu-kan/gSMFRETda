@@ -27,8 +27,8 @@ on:
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  CUDA_VERSION: 11.2.2
-  cuda_version_major_minor: 11.2
+  CUDA_VERSION: 11.5.1
+  cuda_version_major_minor: 11.5
 
 jobs:
 
@@ -85,7 +85,7 @@ jobs:
         if: ${{(! steps.cache_hits_vcpkg.outputs.cache-hit) || github.event.inputs.update_cache}}
         run: vcpkg install --triplet x64-windows "@.vcpkg_deps.txt"
 
-      - uses: Jimver/cuda-toolkit@v0.2.4
+      - uses: Jimver/cuda-toolkit@v0.2.5
         id: cuda-toolkit
         with:
           cuda: '${{env.CUDA_VERSION}}'

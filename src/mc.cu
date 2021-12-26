@@ -326,15 +326,15 @@ void mc::givebackStream(int i) { streamFIFO.push(i); }
 bool mc::get_max_conversion_capacity(int max_stateNum){
     if(data_gpu_inited){
         double N=((double)sz_burst)*streamNum;
-        size_t reserved_gpumem= sz_burst * reSampleTimes * (sizeof(rk_state)+\ 
-            sizeof(curandStateScrambledSobol64)+(VECTOR_SIZE +1)* \
-            sizeof(long long int))*streamNum \ //init_randstate
-            + streamNum* max_stateNum* sizeof(float) * sz_burst * reSampleTimes\ //set_params_buff
-            +streamNum * reSampleTimes * sizeof(retype)*streamNum \ //setBurstBd
+        size_t reserved_gpumem= sz_burst * reSampleTimes * (sizeof(rk_state)+ 
+            sizeof(curandStateScrambledSobol64)+(VECTOR_SIZE +1)* 
+            sizeof(long long int))*streamNum  //init_randstate
+            + streamNum* max_stateNum* sizeof(float) * sz_burst * reSampleTimes //set_params_buff
+            +streamNum * reSampleTimes * sizeof(retype)*streamNum //setBurstBd
             + max_stateNum *(3+2*max_stateNum*max_stateNum)* sizeof(float)*streamNum ; //set_nstates
         size_t free, total;
         cudaMemGetInfo( &free, &total );
-        size_t M200=(200<<20);
+        size_t M200=(300<<20);
         if((free-reserved_gpumem)<=0)
             return false;
         size_t tot_conversion_buff_sz = free-reserved_gpumem-M200>0 ? free-reserved_gpumem-M200 : (size_t)((free-reserved_gpumem)*.90); 
@@ -348,9 +348,11 @@ bool mc::get_max_conversion_capacity(int max_stateNum){
             // printf("d:%f\n",(double)tot_conversion_buff_sz);
             // conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)*(end_burst[sid] - begin_burst[sid])/N);
             conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)/streamNum);
-            printf("conversion_buff_sz[sid] %d\n",conversion_buff_sz[sid]);
             tcc[sid]=(int)(conversion_buff_sz[sid]/(sz_burst*sizeof(int)));
-            printf("tcc[%d]: %d\n",sid,tcc[sid]);
+            if(sid==0){
+                printf("conversion_buff_sz[%d] %d\n",sid,conversion_buff_sz[sid]);
+                printf("max_conversion_capacity[%d]: %d\n",sid,tcc[sid]);
+            }
             g_conversion_buff[sid]=(int *)(mr->malloc(conversion_buff_sz[sid],streams[sid]));
         }
         // CUDA_CHECK_RETURN(cudaMemcpy(g_conversion_capacity, tcc, streamNum*sizeof(int), cudaMemcpyHostToDevice));
