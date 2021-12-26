@@ -71,12 +71,12 @@ void gpuWorker::run(int sz_burst){
         int oldS_n=pdamc->set_nstates(s_n[sid],sid);
         pdamc->set_params(s_n[sid],sid,params[sid]);
         int N_sid=pdamc->setBurstBd(ga_start[sid],ga_stop[sid], sid);
-        if(oldS_n!=s_n[sid]||N_sid!=N[sid])
-          pdamc->set_params_buff(oldS_n,N_sid,sid);
         if (N_sid!=N[sid]){
           pdamc->init_randstate(N_sid,sid);
           N[sid]=N_sid;
-        }
+        }        
+        if(oldS_n!=s_n[sid]||N_sid!=N[sid]) //TODO buff
+          pdamc->set_params_buff(oldS_n,N_sid,sid);
         pdamc->run_kernel(N[sid],sid);
         dataready[sid]=3;        
           lck.unlock();

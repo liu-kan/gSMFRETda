@@ -2,8 +2,9 @@
 #include "mc.hpp"
 #include <cstddef>
 #include <string>
+#include <thread>
 #include <time.h>
-
+#include <chrono>
 #define VECTOR_SIZE 64
 #include "binom.cuh"
 #include "gen_rand.cuh"
@@ -211,6 +212,7 @@ void mc::set_gpuid() {
 mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
        bool _profiler) {
     debug = de;
+    data_gpu_inited=false;
     profiler = _profiler;
     devid = id;
     cudaGetDeviceCount(&nDevices);
@@ -227,6 +229,7 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
         return;
     }
     set_gpuid();
+    conversion_buff_sz=new int[streamNum];
     mr = new mrImp(hdf5size, 0.85, devid,false,0);
     // setAllocator("rmmDefaultPool");
     streams = (cudaStream_t *)malloc(sizeof(cudaStream_t) * streamNum);
@@ -243,6 +246,7 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     // hpk=(float **)malloc(sizeof(float*)*streamNum);
     // hpp=(float **)malloc(sizeof(float*)*streamNum);
     // hpe=(float **)malloc(sizeof(float*)*streamNum);
+    g_conversion_buff = (int **)malloc(sizeof(int *) * streamNum);
     gpv = (float **)malloc(sizeof(float *) * streamNum);
     gpk = (float **)malloc(sizeof(float *) * streamNum);
     gpp_i2j = (float**)malloc(sizeof(float*) * streamNum);
@@ -265,6 +269,7 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
     std::memset(gpv, 0, sizeof(float *) * streamNum);
     std::memset(gpp_i2j, 0, sizeof(float *) * streamNum);
     std::memset(gpk, 0, sizeof(float*) * streamNum);
+    std::memset(g_conversion_buff, 0, sizeof(int*) * streamNum);
     std::memset(gpp, 0, sizeof(float *) * streamNum);
     std::memset(gpe, 0, sizeof(float *) * streamNum);
     s_n = new int[streamNum];
@@ -318,6 +323,44 @@ cudaStream_t* mc::getStreams(int *numStream =NULL) {
 
 void mc::givebackStream(int i) { streamFIFO.push(i); }
 
+bool mc::get_max_conversion_capacity(int max_stateNum){
+    if(data_gpu_inited){
+        double N=((double)sz_burst)*streamNum;
+        size_t reserved_gpumem= sz_burst * reSampleTimes * (sizeof(rk_state)+\ 
+            sizeof(curandStateScrambledSobol64)+(VECTOR_SIZE +1)* \
+            sizeof(long long int))*streamNum \ //init_randstate
+            + streamNum* max_stateNum* sizeof(float) * sz_burst * reSampleTimes\ //set_params_buff
+            +streamNum * reSampleTimes * sizeof(retype)*streamNum \ //setBurstBd
+            + max_stateNum *(3+2*max_stateNum*max_stateNum)* sizeof(float)*streamNum ; //set_nstates
+        size_t free, total;
+        cudaMemGetInfo( &free, &total );
+        size_t M200=(200<<20);
+        if((free-reserved_gpumem)<=0)
+            return false;
+        size_t tot_conversion_buff_sz = free-reserved_gpumem-M200>0 ? free-reserved_gpumem-M200 : (size_t)((free-reserved_gpumem)*.90); 
+        // tot_conversion_buff_sz/=streamNum;
+        printf("tot_conversion_buff_sz: %zu\n",tot_conversion_buff_sz);
+        int *tcc=new int[streamNum];
+
+        for (int sid=0;sid<streamNum;sid++){
+            // printf("n:%d\n",(end_burst[sid] - begin_burst[sid]));
+            // printf("N:%f,streamNum=%d\n",N,streamNum);
+            // printf("d:%f\n",(double)tot_conversion_buff_sz);
+            // conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)*(end_burst[sid] - begin_burst[sid])/N);
+            conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)/streamNum);
+            printf("conversion_buff_sz[sid] %d\n",conversion_buff_sz[sid]);
+            tcc[sid]=(int)(conversion_buff_sz[sid]/(sz_burst*sizeof(int)));
+            printf("tcc[%d]: %d\n",sid,tcc[sid]);
+            g_conversion_buff[sid]=(int *)(mr->malloc(conversion_buff_sz[sid],streams[sid]));
+        }
+        // CUDA_CHECK_RETURN(cudaMemcpy(g_conversion_capacity, tcc, streamNum*sizeof(int), cudaMemcpyHostToDevice));
+        delete[] tcc;
+        data_gpu_inited=false;
+        return true;
+    }
+    else
+        return false;
+}
 void mc::init_randstate(int N, int sid) {
     int NN;
     int oldNN = oldN[sid] * reSampleTimes;
@@ -421,6 +464,7 @@ void mc::init_data_gpu(vector<int64_t> &istart, vector<int64_t> &start,
     int sidx = 0;
     g_phCount =
         (int *)mr->malloc(sizeof(int) * sz_burst, streams[(sidx) % streamNum]);
+    g_conversion_capacity = (int *)(mr->malloc(sizeof(int)*streamNum, streams[(sidx++) % streamNum]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(g_phCount, phCount.data(),
                                       sizeof(int) * sz_burst, cudaMemcpyHostToDevice,
                                       streams[(sidx++) % streamNum]));
@@ -471,15 +515,9 @@ void mc::init_data_gpu(vector<int64_t> &istart, vector<int64_t> &start,
                         cudaMemcpyHostToDevice, streams[(sidx++) % streamNum]));
     // CUDA_CHECK_RETURN(cudaMalloc((void **)&gchi2, sizeof(float)));
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+    data_gpu_inited=true;
 }
-/**
- * @brief Setup the range of burst for computation
- * 
- * @param cstart start of range
- * @param cstop end of range, when it's -1 means last burst
- * @param sid stream number 
- * @return int real nubmer of burst for computation
- */
+
 int mc::setBurstBd(int cstart, int cstop, int sid) {
     int rcstart = cstart;
     int rcstop = cstop;
@@ -587,6 +625,7 @@ mc::~mc() {
     }
     free(streams);
     delete[](s_n);
+    delete[](conversion_buff_sz);
     delete[](oldN);
     delete[](begin_burst);
     delete[](end_burst);
@@ -597,6 +636,7 @@ mc::~mc() {
     // free(hpv);
     // free(hpp);
     // free(hpk);
+    free(g_conversion_buff);
     free(gpe);
     free(gpv);
     free(gpp);
@@ -631,6 +671,7 @@ void mc::free_data_gpu() {
     // CUDA_CHECK_RETURN(cudaFree(g_burst_duration));
     int sidx = 0;
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+    mr->free(g_conversion_capacity, sizeof(int) * streamNum, streams[(sidx++) % streamNum]);
     mr->free(g_phCount, sizeof(int) * sz_burst, streams[(sidx++) % streamNum]);
     mr->free(g_burst_ad, sizeof(int64_t) * sz_tag, streams[(sidx++) % streamNum]);
     mr->free(g_burst_dd, sizeof(int64_t) * sz_tag, streams[(sidx++) % streamNum]);
@@ -676,13 +717,7 @@ void mc::free_data_gpu() {
         CUDA_CHECK_RETURN(cudaFreeHost(hmcE[sid]));
     }
 }
-/**
- * @brief          Setup the number of protien's states in simulation.
- *
- * @param n        The number of protien's states
- * @param sid      The gpu stream idx
- * @return int     The number of protien's states than setuped in the gpu stream idx before this call.
- */
+
 int mc::set_nstates(int n, int sid) {
     int r = n;
     if (s_n[sid] != n) {

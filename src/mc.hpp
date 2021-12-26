@@ -51,6 +51,9 @@ class mc
         
         int *begin_burst;
         int *end_burst;
+        int *g_conversion_capacity;
+        int *conversion_buff_sz;
+        int **g_conversion_buff;
         rk_state** devStates;
         curandStateScrambledSobol64** devQStates;
         curandDirectionVectors64_t* hostVectors64;
@@ -71,6 +74,7 @@ class mc
         int nDevices;
         bool profiler;
         int streamNum;
+        bool data_gpu_inited;
     public:      
         cudaStream_t* getStreams(int* numStream);
         int devid;  
@@ -81,24 +85,87 @@ class mc
         int sz_burst;
         bool streamQuery(int sid);
         int reSampleTimes;        
+
+        /**
+        * @brief          Setup the number of protien's states in simulation.
+        *
+        * It inits mem in gpu for parameters per stream. mr->malloc(n *(3+2n^2)* sizeof(float), streams[sid])
+        *                
+        * @param n        The number of protien's states
+        * @param sid      The gpu stream idx
+        * @return int     The number of protien's states than setuped in the gpu stream idx before this call.
+        */        
         int set_nstates(int n,int sid);
         /**
          * @brief Set which GPU for calculating
          * 
          */
         void set_gpuid();
+
+        /**
+        * @brief Setup the range of burst for computation.
+        * 
+        * It inits mem in gpu for results per stream. mr->malloc(N * reSampleTimes * sizeof(retype), streams[sid])
+        *
+        * @param cstart start of range
+        * @param cstop end of range, when it's -1 means last burst
+        * @param sid stream number 
+        * @return int real nubmer of burst for computation
+        */        
         int  setBurstBd(int cstart,int cstop, int sid);
         void set_reSampleTimes(int n);
         void free_data_gpu();
+
+        /**
+         * @brief init rand seeds
+         * 
+         * mr->malloc(sz_burst * reSampleTimes * (sizeof(rk_state)+sizeof(curandStateScrambledSobol64)+(VECTOR_SIZE +1)* sizeof(long long int)), streams[sid])
+         *                   
+         * @param N 
+         * @param sid 
+         */
         void init_randstate(int N,int sid);
         void run_kernel(int N, int sid);
         void get_res(int sid, int N);
+
+        /**
+         * @brief Set the params temp buff object
+         * 
+         * mr->malloc(s_n[sid] * sizeof(float) * N_sid * reSampleTimes, streams[sid])
+         *
+         * @param oldS_n 
+         * @param N_sid 
+         * @param sid 
+         */
         void set_params_buff(int oldS_n,int N_sid,int sid);
+
+        /**
+         * @brief init fix size part of gpu mem base on the hdf5 file. 
+         * 
+         * @param istart 
+         * @param start 
+         * @param stop 
+         * @param phCount 
+         * @param _sz_tag 
+         * @param burst_ad 
+         * @param burst_dd 
+         * @param T_burst_duration 
+         * @param SgDivSr 
+         * @param iclk_p 
+         * @param ibg_ad_rate 
+         * @param ibg_dd_rate 
+         */
         void init_data_gpu(vector<int64_t>& istart,vector<int64_t>& start,vector<int64_t>& stop,
                         std::vector<int>& phCount,long _sz_tag,int64_t *burst_ad, int64_t *burst_dd,
                         vector<float>& T_burst_duration,vector<float>& SgDivSr,
                         float& iclk_p,float& ibg_ad_rate,float& ibg_dd_rate);
         ~mc();
+
+        /**
+         * @brief calculate the max conversion_capacity your gpu supported.
+         * call it after init_data_gpu
+         */
+        bool get_max_conversion_capacity(int max_stateNum=8);
         /**
          * @brief Construct a new mc object
          * 

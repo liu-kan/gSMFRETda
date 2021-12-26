@@ -148,6 +148,7 @@ int main(int argc, char* argv[])
       dataready,s_n, params, ga_start, ga_stop,N,debuglevel);
     gpuWorker gpuworker(&pdamc,streamNum,&SgDivSr,fretHistNum,_m,_cv,
       dataready,s_n, params, ga_start, ga_stop,N,debuglevel);
+    pdamc.get_max_conversion_capacity();
     std::cout<<"workers created\n";
     std::vector<std::thread> threads;
     for(int i=0;i<streamNum;i++){
@@ -155,6 +156,7 @@ int main(int argc, char* argv[])
     }
     std::cout<<"net threads looped\n";
     std::this_thread::sleep_for(2s);
+    
     std::thread thGpu(&gpuWorker::run,&gpuworker,pdamc.sz_burst);
     std::cout<<"gpu thread looped\n";
     for (auto& th : threads) {

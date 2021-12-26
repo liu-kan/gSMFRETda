@@ -142,9 +142,9 @@ jobs:
           lcov --directory . --capture --output-file coverage.info
           lcov --remove coverage.info '/usr/*' '${{github.workspace}}/build/3rdparty/*' '${{github.workspace}}/build/third/*' '${{github.workspace}}/src/3rdparty/*' --output-file coverage.info
           lcov --list coverage.info
-          #bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
           #coveralls --exclude /usr --exclude '${{github.workspace}}/build/3rdparty' --exclude '${{github.workspace}}/build/third' --exclude '${{github.workspace}}/src/3rdparty' --gcov-options '\-lp'
-          coveralls -n --gcov coverage.info --verbose
+          # coveralls -n --gcov coverage.info --verbose
 
       # - name: Setup tmate session
       #   uses: mxschmitt/action-tmate@v3
