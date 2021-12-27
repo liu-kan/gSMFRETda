@@ -347,8 +347,8 @@ bool mc::get_max_conversion_capacity(int max_stateNum){
             // printf("N:%f,streamNum=%d\n",N,streamNum);
             // printf("d:%f\n",(double)tot_conversion_buff_sz);
             // conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)*(end_burst[sid] - begin_burst[sid])/N);
-            conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)/streamNum);
-            tcc[sid]=(int)(conversion_buff_sz[sid]/(sz_burst*sizeof(int)));
+            conversion_buff_sz[sid]=static_cast<int>(floor(static_cast<double>(tot_conversion_buff_sz)/streamNum));
+            tcc[sid]=static_cast<int>(conversion_buff_sz[sid]/(sz_burst*sizeof(int)));
             if(sid==0){
                 printf("conversion_buff_sz[%d] %d\n",sid,conversion_buff_sz[sid]);
                 printf("max_conversion_capacity[%d]: %d\n",sid,tcc[sid]);
