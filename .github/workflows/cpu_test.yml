@@ -52,7 +52,7 @@ jobs:
           sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
           sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
           sudo apt-get update
-          sudo apt-get install -y cuda-nvprof-11-4  nvidia-headless-470 cuda-cudart-dev-11-4 cuda-minimal-build-11-4 cuda-nvrtc-dev-11-4 libcurand-dev-11-4
+          sudo apt-get install -y cuda-nvprof-11-4 cuda-cudart-dev-11-4 cuda-minimal-build-11-4 cuda-nvrtc-dev-11-4 libcurand-dev-11-4
       - name: Set ENV
         run: |
           echo "$CUDA_HOME/bin" >> $GITHUB_PATH

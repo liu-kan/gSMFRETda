@@ -12,13 +12,10 @@
 name: "CodeQL"
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ master ]
+  workflow_dispatch:
+    branch: [ master ]
   schedule:
-    - cron: '22 19 * * 6'
+    - cron: '22 19 * * 3'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
