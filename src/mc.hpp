@@ -51,8 +51,8 @@ class mc
         
         int *begin_burst;
         int *end_burst;
-        int *g_conversion_capacity;
-        int *conversion_buff_sz;
+        size_t *g_conversion_capacity;
+        size_t *conversion_buff_sz;
         int **g_conversion_buff;
         rk_state** devStates;
         curandStateScrambledSobol64** devQStates;

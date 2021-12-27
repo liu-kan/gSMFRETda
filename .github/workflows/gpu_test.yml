@@ -80,6 +80,7 @@ jobs:
           sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
           sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
           sudo apt-get update
+          sudo apt-get install -y libnvidia-compute-495
           sudo apt-get install -y cuda-nvprof-11-5  nvidia-headless-495 cuda-cudart-dev-11-5 cuda-minimal-build-11-5 cuda-nvrtc-dev-11-5 libcurand-dev-11-5
 
       - name: configure_cmake

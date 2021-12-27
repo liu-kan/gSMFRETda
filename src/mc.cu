@@ -229,7 +229,7 @@ mc::mc(int id, int _streamNum, unsigned char de, std::uintmax_t hdf5size,
         return;
     }
     set_gpuid();
-    conversion_buff_sz=new int[streamNum];
+    conversion_buff_sz=new size_t[streamNum];
     mr = new mrImp(hdf5size, 0.85, devid,false,0);
     // setAllocator("rmmDefaultPool");
     streams = (cudaStream_t *)malloc(sizeof(cudaStream_t) * streamNum);
@@ -340,22 +340,22 @@ bool mc::get_max_conversion_capacity(int max_stateNum){
         size_t tot_conversion_buff_sz = free-reserved_gpumem-M200>0 ? free-reserved_gpumem-M200 : (size_t)((free-reserved_gpumem)*.90); 
         // tot_conversion_buff_sz/=streamNum;
         printf("tot_conversion_buff_sz: %zu\n",tot_conversion_buff_sz);
-        int *tcc=new int[streamNum];
+        size_t *tcc=new size_t[streamNum];
 
         for (int sid=0;sid<streamNum;sid++){
             // printf("n:%d\n",(end_burst[sid] - begin_burst[sid]));
             // printf("N:%f,streamNum=%d\n",N,streamNum);
             // printf("d:%f\n",(double)tot_conversion_buff_sz);
             // conversion_buff_sz[sid]=(int)floor(((double)tot_conversion_buff_sz)*(end_burst[sid] - begin_burst[sid])/N);
-            conversion_buff_sz[sid]=static_cast<int>(floor(static_cast<double>(tot_conversion_buff_sz)/streamNum));
-            tcc[sid]=static_cast<int>(conversion_buff_sz[sid]/(sz_burst*sizeof(int)));
+            conversion_buff_sz[sid]=static_cast<size_t>(floor(static_cast<double>(tot_conversion_buff_sz)/streamNum));
+            tcc[sid]=static_cast<size_t>(conversion_buff_sz[sid]/(sz_burst*sizeof(int)));
             if(sid==0){
-                printf("conversion_buff_sz[%d] %d\n",sid,conversion_buff_sz[sid]);
-                printf("max_conversion_capacity[%d]: %d\n",sid,tcc[sid]);
+                printf("conversion_buff_sz[%d] %zu\n",sid,conversion_buff_sz[sid]);
+                printf("max_conversion_capacity[%d]: %zu\n",sid,tcc[sid]);
             }
             g_conversion_buff[sid]=(int *)(mr->malloc(conversion_buff_sz[sid],streams[sid]));
         }
-        // CUDA_CHECK_RETURN(cudaMemcpy(g_conversion_capacity, tcc, streamNum*sizeof(int), cudaMemcpyHostToDevice));
+        CUDA_CHECK_RETURN(cudaMemcpy(g_conversion_capacity, tcc, streamNum*sizeof(size_t), cudaMemcpyHostToDevice));
         delete[] tcc;
         data_gpu_inited=false;
         return true;
@@ -466,7 +466,7 @@ void mc::init_data_gpu(vector<int64_t> &istart, vector<int64_t> &start,
     int sidx = 0;
     g_phCount =
         (int *)mr->malloc(sizeof(int) * sz_burst, streams[(sidx) % streamNum]);
-    g_conversion_capacity = (int *)(mr->malloc(sizeof(int)*streamNum, streams[(sidx++) % streamNum]));
+    g_conversion_capacity = (size_t *)(mr->malloc(sizeof(size_t)*streamNum, streams[(sidx++) % streamNum]));
     CUDA_CHECK_RETURN(cudaMemcpyAsync(g_phCount, phCount.data(),
                                       sizeof(int) * sz_burst, cudaMemcpyHostToDevice,
                                       streams[(sidx++) % streamNum]));
@@ -673,7 +673,7 @@ void mc::free_data_gpu() {
     // CUDA_CHECK_RETURN(cudaFree(g_burst_duration));
     int sidx = 0;
     CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-    mr->free(g_conversion_capacity, sizeof(int) * streamNum, streams[(sidx++) % streamNum]);
+    mr->free(g_conversion_capacity, sizeof(size_t) * streamNum, streams[(sidx++) % streamNum]);
     mr->free(g_phCount, sizeof(int) * sz_burst, streams[(sidx++) % streamNum]);
     mr->free(g_burst_ad, sizeof(int64_t) * sz_tag, streams[(sidx++) % streamNum]);
     mr->free(g_burst_dd, sizeof(int64_t) * sz_tag, streams[(sidx++) % streamNum]);
