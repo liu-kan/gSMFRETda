@@ -1,4 +1,6 @@
+#include <cstdio>
 #include <iostream>
+#include <stdlib.h>
 #include <string>
 #include <vector>
 
@@ -21,12 +23,13 @@ std::uintmax_t loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std
 {
     std::uintmax_t fsize=0;
     path fpath(H5FILE_NAME);
-    // try {
+    try {
         fsize=file_size(fpath);
-    // } catch(const filesystem_error& e) {
-    //     std::cout << e.what() << '\n';
-    //     return 0;
-    // }  
+    } catch(const filesystem_error& e) {
+        std::cout << e.what() << '\n';
+        std::cerr << EXIT_FAILURE << std::endl;
+        exit(EXIT_FAILURE);
+    }  
     using namespace HighFive;    
     // std::vector<unsigned char> mask_ad_i;std::vector<unsigned char> mask_dd_i;
     try {
@@ -71,7 +74,8 @@ std::uintmax_t loadhdf5(std::string H5FILE_NAME, std::vector<int64_t>& start,std
         dataset.read(bg_dd_rate);
     } catch (Exception& err) {
         std::cerr << err.what() << std::endl;
-        fsize=0;
+        fsize=0;        
+        exit(EXIT_FAILURE);
     }    
     // // int64_t size=mask_ad_i.size();
     // // for (int i=0;i<size;i++){
@@ -115,6 +119,8 @@ void burst_data(vector<int64_t>& istart,vector<int64_t>& istop,vector<int64_t>& 
         arrI64Mapper times_msA(times_ms.data()+istart[idx],phCount[idx]);
         arrI64 eburst_ad=mask_adA.cast<int64_t>()*times_msA;     
         arrI64 eburst_dd=mask_ddA.cast<int64_t>()*times_msA; 
+        // if(idx==100)
+        //     std::cout<<eburst_dd<<std::endl;
         memcpy((*burst_ad)+istart[idx],eburst_ad.data(),sizeof(int64_t)*phCount[idx]);
         memcpy((*burst_dd)+istart[idx],eburst_dd.data(),sizeof(int64_t)*phCount[idx]);
         // offset+=phCount[idx];

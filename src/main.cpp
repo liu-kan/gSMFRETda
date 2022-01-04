@@ -176,5 +176,5 @@ int main(int argc, char* argv[])
     delete[](burst_ad);
     delete[](burst_dd);    
     share_var_free(streamNum,_m,_cv,s_n, params, ga_start, ga_stop,dataready,N);
-    return 0;   
+    return EXIT_SUCCESS;
 }

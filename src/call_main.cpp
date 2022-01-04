@@ -15,8 +15,10 @@ namespace fs = boost::filesystem;
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <map>
 #if !defined(_WIN64) && !defined(_WIN32)
     #include <signal.h>
+    #include <sys/wait.h>
 #else
     #include <windows.h>
     #include <tlhelp32.h>
@@ -41,24 +43,35 @@ void signal_handler(int signal)
     gSignalStatus = signal;
 }
 
-void modArg(std::string& cmdline, gengetopt_args_info& args_info){ 
+void modArg(std::vector<string>& cmdline, gengetopt_args_info& args_info){ 
     if(args_info.inputs_num<1 && !args_info.input_given ){
       std::cout<<"You need either appoint -i or add hdf5 filename in the end of cmdline!"<<std::endl;
       std::exit(EXIT_FAILURE);
     }
-    if (args_info.url_given)
-        cmdline=cmdline+" -u "+args_info.url_arg;
-    if (args_info.input_given)
-        cmdline=cmdline+" -i "+args_info.input_arg;
-    else
-        cmdline=cmdline+" -i "+args_info.inputs[0];
-    if (args_info.fret_hist_num_given)
-        cmdline=cmdline+" -f "+args_info.fret_hist_num_orig;
-    if (args_info.snum_given)
-        cmdline=cmdline+" -s "+args_info.snum_orig;
+    if (args_info.url_given){
+        cmdline.push_back("-u");
+        cmdline.push_back(args_info.url_arg);
+    }
+    if (args_info.input_given){
+        cmdline.push_back("-i");
+        cmdline.push_back(args_info.input_arg);
+    }
+    else{
+        cmdline.push_back("-i");
+        cmdline.push_back(args_info.inputs[0]);
+    }
+    if (args_info.fret_hist_num_given){
+        cmdline.push_back("-f");
+        cmdline.push_back(args_info.fret_hist_num_orig);
+    }
+    if (args_info.snum_given){
+        cmdline.push_back("-s");
+        cmdline.push_back(args_info.snum_orig);
+    }
     if( remove( args_info.pid_arg )!= 0 )
         perror( "Error deleting file" );
-    cmdline=cmdline+" -I "+args_info.pid_arg;
+    cmdline.push_back("-I");
+    cmdline.push_back(args_info.pid_arg);
 }
 void terminatePid(vector<int>& vpid){
     for ( int pid: vpid )
@@ -98,17 +111,24 @@ int FindProcessId(int pid)
     return -1;
 }
 #endif
-bool pidsRunning(vector<int>& vpid){
+bool pidsRunning(vector<int>& vpid, std::map<int, int*>& m){
 #define BUFFER_SIZE 100
     int pidsLen=vpid.size();
+    printf("pidsLen %d\n",pidsLen);
     for ( int pid: vpid )
     {
         #if defined(_WIN64)|| defined(_WIN32)
             if(FindProcessId(pid)<0)
                 pidsLen--;
         #else            
-            if(0!=kill(pid, 0))
+            // if(0!=kill(pid, 0))
+            //     pidsLen--;
+            pid_t w;
+            w = waitpid(pid, m[pid], WNOHANG);
+            if(w>0){
+                printf("waitpid %d return.\n",w);
                 pidsLen--;
+            }
         #endif
     }
     if(pidsLen<=0)
@@ -130,9 +150,9 @@ void getPid(char *pidfn, vector<int>& vpid){
 }
 int main(int argc,char** argv)
 {
-using namespace std::chrono_literals;
-using namespace std::chrono;
-std::signal(SIGINT, signal_handler);
+    using namespace std::chrono_literals;
+    using namespace std::chrono;
+    std::signal(SIGINT, signal_handler);
     fs::path gSMFRETda_path = boost::dll::program_location();
     //g++ src/call_main.cpp -lboost_filesystem -ldl
     gSMFRETda_path.remove_filename();
@@ -141,7 +161,9 @@ std::signal(SIGINT, signal_handler);
     if (cmdline_parser (argc, argv, &args_info) != 0)
       std::exit(EXIT_FAILURE);
     std::string cmdline=gSMFRETda_path.string();
-    modArg(cmdline, args_info);
+    std::vector<string> cmdVect;
+    cmdVect.push_back(cmdline);
+    modArg(cmdVect, args_info);
     int minGid=99999;
     bool useAll=false;
     if (args_info.gpuids_given>=1){
@@ -159,45 +181,79 @@ std::signal(SIGINT, signal_handler);
     if(nDevices<=0)
         std::exit(EXIT_FAILURE);
     
-    if (useAll){
-        for (int igi =0;igi<nDevices;igi++){            
-            #if defined(_WIN64)|| defined(_WIN32)
-                std::string thecmd="START /B "+cmdline+" -g "+std::to_string(igi);
-            #else
-                std::string thecmd=cmdline+" -g "+std::to_string(igi)+ " &";
-            #endif
-            system(thecmd.c_str());
-            std::this_thread::sleep_for(1s);
-        }
-    }
+    std::vector<int> vgpuids;
+    if (useAll)
+        for (int igi =0;igi<nDevices;igi++)
+            vgpuids.push_back(igi);
     else{
-        std::vector<int> vgpuids(args_info.gpuids_arg,args_info.gpuids_arg+args_info.gpuids_given);
+        vgpuids = std::vector<int>(args_info.gpuids_arg,args_info.gpuids_arg+args_info.gpuids_given);
         std::sort(vgpuids.begin(),vgpuids.end());
         vgpuids.erase( std::unique( vgpuids.begin(), vgpuids.end() ), vgpuids.end() );
-        for (int gpuid: vgpuids){
-            if(gpuid<nDevices&& gpuid >=0){
-                #if defined(_WIN64)|| defined(_WIN32)
-                    std::string thecmd="START /B "+cmdline+" -g "+std::to_string(gpuid);
-                #else
-                    std::string thecmd=cmdline+" -g "+std::to_string(gpuid)+" &";
-                #endif
-                system(thecmd.c_str());
-                std::this_thread::sleep_for(1s);
-            }
-        }
     }
+    int* pidret=new int[vgpuids.size()];
+    std::map<int, int*> pidmap;
+    for (int gpuid=0;gpuid<vgpuids.size();gpuid++){
+        if(vgpuids[gpuid]<nDevices&& vgpuids[gpuid] >=0){
+            #if defined(_WIN64)|| defined(_WIN32)
+                std::string thecmd="START /B ";
+                for (std::string argv:cmdVect)
+                    thecmd=thecmd+argv+" ";
+                thecmd=thecmd+" -g "+std::to_string(vgpuids[gpuid]);
+                system(thecmd.c_str());                
+            #else
+                pid_t child_pid;
+                child_pid = fork ();
+                // if (child_pid != 0)
+                //     /* This is the parent process.  */
+                //     return child_pid;
+                // else {
+                if (child_pid==0){
+                    /* Now execute PROGRAM, searching for it in the path.  */
+                    std::vector<string> cmdv=cmdVect;
+                    cmdv.push_back("-g");
+                    cmdv.push_back(std::to_string(vgpuids[gpuid]));
+                    const char **argvg = new const char* [cmdv.size()+1];
+                    for (int j = 0;  j < cmdv.size();  ++j)
+                        argvg [j] = cmdv[j].c_str();
+                    argvg[cmdv.size()]=NULL;
+                    execv (cmdVect[0].c_str(), (char **)argvg);
+                    /* The execvp function returns only if an error occurs.  */
+                    fprintf (stderr, "an error occurred in execv\n");
+                    exit(EXIT_FAILURE);
+                }                
+            #endif
+            std::this_thread::sleep_for(1s);
+        }
+    }    
     vector<int> vpid;
     getPid(args_info.pid_arg, vpid);
-    for (int pid :vpid)
-        std::cout << "pid: " <<pid<< std::endl;
+    for (int pididx=0;pididx<vpid.size();pididx++){
+        std::cout << "pid: " <<vpid[pididx]<< std::endl;
+        pidmap[vpid[pididx]]=pidret+pididx;
+    }
     while(true){
         std::this_thread::sleep_for(1s);
-        if (gSignalStatus==2){
+        if (gSignalStatus==SIGINT){
+            printf("SIGINT got\n");
             terminatePid(vpid);
             break;
         }
-        if (!pidsRunning(vpid))
-             break;
+        if (!pidsRunning(vpid,pidmap))
+            break;
     }
-    return 0;
+    int retcode=EXIT_SUCCESS;
+    #if !defined(_WIN64) && !defined(_WIN32)
+        for (int gpuid=0;gpuid<vgpuids.size();gpuid++){        
+            if (WIFEXITED(pidret[gpuid])) {
+                int tretcode=WEXITSTATUS(pidret[gpuid]);
+                printf("exit code:%d\n",tretcode);
+                if(tretcode!=EXIT_SUCCESS)
+                    retcode=tretcode;
+            } 
+            else
+                retcode=EXIT_FAILURE;
+        }
+    #endif
+    delete[] pidret;
+    return retcode;
 }
